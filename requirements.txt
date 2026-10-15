@@ -1,0 +1,15 @@
+
+fastapi
+uvicorn[standard]
+streamlit
+pymupdf
+psycopg[binary]
+pgvector
+sentence-transformers
+python-multipart
+pydantic-settings
+python-dotenv
+google-genai
+pytest
+httpx
+
