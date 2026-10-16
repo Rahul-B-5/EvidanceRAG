@@ -25,17 +25,23 @@ def reciprocal_rank_fusion(
     for results in result_lists:
         seen_in_list: set[int] = set()
 
-        for rank, result in enumerate(results, start=1):
+
+        rank = 0
+
+        for result in results:
             chunk_id = result["chunk_id"]
 
-            # A chunk should contribute at most once per retrieval list.
+            # Ignore duplicates without penalizing later unique results.
             if chunk_id in seen_in_list:
                 continue
+
             seen_in_list.add(chunk_id)
+            rank += 1
 
             scores[chunk_id] = (
                 scores.get(chunk_id, 0.0) + 1.0 / (k + rank)
             )
+
 
             if chunk_id not in fused:
                 fused[chunk_id] = dict(result)
