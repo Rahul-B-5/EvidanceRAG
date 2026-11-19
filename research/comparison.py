@@ -14,7 +14,7 @@ COMPARISON_FIELDS = {
 }
 
 
-def compare_documents(document_ids: list[int], *, passages_per_field: int = 2) -> dict:
+def compare_documents(document_ids: list[int], *, passages_per_field: int = 2, workspace_id: int | None = None) -> dict:
     """Collect traceable comparison evidence for each requested paper.
 
     This intentionally reports ``missing`` when the local corpus does not
@@ -30,7 +30,8 @@ def compare_documents(document_ids: list[int], *, passages_per_field: int = 2) -
         fields = {}
         title = None
         for field, query in COMPARISON_FIELDS.items():
-            results = search_keyword(query, top_k=passages_per_field, document_id=document_id)
+            results = search_keyword(query, top_k=passages_per_field, document_id=document_id,
+                                     **({"workspace_id": workspace_id} if workspace_id is not None else {}))
             _, evidence = build_evidence_context(results, max_chars_per_chunk=800)
             if evidence and title is None:
                 title = evidence[0]["title"]

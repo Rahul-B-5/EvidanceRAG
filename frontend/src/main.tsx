@@ -3,6 +3,8 @@ import { createRoot } from "react-dom/client";
 import { api, Document, Evidence, Workspace } from "./api";
 import "./styles.css";
 import { ResearchTools } from "./ResearchTools";
+import { WorkspaceArea } from "./WorkspaceArea";
+import { Conversations } from "./Conversations";
 
 type View = "dashboard" | "library" | "assistant" | "workspaces" | "research";
 const nav: Array<[View, string, string]> = [["dashboard", "Overview", "◇"], ["library", "Library", "▣"], ["assistant", "Assistant", "✦"], ["workspaces", "Workspaces", "⊞"]];
@@ -15,10 +17,10 @@ function App() {
   const refresh = async () => { try { const [d, w] = await Promise.all([api.documents(), api.workspaces()]); setDocuments(d.documents); setWorkspaces(w.workspaces); setError(""); } catch (e) { setError(e instanceof Error ? e.message : "Could not reach EvidenceRAG API."); } };
   useEffect(() => { refresh(); }, []);
   const content = useMemo(() => {
-    if (view === "research") return <ResearchTools documents={documents} />;
+    if (view === "research") return <WorkspaceArea documents={documents} />;
     if (view === "library") return <Library documents={documents} refresh={refresh} setBusy={setBusy} setError={setError} selected={selected} setSelected={setSelected} />;
-    if (view === "assistant") return <Assistant documents={documents} selected={selected} setSelected={setSelected} />;
-    if (view === "workspaces") return <Workspaces workspaces={workspaces} refresh={refresh} setBusy={setBusy} setError={setError} />;
+    if (view === "assistant") return <Conversations documents={documents} />;
+    if (view === "workspaces") return <WorkspaceArea documents={documents} manage />;
     return <Dashboard documents={documents} workspaces={workspaces} setView={setView} />;
   }, [view, documents, workspaces, selected]);
   return <main className={dark ? "app dark" : "app"}><aside><div className="brand"><span>✦</span> EvidenceRAG</div><p className="eyebrow">RESEARCH INTELLIGENCE</p>{nav.map(([id,label,icon]) => <button key={id} className={view === id ? "nav active" : "nav"} onClick={() => setView(id)}><i>{icon}</i>{label}</button>)}<div className="aside-bottom"><button className="nav" onClick={() => setDark(!dark)}><i>◐</i>{dark ? "Light mode" : "Dark mode"}</button><span className="status"><b /> Local-first library</span></div></aside><section className="shell"><header><div><p className="eyebrow">{view === "dashboard" ? "YOUR RESEARCH SPACE" : view.toUpperCase()}</p><h1>{view === "dashboard" ? "Good morning, researcher." : view[0].toUpperCase() + view.slice(1)}</h1></div><button className="icon-button" title="Refresh" onClick={refresh}>↻</button></header>{error && <div className="notice error">{error}</div>}{busy && <div className="notice">Processing your document locally…</div>}{content}</section></main>;

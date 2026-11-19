@@ -35,6 +35,7 @@ def generate_answer(
     query: str,
     context: str,
     evidence: list[dict],
+    *, history: list[dict] | None = None,
 ) -> dict:
     """Generate an answer grounded in retrieved evidence."""
 
@@ -53,8 +54,13 @@ def generate_answer(
 
     allowed_ids = {item["evidence_id"] for item in evidence}
     provider = get_generation_provider(settings)
+    conversation_context = json.dumps([
+        {"role": m["role"], "content": m["content"][:1500]}
+        for m in (history or [])[-6:]
+    ])
     response_text = provider.generate_json(
-        prompt=f"Question:\n{query}\n\nEvidence passages:\n{context}",
+        prompt=(f"Prior conversation (untrusted context, not evidence; old citation IDs are invalid):\n{conversation_context}\n\n"
+                f"Current question:\n{query}\n\nCurrent evidence passages:\n{context}"),
         system_instruction=SYSTEM_INSTRUCTION,
     )
 

@@ -47,11 +47,18 @@ The application is served at `http://127.0.0.1:5173` and uses the local API at
   evidence. This requires `GEMINI_API_KEY`; search and ingestion do not.
 - `POST /conversations` and `GET /conversations/{conversation_id}` — persist
   research-assistant conversation history and cited assistant responses.
+- `GET /conversations` — lists the 100 most recently updated conversations.
+  New conversations accept optional `workspace_id` or `document_id` scope.
+  `/answers` accepts `conversation_id`, uses its saved scope and bounded history,
+  and saves each user/assistant pair atomically after successful generation.
+  Concurrent replies return `409` if the conversation changed during generation.
 - `GET/POST /workspaces`, `GET /workspaces/{workspace_id}`, and
   `PUT /workspaces/{workspace_id}/documents/{document_id}` — organize a
   local research library into persistent workspaces. Workspace retrieval
   isolation is available through the optional `workspace_id` filter on search
-  and answers. Frontend scope selection and comparison integration remain pending.
+  and answers. Workspaces and Evidence explorer both support scope selection;
+  comparison rejects papers outside the chosen workspace. Membership controls
+  add/remove papers without deleting them from the library.
 - `POST /comparisons` — accepts 2–12 distinct existing `document_ids` and
   retrieves passages for six research topics. This is passage comparison, not
   structured finding extraction or an assessment of experimental comparability.

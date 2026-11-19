@@ -56,6 +56,7 @@ class AnswerRequest(BaseModel):
 class ConversationRequest(BaseModel):
     title: str = Field(min_length=1, max_length=300)
     document_id: int | None = Field(default=None, gt=0)
+    workspace_id: int | None = Field(default=None, gt=0)
 
 
 class WorkspaceRequest(BaseModel):
@@ -66,6 +67,19 @@ class WorkspaceRequest(BaseModel):
 class ComparisonRequest(BaseModel):
     document_ids: list[Annotated[int, Field(gt=0)]] = Field(min_length=2, max_length=12)
     passages_per_field: int = Field(default=2, ge=1, le=5)
+    workspace_id: int | None = Field(default=None, gt=0)
+
+
+def validate_workspace_scope(workspace_id: int | None, document_ids: list[int]) -> None:
+    if workspace_id is None:
+        return
+    with get_connection() as conn:
+        workspace = get_workspace(conn, workspace_id)
+    if workspace is None:
+        raise HTTPException(status_code=404, detail="Workspace not found.")
+    members = {d["id"] for d in workspace["documents"]}
+    if set(document_ids) - members:
+        raise HTTPException(status_code=422, detail="Selected documents are outside this workspace.")
 
 
 def _bad_request(error: ValueError) -> HTTPException:
@@ -150,7 +164,7 @@ def document_source(document_id: int) -> FileResponse:
     if not path.is_file():
         raise HTTPException(status_code=404, detail="Original source file is missing.")
 
-    return FileResponse(path, media_type="application/pdf", filename=path.name)
+    return FileResponse(path, media_type="application/pdf", filename=path.name, content_disposition_type="inline")
 
 
 @app.post("/documents", status_code=status.HTTP_201_CREATED)
@@ -202,6 +216,7 @@ def search(
     top_k: int | None = Query(default=None, ge=1, le=50),
     workspace_id: int | None = Query(default=None, gt=0),
 ) -> dict:
+    validate_workspace_scope(workspace_id, [document_id] if document_id is not None else [])
     try:
         return retrieve_evidence(query, top_k=top_k, document_id=document_id,
                                  **({"workspace_id": workspace_id} if workspace_id is not None else {}))
@@ -211,25 +226,40 @@ def search(
 
 @app.post("/answers")
 def answer(request: AnswerRequest) -> dict:
+    if not request.query.strip():
+        raise HTTPException(status_code=422, detail="Query must not be empty.")
+    document_id, workspace_id = request.document_id, request.workspace_id
+    history = []
     try:
         if request.conversation_id is not None:
             with get_connection() as conn:
-                if get_conversation(conn, request.conversation_id) is None:
+                conversation = get_conversation(conn, request.conversation_id)
+                if conversation is None:
                     raise HTTPException(status_code=404, detail="Conversation not found.")
-                add_message(
-                    conn,
-                    conversation_id=request.conversation_id,
-                    role="user",
-                    content=request.query,
-                )
+            for field in ("document_id", "workspace_id"):
+                supplied = getattr(request, field)
+                if supplied is not None and supplied != conversation.get(field):
+                    raise HTTPException(status_code=409, detail="Conversation source scope cannot change.")
+            document_id, workspace_id = conversation["document_id"], conversation.get("workspace_id")
+            history = conversation["messages"]
+            if document_id is not None:
+                with get_connection() as conn:
+                    if get_document(conn, document_id) is None:
+                        raise HTTPException(status_code=404, detail="Conversation source was deleted.")
+        validate_workspace_scope(workspace_id, [document_id] if document_id is not None else [])
+        # Prior user questions resolve follow-ups; old assistant claims are not
+        # evidence and old E-labels are never reused as current citations.
+        prior_questions = [m["content"][:1000] for m in history if m["role"] == "user"][-3:]
+        retrieval_query = "\n".join(prior_questions + [request.query])[-13000:]
         retrieval = retrieve_evidence(
-            request.query,
+            retrieval_query,
             top_k=request.top_k,
-            document_id=request.document_id,
-            workspace_id=request.workspace_id,
+            document_id=document_id,
+            workspace_id=workspace_id,
         )
         generated = generate_answer(
-            request.query, retrieval["context"], retrieval["evidence"]
+            request.query, retrieval["context"], retrieval["evidence"],
+            **({"history": history[-6:]} if history else {}),
         )
     except ValueError as exc:
         raise _bad_request(exc) from exc
@@ -240,6 +270,13 @@ def answer(request: AnswerRequest) -> dict:
     if request.conversation_id is not None:
         assistant_content = generated["answer"] or generated["reason"] or "No answer generated."
         with get_connection() as conn:
+            locked = conn.execute("SELECT id FROM conversations WHERE id = %s FOR UPDATE", (request.conversation_id,)).fetchone()
+            if locked is None:
+                raise HTTPException(status_code=404, detail="Conversation not found.")
+            current_count = conn.execute("SELECT count(*) FROM messages WHERE conversation_id = %s", (request.conversation_id,)).fetchone()[0]
+            if current_count != len(history):
+                raise HTTPException(status_code=409, detail="Conversation changed; reload and retry.")
+            add_message(conn, conversation_id=request.conversation_id, role="user", content=request.query)
             add_message(
                 conn,
                 conversation_id=request.conversation_id,
@@ -252,12 +289,23 @@ def answer(request: AnswerRequest) -> dict:
 
 @app.post("/conversations", status_code=status.HTTP_201_CREATED)
 def new_conversation(request: ConversationRequest) -> dict:
+    if not request.title.strip():
+        raise HTTPException(status_code=422, detail="Title must not be empty.")
+    validate_workspace_scope(request.workspace_id, [request.document_id] if request.document_id is not None else [])
     with get_connection() as conn:
         if request.document_id is not None and get_document(conn, request.document_id) is None:
             raise HTTPException(status_code=404, detail="Document not found.")
         return create_conversation(
-            conn, title=request.title.strip(), document_id=request.document_id
+            conn, title=request.title.strip(), document_id=request.document_id,
+            workspace_id=request.workspace_id,
         )
+
+
+@app.get("/conversations")
+def conversations() -> dict:
+    with get_connection() as conn:
+        rows = conn.execute("SELECT id, title, updated_at FROM conversations ORDER BY updated_at DESC, id DESC LIMIT 100").fetchall()
+    return {"conversations": [{"id": r[0], "title": r[1], "updated_at": r[2]} for r in rows]}
 
 
 @app.get("/conversations/{conversation_id}")
@@ -279,6 +327,8 @@ def workspaces() -> dict:
 
 @app.post("/workspaces", status_code=status.HTTP_201_CREATED)
 def new_workspace(request: WorkspaceRequest) -> dict:
+    if not request.name.strip():
+        raise HTTPException(status_code=422, detail="Workspace name must not be empty.")
     with get_connection() as conn:
         return create_workspace(
             conn, name=request.name.strip(),
@@ -314,6 +364,7 @@ def attach_document_to_workspace(workspace_id: int, document_id: int) -> dict:
 
 @app.post("/comparisons")
 def comparison(request: ComparisonRequest) -> dict:
+    validate_workspace_scope(request.workspace_id, request.document_ids)
     if len(set(request.document_ids)) != len(request.document_ids):
         raise HTTPException(status_code=422, detail="Select distinct documents.")
     with get_connection() as conn:
@@ -326,10 +377,25 @@ def comparison(request: ComparisonRequest) -> dict:
         raise HTTPException(status_code=404, detail="One or more documents were not found.")
     try:
         result = compare_documents(
-            request.document_ids, passages_per_field=request.passages_per_field
+            request.document_ids, passages_per_field=request.passages_per_field,
+            workspace_id=request.workspace_id,
         )
         for paper in result["papers"]:
             paper["title"] = titles[paper["document_id"]]
         return result
     except ValueError as exc:
         raise _bad_request(exc) from exc
+
+
+@app.delete("/workspaces/{workspace_id}/documents/{document_id}", status_code=204)
+def detach_document(workspace_id: int, document_id: int) -> None:
+    if workspace_id <= 0 or document_id <= 0:
+        raise HTTPException(status_code=422, detail="IDs must be positive.")
+    with get_connection() as conn:
+        if get_workspace(conn, workspace_id) is None:
+            raise HTTPException(status_code=404, detail="Workspace not found.")
+        conn.execute(
+            "DELETE FROM workspace_documents WHERE workspace_id = %s AND document_id = %s",
+            (workspace_id, document_id),
+        )
+        conn.execute("UPDATE workspaces SET updated_at = NOW() WHERE id = %s", (workspace_id,))

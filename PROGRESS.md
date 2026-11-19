@@ -1,5 +1,28 @@
 # EvidenceRAG implementation progress
 
+## Latest checkpoint — workspace UI and persistent assistant
+
+- Workspace membership controls and selection now integrate with evidence search
+  and comparison. Missing workspaces return 404; nonmember selections return 422.
+- Persistent conversation UI lists/reopens chats, fixes scope at creation,
+  retains questions on errors and links citations to source pages.
+- API exchanges persist atomically after generation. Concurrent replies return
+  409 when history changes. Bounded prior questions inform retrieval; prior
+  conversation text informs generation but is explicitly not evidence.
+- New conversation scopes retain source IDs after deletion, preventing silent
+  widening to library scope. Additive conversation_scopes table applied locally;
+  no existing records changed. Legacy scope snapshot backfill remains advisable.
+- Verification: 41 unit tests pass and 2 PostgreSQL integration tests pass with
+  fixtures rolled back. Tests cover provider failure, scope mismatch, atomic
+  second-message rollback/retry and retrieval isolation. Frontend build passes.
+- New workspace/conversation UI has not yet been browser-tested. Live provider
+  generation still requires configuration. PDF responses now display inline.
+
+Next: browser-test membership/chat reload/error workflows, then add local or
+OpenAI-compatible generation with timeouts and transport tests. Continue saved
+evidence and structured research analysis. Earlier limitations below still apply
+except where superseded here. See git log for this checkpoint's commit.
+
 ## Current checkpoint — 2026-11-20 (supersedes historical notes below)
 
 - Branch `main`; GitHub authentication works. Commits through `4b4d14e` were

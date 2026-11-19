@@ -13,7 +13,7 @@ function Passages({ evidence, documents }: { evidence: Evidence[]; documents: Do
   </article>)}</div>;
 }
 
-export function ResearchTools({ documents }: { documents: Document[] }) {
+export function ResearchTools({ documents, workspaceId }: { documents: Document[]; workspaceId?: number }) {
   const [query, setQuery] = useState("");
   const [scope, setScope] = useState("");
   const [selected, setSelected] = useState<number[]>([]);
@@ -25,8 +25,8 @@ export function ResearchTools({ documents }: { documents: Document[] }) {
   async function run(mode: "search" | "compare") {
     setBusy(true); setError(""); setComparison(null); setEvidence(null);
     try {
-      if (mode === "search") setEvidence((await api.search(query.trim(), scope ? Number(scope) : undefined)).evidence);
-      else setComparison(await api.compare(selected));
+      if (mode === "search") setEvidence((await api.search(query.trim(), scope ? Number(scope) : undefined, workspaceId)).evidence);
+      else setComparison(await api.compare(selected, workspaceId));
     } catch (e) { setError(e instanceof Error ? e.message : "Request failed."); }
     finally { setBusy(false); }
   }
@@ -38,7 +38,7 @@ export function ResearchTools({ documents }: { documents: Document[] }) {
         <h2>Search evidence</h2>
         <label>Research question<input required value={query} onChange={e => setQuery(e.target.value)} placeholder="What datasets were used?" /></label>
         <label>Source scope<select value={scope} onChange={e => setScope(e.target.value)}>
-          <option value="">Entire library</option>{documents.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}
+          <option value="">{workspaceId ? "All workspace papers" : "Entire library"}</option>{documents.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}
         </select></label>
         <button disabled={busy || !query.trim()}>Find passages</button>
       </form>

@@ -203,7 +203,8 @@ def delete_document(conn: psycopg.Connection, document_id: int) -> tuple[bool, s
 
 
 def create_conversation(
-    conn: psycopg.Connection, *, title: str, document_id: int | None = None
+    conn: psycopg.Connection, *, title: str, document_id: int | None = None,
+    workspace_id: int | None = None,
 ) -> dict:
     row = conn.execute(
         """
@@ -213,8 +214,13 @@ def create_conversation(
         """,
         (title, document_id),
     ).fetchone()
+    conn.execute(
+        "INSERT INTO conversation_scopes(conversation_id, document_id, workspace_id) VALUES (%s,%s,%s)",
+        (row[0], document_id, workspace_id),
+    )
     return {
         "id": row[0], "title": row[1], "document_id": row[2],
+        "workspace_id": workspace_id,
         "created_at": row[3], "updated_at": row[4],
     }
 
@@ -226,6 +232,10 @@ def get_conversation(conn: psycopg.Connection, conversation_id: int) -> dict | N
     ).fetchone()
     if row is None:
         return None
+    scope = conn.execute(
+        "SELECT document_id, workspace_id FROM conversation_scopes WHERE conversation_id = %s",
+        (conversation_id,),
+    ).fetchone()
     messages = conn.execute(
         """
         SELECT id, role, content, citations, created_at
@@ -234,7 +244,8 @@ def get_conversation(conn: psycopg.Connection, conversation_id: int) -> dict | N
         (conversation_id,),
     ).fetchall()
     return {
-        "id": row[0], "title": row[1], "document_id": row[2],
+        "id": row[0], "title": row[1], "document_id": scope[0] if scope else row[2],
+        "workspace_id": scope[1] if scope else None,
         "created_at": row[3], "updated_at": row[4],
         "messages": [
             {"id": item[0], "role": item[1], "content": item[2],

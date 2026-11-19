@@ -134,3 +134,11 @@ CREATE TABLE IF NOT EXISTS workspace_documents (
 
 CREATE INDEX IF NOT EXISTS idx_workspace_documents_document_id
     ON workspace_documents(document_id);
+
+-- Scope IDs intentionally survive source deletion: a deleted source must never
+-- silently expand a conversation to the entire library.
+CREATE TABLE IF NOT EXISTS conversation_scopes (
+    conversation_id BIGINT PRIMARY KEY REFERENCES conversations(id) ON DELETE CASCADE,
+    document_id BIGINT,
+    workspace_id BIGINT
+);
