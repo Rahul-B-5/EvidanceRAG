@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type Conversation, type Document, type Workspace } from "./api";
+import { SavePassage } from "./SavedEvidence";
 
 export function Conversations({documents}: {documents: Document[]}) {
   const [list, setList] = useState<Array<{id: number; title: string}>>([]);
@@ -44,7 +45,11 @@ export function Conversations({documents}: {documents: Document[]}) {
     {conversation && <section className="panel"><h2>{conversation.title}</h2><p>Scope: {conversation.workspace_id ? `Workspace ${conversation.workspace_id}` : conversation.document_id ? documents.find(d => d.id === conversation.document_id)?.title ?? "Deleted paper" : "Entire library"}</p>
       {conversation.messages.length === 0 && <p>No completed exchange yet.</p>}
       {conversation.messages.map(m => <article className="research-passages" key={m.id}><h3>{m.role === "user" ? "You" : "EvidenceRAG"}</h3><p style={{whiteSpace:"pre-wrap"}}>{m.content}</p>
-        {m.citations.map(c => <p key={c.evidence_id}>{documents.find(d => d.id === c.document_id)?.has_stored_source ? <a target="_blank" rel="noreferrer" href={`${api.sourceUrl(c.document_id)}#page=${c.page_start}`}>[{c.evidence_id}] {c.title} · page {c.page_start}</a> : <span>[{c.evidence_id}] {c.title} · page {c.page_start} (source unavailable)</span>}</p>)}
+        {m.citations.map(c => <div className="citation-row" key={c.evidence_id}>
+          {documents.some(d => d.id === c.document_id)
+            ? <><a href={`#paper=${c.document_id}&page=${c.page_start}`}>[{c.evidence_id}] {c.title} · page {c.page_start}</a><SavePassage id={c.chunk_id} /></>
+            : <span>[{c.evidence_id}] {c.title} · page {c.page_start} (source unavailable)</span>}
+        </div>)}
       </article>)}
     </section>}
     {error && <p role="alert" className="notice error">{error} Your question remains below for retry.</p>}

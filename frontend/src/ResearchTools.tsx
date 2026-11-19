@@ -1,15 +1,17 @@
 import { useState } from "react";
 import { api, type Comparison, type Document, type Evidence } from "./api";
 import "./research.css";
+import { SavePassage } from "./SavedEvidence";
 
 function Passages({ evidence, documents }: { evidence: Evidence[]; documents: Document[] }) {
   return <div className="research-passages">{evidence.map(item => <article key={item.chunk_id}>
     <strong>{item.title}</strong>
     <p>{item.text}</p>
     {documents.find(d => d.id === item.document_id)?.has_stored_source
-      ? <a href={`${api.sourceUrl(item.document_id)}#page=${item.page_start}`} target="_blank" rel="noreferrer">Open source · page {item.page_start}{item.page_end !== item.page_start ? `–${item.page_end}` : ""}</a>
-      : <span>Pages {item.page_start}–{item.page_end} · original PDF unavailable</span>}
+      ? <a href={`#paper=${item.document_id}&page=${item.page_start}`}>Open source · page {item.page_start}{item.page_end !== item.page_start ? `–${item.page_end}` : ""}</a>
+      : <a href={`#paper=${item.document_id}&page=${item.page_start}`}>Read indexed passage · page {item.page_start}</a>}
     <small>Chunk {item.chunk_id}</small>
+    <SavePassage id={item.chunk_id} />
   </article>)}</div>;
 }
 

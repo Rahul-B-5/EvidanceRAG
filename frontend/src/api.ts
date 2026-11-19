@@ -1,6 +1,8 @@
 const API_BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 export type Document = { id: number; title: string; filename: string; authors: string[]; page_count: number | null; chunk_count: number; processing_status: string; has_stored_source: boolean; created_at: string };
+export type Passage = {chunk_id: number; page_start: number; page_end: number; text: string};
+export type SavedPassage = {chunk_id: number; document_id: number; title: string; page_start: number; page_end: number; passage: string; note: string; source_exists: boolean};
 export type Evidence = { evidence_id: string; chunk_id: number; document_id: number; title: string; page_start: number; page_end: number; text: string };
 export type Workspace = { id: number; name: string; description: string | null; document_count: number };
 export type Conversation = {id: number; title: string; document_id: number | null; workspace_id: number | null; messages: Array<{id: number; role: string; content: string; citations: Evidence[]}>};
@@ -22,6 +24,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   health: () => request<{ status: string }>("/health"),
+  savedEvidence: () => request<{items: SavedPassage[]}>("/saved-evidence"),
+  savePassage: (id: number) => request<{chunk_id: number}>(`/saved-evidence/${id}`, {method:"PUT"}),
+  updateNote: (id: number, note: string) => request<{note: string}>(`/saved-evidence/${id}`, {
+    method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({note}),
+  }),
   conversations: () => request<{conversations: Array<{id: number; title: string}>}>("/conversations"),
   conversation: (id: number) => request<Conversation>(`/conversations/${id}`),
   createConversation: (title: string, documentId?: number, workspaceId?: number) => request<Conversation>("/conversations", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({title, document_id:documentId, workspace_id:workspaceId})}),
@@ -29,6 +36,7 @@ export const api = {
   compare: (documentIds: number[], workspaceId?: number) => request<Comparison>("/comparisons", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({document_ids: documentIds, workspace_id: workspaceId})}),
   documents: () => request<{ documents: Document[] }>("/documents"),
   document: (id: number) => request<Document>(`/documents/${id}`),
+  passages: (id: number, page: number, signal?: AbortSignal) => request<{passages: Passage[]}>(`/documents/${id}/passages?page=${page}`, {signal}),
   upload: (file: File) => { const data = new FormData(); data.append("file", file); return request<{ document_id: number; status: string }>("/documents", { method: "POST", body: data }); },
   remove: (id: number) => request<void>(`/documents/${id}`, { method: "DELETE" }),
   search: (query: string, documentId?: number, workspaceId?: number) => request<{ evidence: Evidence[]; evidence_count: number }>(`/search?${new URLSearchParams({ query, ...(documentId ? { document_id: String(documentId) } : {}), ...(workspaceId ? {workspace_id: String(workspaceId)} : {}) })}`),

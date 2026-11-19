@@ -1,45 +1,212 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
-import { api, Document, Evidence, Workspace } from "./api";
-import "./styles.css";
-import { ResearchTools } from "./ResearchTools";
+import { api, type Document, type Workspace } from "./api";
 import { WorkspaceArea } from "./WorkspaceArea";
 import { Conversations } from "./Conversations";
+import { Reader } from "./Reader";
+import { SavedEvidence } from "./SavedEvidence";
+import "./styles.css";
 
-type View = "dashboard" | "library" | "assistant" | "workspaces" | "research";
-const nav: Array<[View, string, string]> = [["dashboard", "Overview", "◇"], ["library", "Library", "▣"], ["assistant", "Assistant", "✦"], ["workspaces", "Workspaces", "⊞"]];
-nav.push(["research", "Evidence explorer", "⌕"]);
+const views = [
+  ["dashboard", "Overview", "⌂"],
+  ["library", "Library", "▤"],
+  ["reader", "Reader", "▣"],
+  ["assistant", "Assistant", "✧"],
+  ["research", "Evidence & compare", "⌕"],
+  ["saved", "Saved evidence", "◇"],
+  ["workspaces", "Workspaces", "⊞"],
+] as const;
+type View = typeof views[number][0];
 
 function App() {
-  const [view, setView] = useState<View>("dashboard"); const [dark, setDark] = useState(false);
-  const [documents, setDocuments] = useState<Document[]>([]); const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
-  const [error, setError] = useState(""); const [busy, setBusy] = useState(false); const [selected, setSelected] = useState<Document | null>(null);
-  const refresh = async () => { try { const [d, w] = await Promise.all([api.documents(), api.workspaces()]); setDocuments(d.documents); setWorkspaces(w.workspaces); setError(""); } catch (e) { setError(e instanceof Error ? e.message : "Could not reach EvidenceRAG API."); } };
-  useEffect(() => { refresh(); }, []);
-  const content = useMemo(() => {
-    if (view === "research") return <WorkspaceArea documents={documents} />;
-    if (view === "library") return <Library documents={documents} refresh={refresh} setBusy={setBusy} setError={setError} selected={selected} setSelected={setSelected} />;
-    if (view === "assistant") return <Conversations documents={documents} />;
-    if (view === "workspaces") return <WorkspaceArea documents={documents} manage />;
-    return <Dashboard documents={documents} workspaces={workspaces} setView={setView} />;
-  }, [view, documents, workspaces, selected]);
-  return <main className={dark ? "app dark" : "app"}><aside><div className="brand"><span>✦</span> EvidenceRAG</div><p className="eyebrow">RESEARCH INTELLIGENCE</p>{nav.map(([id,label,icon]) => <button key={id} className={view === id ? "nav active" : "nav"} onClick={() => setView(id)}><i>{icon}</i>{label}</button>)}<div className="aside-bottom"><button className="nav" onClick={() => setDark(!dark)}><i>◐</i>{dark ? "Light mode" : "Dark mode"}</button><span className="status"><b /> Local-first library</span></div></aside><section className="shell"><header><div><p className="eyebrow">{view === "dashboard" ? "YOUR RESEARCH SPACE" : view.toUpperCase()}</p><h1>{view === "dashboard" ? "Good morning, researcher." : view[0].toUpperCase() + view.slice(1)}</h1></div><button className="icon-button" title="Refresh" onClick={refresh}>↻</button></header>{error && <div className="notice error">{error}</div>}{busy && <div className="notice">Processing your document locally…</div>}{content}</section></main>;
+  const [view, setView] = useState<View>("dashboard");
+  const [dark, setDark] = useState(() => localStorage.getItem("evidencerag.theme")
+    ? localStorage.getItem("evidencerag.theme") === "dark"
+    : matchMedia("(prefers-color-scheme: dark)").matches);
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [readerPage, setReaderPage] = useState(1);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [command, setCommand] = useState("");
+  const palette = useRef<HTMLDialogElement>(null);
+
+  async function refresh() {
+    setLoading(true);
+    setError("");
+    try {
+      const [library, groups] = await Promise.all([api.documents(), api.workspaces()]);
+      setDocuments(library.documents);
+      setWorkspaces(groups.workspaces);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not reach EvidenceRAG.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function navigate(next: View) {
+    setView(next);
+    setNotice("");
+    if (next === "dashboard") void refresh();
+  }
+
+  function openPaper(id: number) {
+    setSelectedId(id);
+    setReaderPage(1);
+    navigate("reader");
+  }
+
+  useEffect(() => { void refresh(); }, []);
+  useEffect(() => {
+    const followCitation = () => {
+      const match = /^#paper=(\d+)&page=(\d+)$/.exec(location.hash);
+      if (!match) return;
+      setSelectedId(Number(match[1]));
+      setReaderPage(Number(match[2]));
+      setView("reader");
+      history.replaceState(null, "", location.pathname + location.search);
+    };
+    followCitation();
+    window.addEventListener("hashchange", followCitation);
+    return () => window.removeEventListener("hashchange", followCitation);
+  }, []);
+  useEffect(() => {
+    localStorage.setItem("evidencerag.theme", dark ? "dark" : "light");
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  }, [dark]);
+  useEffect(() => {
+    const shortcut = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        const dialog = palette.current;
+        if (dialog?.open) dialog.close();
+        else {
+          setCommand("");
+          dialog?.showModal();
+        }
+      }
+    };
+    window.addEventListener("keydown", shortcut);
+    return () => window.removeEventListener("keydown", shortcut);
+  }, []);
+
+  const selected = documents.find(d => d.id === selectedId);
+  const title = views.find(([id]) => id === view)?.[1];
+  const commands = [
+    ...views.map(([id, label]) => ({key: id, label, run: () => navigate(id)})),
+    ...documents.map(d => ({key: `paper-${d.id}`, label: d.title, run: () => openPaper(d.id)})),
+  ].filter(item => item.label.toLowerCase().includes(command.trim().toLowerCase())).slice(0, 12);
+
+  async function upload(file: File) {
+    setUploading(true); setError(""); setNotice("");
+    try {
+      const result = await api.upload(file);
+      setNotice(result.status === "already_exists" ? "Paper already in your library. Its source is available." : "Paper indexed and ready to read.");
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Upload failed.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function remove(d: Document) {
+    if (!window.confirm(`Permanently delete “${d.title}” and its indexed passages?`)) return;
+    setError("");
+    try {
+      await api.remove(d.id);
+      setSelectedId(null);
+      navigate("library");
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Deletion failed.");
+    }
+  }
+
+  let content: ReactNode;
+  if (view === "library") content = <Library documents={documents} loading={loading} uploading={uploading} upload={upload} openPaper={openPaper} />;
+  else if (view === "reader") content = selected
+    ? <Reader key={`${selected.id}-${readerPage}`} document={selected} initialPage={readerPage} remove={() => void remove(selected)} />
+    : loading ? <p role="status">Loading paper…</p>
+    : <section className="panel empty"><h2>Select a paper to read</h2><button onClick={() => navigate("library")}>Open library</button></section>;
+  else if (view === "assistant") content = <Conversations documents={documents} />;
+  else if (view === "saved") content = <SavedEvidence />;
+  else if (view === "research" || view === "workspaces") content = <WorkspaceArea key={view} documents={documents} manage={view === "workspaces"} />;
+  else content = <section className="panel overview">
+    <div className="overview-summary"><div><h2>Research library</h2><p>{documents.length} papers · {documents.reduce((n, d) => n + d.chunk_count, 0)} passages · {workspaces.length} workspaces</p></div>
+      <button onClick={() => navigate("library")}>Open library</button></div>
+    <h3>Recent papers</h3>
+    {loading ? <p role="status">Loading papers…</p> : documents.length ? <PaperRows documents={documents.slice(0, 6)} openPaper={openPaper} /> : <p>Import a PDF from the library to start.</p>}
+  </section>;
+
+  return <div className="app">
+    <a className="skip-link" href="#content">Skip to content</a>
+    <aside className="sidebar">
+      <div className="brand"><span aria-hidden="true">E</span> EvidenceRAG</div>
+      <button className="command-trigger" onClick={() => {setCommand("");palette.current?.showModal();}}>Quick open <kbd>Ctrl/⌘ K</kbd></button>
+      <nav aria-label="Research navigation">{views.map(([id, label, icon]) =>
+        <button key={id} className="nav" aria-current={view === id ? "page" : undefined} onClick={() => navigate(id)}>
+          <span aria-hidden="true">{icon}</span>{label}
+        </button>)}</nav>
+      <div className="sidebar-bottom"><button className="nav" onClick={() => setDark(!dark)}><span aria-hidden="true">◐</span>{dark ? "Light theme" : "Dark theme"}</button></div>
+    </aside>
+    <main id="content" className="shell">
+      <header className="page-header"><h1>{title}</h1><button className="secondary" disabled={loading} onClick={() => void refresh()}>Refresh library</button></header>
+      {error && <p className="notice error" role="alert">{error}</p>}
+      {notice && <p className="notice" role="status">{notice}</p>}
+      {content}
+    </main>
+    <dialog ref={palette} className="palette" aria-label="Quick open">
+      <form onSubmit={e => {e.preventDefault(); if (commands[0]) {palette.current?.close();commands[0].run();}}}>
+        <label>Go to a view or paper<input autoFocus value={command} onChange={e => setCommand(e.target.value)} placeholder="Search commands…" /></label>
+      </form>
+      <div className="command-results">
+        {commands.map(item => <button key={item.key} onClick={() => {palette.current?.close();item.run();}}>{item.label}</button>)}
+        {!commands.length && <p>No matching commands.</p>}
+      </div>
+      <button className="secondary" onClick={() => palette.current?.close()}>Close</button>
+    </dialog>
+  </div>;
 }
 
-function Dashboard({ documents, workspaces, setView }: { documents: Document[]; workspaces: Workspace[]; setView: (v: View) => void }) { return <><div className="hero"><div><p>Evidence-grounded research, kept local.</p><span>Search papers, trace every claim to its source, and build a library you can trust.</span></div><button onClick={() => setView("library")}>Add papers <b>→</b></button></div><div className="stats"><Card label="Papers" value={documents.length} note="in your library" /><Card label="Evidence chunks" value={documents.reduce((n,d)=>n+d.chunk_count,0)} note="indexed locally" /><Card label="Workspaces" value={workspaces.length} note="research collections" /></div><section className="panel"><div className="panel-title"><h2>Recent papers</h2><button className="text-button" onClick={() => setView("library")}>View library →</button></div>{documents.length ? <div className="paper-list">{documents.slice(0,4).map(d => <div className="paper" key={d.id}><div className="filemark">PDF</div><div><strong>{d.title}</strong><p>{d.filename} · {d.page_count ?? "—"} pages</p></div><span className="tag">{d.processing_status}</span></div>)}</div> : <Empty title="Your library is empty" body="Upload a paper to begin building evidence-backed research." action="Open library" onClick={() => setView("library")} />}</section></> }
-function Card({label,value,note}:{label:string;value:number;note:string}) { return <div className="stat"><p>{label}</p><strong>{value}</strong><span>{note}</span></div> }
-function Empty({title,body,action,onClick}:{title:string;body:string;action:string;onClick:()=>void}) { return <div className="empty"><span>◇</span><h3>{title}</h3><p>{body}</p><button onClick={onClick}>{action}</button></div> }
-function Library({documents,refresh,setBusy,setError,selected,setSelected}:{documents:Document[];refresh:()=>Promise<void>;setBusy:(v:boolean)=>void;setError:(v:string)=>void;selected:Document|null;setSelected:(d:Document|null)=>void}) {
-  const [query,setQuery]=useState(""); const [file,setFile]=useState<File|null>(null);
-  const visible=documents.filter(d=>d.title.toLowerCase().includes(query.toLowerCase())||d.filename.toLowerCase().includes(query.toLowerCase()));
-  const upload=async()=>{if(!file)return;setBusy(true);try{await api.upload(file);setFile(null);await refresh()}catch(e){setError(e instanceof Error?e.message:"Upload failed.")}finally{setBusy(false)}};
-  const remove=async()=>{if(!selected||!window.confirm(`Delete ${selected.title}?`))return;try{await api.remove(selected.id);setSelected(null);await refresh()}catch(e){setError(e instanceof Error?e.message:"Delete failed.")}};
-  const list = visible.length ? <div className="paper-list">{visible.map(d => <button className={selected?.id === d.id ? "paper selected" : "paper"} key={d.id} onClick={() => setSelected(d)}><div className="filemark">PDF</div><div><strong>{d.title}</strong><p>{d.authors?.join(", ") || d.filename} · {d.page_count ?? "—"} pages · {d.chunk_count} passages</p></div><span className="tag">{d.processing_status}</span></button>)}</div> : <Empty title="No matching papers" body="Try another search or upload a PDF." action="Clear filter" onClick={() => setQuery("")} />;
-  const reader = selected ? <>{selected.has_stored_source ? <iframe title={`PDF: ${selected.title}`} src={api.sourceUrl(selected.id)} /> : <p className="muted">This legacy document has no persisted source PDF.</p>}</> : <Empty title="Select a paper" body="Open a paper to read its original PDF." action="Browse library" onClick={() => undefined} />;
-  return <div className="library"><section className="panel controls"><input aria-label="Search library" value={query} onChange={e => setQuery(e.target.value)} placeholder="Filter papers…" /><label className="upload">Choose PDF<input type="file" accept="application/pdf" onChange={e => setFile(e.target.files?.[0] || null)} /></label><button disabled={!file} onClick={upload}>{file ? "Upload paper" : "Select a PDF"}</button></section><div className="library-grid"><section className="panel"><div className="panel-title"><h2>Research library</h2><span>{visible.length} papers</span></div>{list}</section><section className="panel reader">{selected && <div className="panel-title"><div><h2>{selected.title}</h2><span>{selected.filename}</span></div><button className="danger text-button" onClick={remove}>Delete</button></div>}{reader}</section></div></div>;
+function PaperRows({documents, openPaper}: {documents: Document[]; openPaper: (id: number) => void}) {
+  return <div className="table-scroll"><table className="paper-table">
+    <thead><tr><th scope="col">Paper</th><th scope="col">Pages</th><th scope="col">Status</th></tr></thead>
+    <tbody>{documents.map(d => <tr key={d.id}>
+      <td><button className="paper-link" onClick={() => openPaper(d.id)}>{d.title}</button><small>{d.authors?.join(", ") || d.filename}</small></td>
+      <td>{d.page_count ?? "—"}</td><td><span className="tag">{d.processing_status}</span></td>
+    </tr>)}</tbody>
+  </table></div>;
 }
-function Assistant({documents,selected,setSelected}:{documents:Document[];selected:Document|null;setSelected:(d:Document|null)=>void}) { const [question,setQuestion]=useState("");const [result,setResult]=useState<{answer:string;abstained:boolean;reason:string|null;evidence:Evidence[]}|null>(null);const [loading,setLoading]=useState(false);const ask=async()=>{if(!question.trim())return;setLoading(true);try{setResult(await api.answer(question,selected?.id))}catch(e){setResult({answer:"",abstained:true,reason:e instanceof Error?e.message:"Answer failed.",evidence:[]})}finally{setLoading(false)}};return <div className="assistant-grid"><section className="panel assistant-panel"><div className="scope"><span>Scope</span><select value={selected?.id??""} onChange={e=>setSelected(documents.find(d=>d.id===Number(e.target.value))||null)}><option value="">Entire library</option>{documents.map(d=><option key={d.id} value={d.id}>{d.title}</option>)}</select></div><h2>Ask your research library</h2><p className="muted">Answers use retrieved evidence only. If support is weak, EvidenceRAG abstains.</p><textarea value={question} onChange={e=>setQuestion(e.target.value)} placeholder="What limitations do these papers report?" /><button onClick={ask} disabled={loading||!question.trim()}>{loading?"Retrieving evidence…":"Ask with evidence →"}</button></section><section className="panel answer">{result?<><span className={result.abstained?"tag warning":"tag"}>{result.abstained?"Abstained":"Evidence-grounded"}</span><h2>{result.abstained?"Unable to answer reliably":result.answer||"Answer"}</h2>{result.reason&&<p>{result.reason}</p>}<EvidenceList items={result.evidence}/></>:<Empty title="Ready when you are" body="Ask about methods, datasets, metrics, results, or limitations." action="Use a suggested question" onClick={()=>setQuestion("What limitations do the available papers report?")} />}</section></div> }
-function EvidenceList({items}:{items:Evidence[]}){return <div className="evidence">{items.map(e=><article key={e.evidence_id}><span>{e.evidence_id} · p. {e.page_start}{e.page_end!==e.page_start?`–${e.page_end}`:""}</span><p>{e.text}</p></article>)}</div>}
-function Workspaces({workspaces,refresh,setBusy,setError}:{workspaces:Workspace[];refresh:()=>Promise<void>;setBusy:(v:boolean)=>void;setError:(v:string)=>void}){const [name,setName]=useState("");const [description,setDescription]=useState("");const make=async()=>{if(!name.trim())return;setBusy(true);try{await api.createWorkspace(name,description);setName("");setDescription("");await refresh()}catch(e){setError(e instanceof Error?e.message:"Could not create workspace.")}finally{setBusy(false)}};return <><section className="panel workspace-new"><div><h2>New workspace</h2><p>Keep a project’s papers and research conversations together.</p></div><input value={name} onChange={e=>setName(e.target.value)} placeholder="Workspace name" /><input value={description} onChange={e=>setDescription(e.target.value)} placeholder="Optional description" /><button onClick={make}>Create</button></section><div className="workspace-grid">{workspaces.map(w=><section className="panel workspace" key={w.id}><span>WORKSPACE</span><h2>{w.name}</h2><p>{w.description||"No description yet."}</p><strong>{w.document_count} papers</strong></section>)}{!workspaces.length&&<Empty title="No workspaces yet" body="Create one for your next research project." action="Create workspace" onClick={()=>document.querySelector<HTMLInputElement>(".workspace-new input")?.focus()} />}</div></>}
+
+function Library({documents, loading, uploading, upload, openPaper}: {
+  documents: Document[]; loading: boolean; uploading: boolean;
+  upload: (file: File) => Promise<void>; openPaper: (id: number) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState("recent");
+  const input = useRef<HTMLInputElement>(null);
+  const visible = documents.filter(d => [d.title, d.filename, ...d.authors]
+    .some(text => text.toLowerCase().includes(query.trim().toLowerCase())));
+  if (sort === "title") visible.sort((a, b) => a.title.localeCompare(b.title));
+  return <section className="panel">
+    <div className="library-controls">
+      <label>Filter papers<input type="search" value={query} onChange={e => setQuery(e.target.value)} placeholder="Title, filename or author" /></label>
+      <label>Sort by<select value={sort} onChange={e => setSort(e.target.value)}><option value="recent">Recently added</option><option value="title">Title</option></select></label>
+      <input ref={input} type="file" accept=".pdf,application/pdf" hidden onChange={e => {
+        const file = e.target.files?.[0];
+        e.target.value = "";
+        if (file) void upload(file);
+      }} />
+      <button disabled={uploading} onClick={() => input.current?.click()}>{uploading ? "Indexing PDF…" : "Import PDF"}</button>
+    </div>
+    {loading ? <p role="status">Loading library…</p> : visible.length ? <PaperRows documents={visible} openPaper={openPaper} />
+      : <p className="empty">{query ? "No matching papers." : "Your library is empty. Import a PDF to begin."}</p>}
+  </section>;
+}
 
 createRoot(document.getElementById("root")!).render(<App />);

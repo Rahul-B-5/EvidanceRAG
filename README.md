@@ -25,7 +25,7 @@ hybrid keyword/vector evidence, and returns source-linked answers.
 
    ```bash
    cd frontend
-   npm install
+   npm ci
    npm run dev
    ```
 
@@ -40,11 +40,13 @@ The application is served at `http://127.0.0.1:5173` and uses the local API at
 - `GET /documents/{document_id}` — returns document metadata and processing status.
 - `POST /documents` — imports one PDF as multipart field `file`.
 - `GET /documents/{document_id}/source` — serves a persisted original PDF.
+- `GET /documents/{document_id}/passages?page=...` — lists indexed chunks intersecting the page.
 - `DELETE /documents/{document_id}` — removes the document, its chunks, and its
   managed source file after the database transaction commits.
 - `GET /search?query=...` — returns hybrid-retrieved evidence passages.
-- `POST /answers` — creates a citation-validated answer from retrieved
-  evidence. This requires `GEMINI_API_KEY`; search and ingestion do not.
+- `POST /answers` — creates an answer with evidence citations using the configured provider.
+- `GET /saved-evidence` and `PUT/PATCH /saved-evidence/{chunk_id}` — list and save
+  provenance snapshots, and edit passage notes. Saved evidence exports to Markdown.
 - `POST /conversations` and `GET /conversations/{conversation_id}` — persist
   research-assistant conversation history and cited assistant responses.
 - `GET /conversations` — lists the 100 most recently updated conversations.
@@ -69,6 +71,29 @@ original is stored. Re-uploading an identical legacy PDF restores its source lin
 and page count without replacing embeddings. Missing matches do not prove that a
 paper omits information.
 
+Use **Quick open** (Ctrl/⌘K) to navigate by view or paper title. The reader shows
+the original PDF and indexed passages for the selected page. Its width slider
+adjusts the split on wider screens. Citation links open the reader at the source page.
+
+## Generation providers
+
+Gemini uses `GENERATION_PROVIDER=gemini`, `GEMINI_API_KEY` and `GEMINI_MODEL`.
+For a downloaded model on a local Ollama server, use:
+
+```dotenv
+GENERATION_PROVIDER=ollama
+GENERATION_MODEL=qwen3:8b
+GENERATION_TIMEOUT_SECONDS=90
+```
+
+OpenAI uses `GENERATION_PROVIDER=openai`, `GENERATION_MODEL` and
+`GENERATION_API_KEY`. For a compatible server, select
+`GENERATION_PROVIDER=openai-compatible` and set `GENERATION_BASE_URL` to
+its API root, such as `http://127.0.0.1:11434/v1`. Use a model and server that
+support Chat Completions JSON mode. Restart the API after configuration changes.
+Cloud providers receive the question, supporting excerpts and bounded chat context.
+Search, comparison passages, the reader and the notebook work without a provider.
+
 ## Embedding profiles
 
 Each chunk records the embedding model and vector dimension used to create it.
@@ -76,13 +101,14 @@ Vector retrieval only compares chunks from the active configured profile, so a
 model change cannot silently compare incompatible embedding spaces. Reprocess
 documents after changing `EMBEDDING_MODEL` or `EMBEDDING_DIMENSIONS`.
 
-Generation is provider-based. `GENERATION_PROVIDER=gemini` is the current
-implementation; adding a local or cloud provider only requires another
-`GenerationProvider` implementation.
+Apply new versioned migrations to an initialized database with
+`.venv/bin/python -m app.db.migrations`. New installations use the bootstrap
+command above, which also applies the migrations.
 
 ## Validation
 
 ```bash
 .venv/bin/pytest -q
 .venv/bin/python -m compileall -q app scripts
+EVIDENCERAG_INTEGRATION=1 .venv/bin/pytest -q
 ```

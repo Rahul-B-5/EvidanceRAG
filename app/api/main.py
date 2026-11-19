@@ -8,6 +8,7 @@ from fastapi import FastAPI, File, HTTPException, Query, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
+from app.api.saved_evidence import router as saved_evidence_router
 
 from app.core.config import get_settings
 from app.db.connection import get_connection
@@ -36,6 +37,7 @@ app = FastAPI(
     version="0.1.0",
     description="A local-first, evidence-grounded research library API.",
 )
+app.include_router(saved_evidence_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[origin.strip() for origin in get_settings().cors_origins.split(",") if origin.strip()],
@@ -165,6 +167,25 @@ def document_source(document_id: int) -> FileResponse:
         raise HTTPException(status_code=404, detail="Original source file is missing.")
 
     return FileResponse(path, media_type="application/pdf", filename=path.name, content_disposition_type="inline")
+
+
+@app.get("/documents/{document_id}/passages")
+def document_passages(
+    document_id: Annotated[int, Field(gt=0)],
+    page: int = Query(default=1, ge=1, le=100000),
+) -> dict:
+    with get_connection() as conn:
+        if conn.execute("SELECT 1 FROM documents WHERE id = %s", (document_id,)).fetchone() is None:
+            raise HTTPException(status_code=404, detail="Document not found.")
+        rows = conn.execute(
+            """SELECT id, page_start, page_end, text FROM chunks
+               WHERE document_id = %s AND page_start <= %s AND page_end >= %s
+               ORDER BY chunk_index LIMIT 25""",
+            (document_id, page, page),
+        ).fetchall()
+    return {"passages": [
+        {"chunk_id": r[0], "page_start": r[1], "page_end": r[2], "text": r[3]} for r in rows
+    ]}
 
 
 @app.post("/documents", status_code=status.HTTP_201_CREATED)
