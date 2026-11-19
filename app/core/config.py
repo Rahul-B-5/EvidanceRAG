@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     chunk_size: int = Field(default=1800, alias="CHUNK_SIZE")
     chunk_overlap: int = Field(default=250, alias="CHUNK_OVERLAP")
     retrieval_top_k: int = Field(default=5, alias="RETRIEVAL_TOP_K")
+    cors_origins: str = Field(
+        default="http://localhost:5173,http://127.0.0.1:5173",
+        alias="CORS_ORIGINS",
+    )
 
     model_config = SettingsConfigDict(
         env_file=PROJECT_ROOT / ".env",

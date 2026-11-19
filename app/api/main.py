@@ -5,6 +5,7 @@ from contextlib import suppress
 from pathlib import Path
 
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
@@ -32,6 +33,13 @@ app = FastAPI(
     title="EvidenceRAG",
     version="0.1.0",
     description="A local-first, evidence-grounded research library API.",
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[origin.strip() for origin in get_settings().cors_origins.split(",") if origin.strip()],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allow_headers=["Content-Type"],
 )
 
 

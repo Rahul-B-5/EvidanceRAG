@@ -21,7 +21,17 @@ hybrid keyword/vector evidence, and returns source-linked answers.
    .venv/bin/uvicorn app.api.main:app --reload
    ```
 
+4. In another terminal, start the React frontend (Node 20+):
+
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
+
 Interactive API documentation is available at `http://127.0.0.1:8000/docs`.
+The application is served at `http://127.0.0.1:5173` and uses the local API at
+`http://127.0.0.1:8000` by default. Set `VITE_API_URL` to change that address.
 
 ## Core endpoints
 
