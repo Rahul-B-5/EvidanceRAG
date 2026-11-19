@@ -258,3 +258,67 @@ def add_message(
     ).fetchone()
     conn.execute("UPDATE conversations SET updated_at = NOW() WHERE id = %s", (conversation_id,))
     return {"id": row[0], "role": row[1], "content": row[2], "citations": row[3], "created_at": row[4]}
+
+
+def list_workspaces(conn: psycopg.Connection) -> list[dict]:
+    rows = conn.execute(
+        """
+        SELECT w.id, w.name, w.description, w.created_at, w.updated_at,
+               count(wd.document_id) AS document_count
+        FROM workspaces w
+        LEFT JOIN workspace_documents wd ON wd.workspace_id = w.id
+        GROUP BY w.id ORDER BY w.updated_at DESC, w.id DESC
+        """
+    ).fetchall()
+    return [
+        {"id": row[0], "name": row[1], "description": row[2],
+         "created_at": row[3], "updated_at": row[4], "document_count": row[5]}
+        for row in rows
+    ]
+
+
+def create_workspace(conn: psycopg.Connection, *, name: str, description: str | None) -> dict:
+    row = conn.execute(
+        """
+        INSERT INTO workspaces (name, description) VALUES (%s, %s)
+        RETURNING id, name, description, created_at, updated_at
+        """, (name, description)
+    ).fetchone()
+    return {"id": row[0], "name": row[1], "description": row[2],
+            "created_at": row[3], "updated_at": row[4], "document_count": 0}
+
+
+def get_workspace(conn: psycopg.Connection, workspace_id: int) -> dict | None:
+    row = conn.execute(
+        "SELECT id, name, description, created_at, updated_at FROM workspaces WHERE id = %s",
+        (workspace_id,)
+    ).fetchone()
+    if row is None:
+        return None
+    documents = conn.execute(
+        """
+        SELECT d.id, d.title, d.filename, d.processing_status, wd.added_at
+        FROM workspace_documents wd JOIN documents d ON d.id = wd.document_id
+        WHERE wd.workspace_id = %s ORDER BY wd.added_at DESC, d.id DESC
+        """, (workspace_id,)
+    ).fetchall()
+    return {"id": row[0], "name": row[1], "description": row[2],
+            "created_at": row[3], "updated_at": row[4],
+            "documents": [{"id": item[0], "title": item[1], "filename": item[2],
+                           "processing_status": item[3], "added_at": item[4]}
+                          for item in documents]}
+
+
+def add_document_to_workspace(
+    conn: psycopg.Connection, *, workspace_id: int, document_id: int
+) -> bool:
+    result = conn.execute(
+        """
+        INSERT INTO workspace_documents (workspace_id, document_id)
+        VALUES (%s, %s) ON CONFLICT DO NOTHING RETURNING workspace_id
+        """, (workspace_id, document_id)
+    ).fetchone()
+    if result is not None:
+        conn.execute("UPDATE workspaces SET updated_at = NOW() WHERE id = %s", (workspace_id,))
+        return True
+    return False

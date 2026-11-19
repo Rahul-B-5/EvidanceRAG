@@ -18,6 +18,10 @@ from app.db.repository import (
     get_document,
     get_document_source_path,
     list_documents,
+    add_document_to_workspace,
+    create_workspace,
+    get_workspace,
+    list_workspaces,
 )
 from app.generation.answerer import generate_answer
 from app.ingestion.pipeline import ingest_pdf
@@ -41,6 +45,11 @@ class AnswerRequest(BaseModel):
 class ConversationRequest(BaseModel):
     title: str = Field(min_length=1, max_length=300)
     document_id: int | None = Field(default=None, gt=0)
+
+
+class WorkspaceRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=160)
+    description: str | None = Field(default=None, max_length=2_000)
 
 
 def _bad_request(error: ValueError) -> HTTPException:
@@ -241,3 +250,44 @@ def conversation_detail(conversation_id: int) -> dict:
     if conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found.")
     return conversation
+
+
+@app.get("/workspaces")
+def workspaces() -> dict:
+    with get_connection() as conn:
+        return {"workspaces": list_workspaces(conn)}
+
+
+@app.post("/workspaces", status_code=status.HTTP_201_CREATED)
+def new_workspace(request: WorkspaceRequest) -> dict:
+    with get_connection() as conn:
+        return create_workspace(
+            conn, name=request.name.strip(),
+            description=request.description.strip() if request.description else None,
+        )
+
+
+@app.get("/workspaces/{workspace_id}")
+def workspace_detail(workspace_id: int) -> dict:
+    if workspace_id <= 0:
+        raise HTTPException(status_code=422, detail="workspace_id must be positive.")
+    with get_connection() as conn:
+        workspace = get_workspace(conn, workspace_id)
+    if workspace is None:
+        raise HTTPException(status_code=404, detail="Workspace not found.")
+    return workspace
+
+
+@app.put("/workspaces/{workspace_id}/documents/{document_id}", status_code=status.HTTP_201_CREATED)
+def attach_document_to_workspace(workspace_id: int, document_id: int) -> dict:
+    if workspace_id <= 0 or document_id <= 0:
+        raise HTTPException(status_code=422, detail="Workspace and document IDs must be positive.")
+    with get_connection() as conn:
+        if get_workspace(conn, workspace_id) is None:
+            raise HTTPException(status_code=404, detail="Workspace not found.")
+        if get_document(conn, document_id) is None:
+            raise HTTPException(status_code=404, detail="Document not found.")
+        added = add_document_to_workspace(
+            conn, workspace_id=workspace_id, document_id=document_id
+        )
+    return {"workspace_id": workspace_id, "document_id": document_id, "added": added}

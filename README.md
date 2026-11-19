@@ -37,6 +37,9 @@ Interactive API documentation is available at `http://127.0.0.1:8000/docs`.
   evidence. This requires `GEMINI_API_KEY`; search and ingestion do not.
 - `POST /conversations` and `GET /conversations/{conversation_id}` — persist
   research-assistant conversation history and cited assistant responses.
+- `GET/POST /workspaces`, `GET /workspaces/{workspace_id}`, and
+  `PUT /workspaces/{workspace_id}/documents/{document_id}` — organize a
+  local research library into persistent, source-isolated workspaces.
 
 ## Embedding profiles
 
