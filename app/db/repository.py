@@ -1,6 +1,9 @@
 
 import psycopg
 from pgvector.psycopg import register_vector
+from psycopg.types.json import Jsonb
+
+from app.core.config import get_settings
 
 
 def insert_document(
@@ -11,6 +14,9 @@ def insert_document(
     file_hash: str,
     authors: list[str] | None = None,
     publication_year: int | None = None,
+    stored_path: str | None = None,
+    file_size_bytes: int | None = None,
+    page_count: int | None = None,
 ) -> tuple[int, bool]:
     """
     Insert a document if its file hash is new.
@@ -26,9 +32,14 @@ def insert_document(
             authors,
             publication_year,
             filename,
-            file_hash
+            file_hash,
+            stored_path,
+            file_size_bytes,
+            page_count,
+            processing_status,
+            processed_at
         )
-        VALUES (%s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'ready', NOW())
         ON CONFLICT (file_hash) DO NOTHING
         RETURNING id
         """,
@@ -38,6 +49,9 @@ def insert_document(
             publication_year,
             filename,
             file_hash,
+            stored_path,
+            file_size_bytes,
+            page_count,
         ),
     ).fetchone()
 
@@ -69,14 +83,16 @@ def insert_chunks(
     if not chunks:
         return 0
 
+    settings = get_settings()
     register_vector(conn)
 
     rows = []
 
     for chunk, embedding in zip(chunks, embeddings):
-        if len(embedding) != 384:
+        if len(embedding) != settings.embedding_dimensions:
             raise ValueError(
-                f"Expected 384 embedding dimensions, got {len(embedding)}."
+                "Embedding dimension does not match the active profile: "
+                f"expected {settings.embedding_dimensions}, got {len(embedding)}."
             )
 
         rows.append(
@@ -87,6 +103,8 @@ def insert_chunks(
                 chunk["page_start"],
                 chunk["page_end"],
                 embedding,
+                settings.embedding_model,
+                settings.embedding_dimensions,
             )
         )
 
@@ -100,12 +118,143 @@ def insert_chunks(
                 text,
                 page_start,
                 page_end,
-                embedding
+                embedding,
+                embedding_model,
+                embedding_dimensions
             )
-            VALUES (%s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """,
         rows,
     )
 
 
     return len(rows)
+
+
+def list_documents(conn: psycopg.Connection) -> list[dict]:
+    """Return library metadata without loading document content or embeddings."""
+    rows = conn.execute(
+        """
+        SELECT
+            d.id, d.title, d.authors, d.publication_year, d.filename,
+            d.stored_path, d.file_size_bytes, d.page_count,
+            d.processing_status, d.processing_error, d.processed_at,
+            d.created_at, count(c.id) AS chunk_count
+        FROM documents AS d
+        LEFT JOIN chunks AS c ON c.document_id = d.id
+        GROUP BY d.id
+        ORDER BY d.created_at DESC, d.id DESC
+        """
+    ).fetchall()
+
+    return [
+        {
+            "id": row[0],
+            "title": row[1],
+            "authors": row[2],
+            "publication_year": row[3],
+            "filename": row[4],
+            "has_stored_source": bool(row[5]),
+            "file_size_bytes": row[6],
+            "page_count": row[7],
+            "processing_status": row[8],
+            "processing_error": row[9],
+            "processed_at": row[10],
+            "created_at": row[11],
+            "chunk_count": row[12],
+        }
+        for row in rows
+    ]
+
+
+def get_document_source_path(conn: psycopg.Connection, document_id: int) -> str | None:
+    """Return the persisted source path for a document, if one exists."""
+    row = conn.execute(
+        "SELECT stored_path FROM documents WHERE id = %s", (document_id,)
+    ).fetchone()
+    return None if row is None else row[0]
+
+
+def get_document(conn: psycopg.Connection, document_id: int) -> dict | None:
+    """Return document metadata and processing state for a detail view."""
+    for document in list_documents(conn):
+        if document["id"] == document_id:
+            return document
+    return None
+
+
+def delete_document(conn: psycopg.Connection, document_id: int) -> tuple[bool, str | None]:
+    """Delete a document and cascaded chunks; return its now-unreferenced source."""
+    deleted = conn.execute(
+        "DELETE FROM documents WHERE id = %s RETURNING stored_path", (document_id,)
+    ).fetchone()
+    if deleted is None:
+        return False, None
+
+    stored_path = deleted[0]
+    if not stored_path:
+        return True, None
+
+    still_referenced = conn.execute(
+        "SELECT EXISTS(SELECT 1 FROM documents WHERE stored_path = %s)",
+        (stored_path,),
+    ).fetchone()[0]
+    return True, None if still_referenced else stored_path
+
+
+def create_conversation(
+    conn: psycopg.Connection, *, title: str, document_id: int | None = None
+) -> dict:
+    row = conn.execute(
+        """
+        INSERT INTO conversations (title, document_id)
+        VALUES (%s, %s)
+        RETURNING id, title, document_id, created_at, updated_at
+        """,
+        (title, document_id),
+    ).fetchone()
+    return {
+        "id": row[0], "title": row[1], "document_id": row[2],
+        "created_at": row[3], "updated_at": row[4],
+    }
+
+
+def get_conversation(conn: psycopg.Connection, conversation_id: int) -> dict | None:
+    row = conn.execute(
+        "SELECT id, title, document_id, created_at, updated_at FROM conversations WHERE id = %s",
+        (conversation_id,),
+    ).fetchone()
+    if row is None:
+        return None
+    messages = conn.execute(
+        """
+        SELECT id, role, content, citations, created_at
+        FROM messages WHERE conversation_id = %s ORDER BY created_at, id
+        """,
+        (conversation_id,),
+    ).fetchall()
+    return {
+        "id": row[0], "title": row[1], "document_id": row[2],
+        "created_at": row[3], "updated_at": row[4],
+        "messages": [
+            {"id": item[0], "role": item[1], "content": item[2],
+             "citations": item[3], "created_at": item[4]}
+            for item in messages
+        ],
+    }
+
+
+def add_message(
+    conn: psycopg.Connection, *, conversation_id: int, role: str,
+    content: str, citations: list[dict] | None = None,
+) -> dict:
+    row = conn.execute(
+        """
+        INSERT INTO messages (conversation_id, role, content, citations)
+        VALUES (%s, %s, %s, %s)
+        RETURNING id, role, content, citations, created_at
+        """,
+        (conversation_id, role, content, Jsonb(citations or [])),
+    ).fetchone()
+    conn.execute("UPDATE conversations SET updated_at = NOW() WHERE id = %s", (conversation_id,))
+    return {"id": row[0], "role": row[1], "content": row[2], "citations": row[3], "created_at": row[4]}

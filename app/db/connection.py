@@ -1,5 +1,6 @@
 
 from collections.abc import Iterator
+from contextlib import contextmanager
 
 import psycopg
 from psycopg import Connection
@@ -13,6 +14,7 @@ def get_connection() -> Connection:
     return psycopg.connect(settings.database_url)
 
 
+@contextmanager
 def connection_scope() -> Iterator[Connection]:
     """
     Yield a connection and close it when the caller finishes.

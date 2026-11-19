@@ -11,7 +11,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 class Settings(BaseSettings):
     database_url: str = Field(
-        default="postgresql://postgres:postgres@localhost:5432/evidencerag",
+        default="postgresql://postgres:postgres@localhost:5433/evidencerag",
         alias="DATABASE_URL",
     )
     embedding_model: str = Field(
@@ -30,6 +30,7 @@ class Settings(BaseSettings):
         default="gemini-2.5-flash",
         alias="GEMINI_MODEL",
     )
+    generation_provider: str = Field(default="gemini", alias="GENERATION_PROVIDER")
     upload_dir: Path = Field(
         default=PROJECT_ROOT / "data" / "uploads",
         alias="UPLOAD_DIR",

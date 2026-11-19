@@ -1,5 +1,8 @@
 
 import hashlib
+import os
+import shutil
+import uuid
 from pathlib import Path
 
 import pymupdf
@@ -21,6 +24,37 @@ def calculate_file_hash(file_path: Path) -> str:
             sha256.update(block)
 
     return sha256.hexdigest()
+
+
+def persist_source_pdf(
+    source_path: Path,
+    *,
+    file_hash: str,
+    upload_dir: Path,
+) -> Path:
+    """Store an immutable, content-addressed copy of an imported PDF.
+
+    The copy is written to a sibling temporary file and atomically renamed, so
+    a partial upload is never exposed as a reusable document source.
+    """
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    destination = upload_dir / f"{file_hash}.pdf"
+
+    if destination.exists():
+        return destination
+
+    temporary = upload_dir / f".{file_hash}.{uuid.uuid4().hex}.tmp"
+    try:
+        shutil.copyfile(source_path, temporary)
+        with temporary.open("rb+") as copied_file:
+            copied_file.flush()
+            os.fsync(copied_file.fileno())
+        os.replace(temporary, destination)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+
+    return destination
 
 
 def extract_metadata(file_path: Path) -> dict:
@@ -87,7 +121,13 @@ def ingest_pdf(file_path: str | Path) -> dict:
             "chunks_created": 0,
         }
 
-    pages = extract_pdf(path)
+    stored_path = persist_source_pdf(
+        path,
+        file_hash=file_hash,
+        upload_dir=settings.upload_dir,
+    )
+
+    pages = extract_pdf(stored_path)
     chunks = chunk_pages(pages)
 
     if not chunks:
@@ -97,6 +137,8 @@ def ingest_pdf(file_path: str | Path) -> dict:
         )
 
     embeddings = embed_documents([chunk["text"] for chunk in chunks])
+    # Preserve the user-facing filename as the title fallback; the persisted
+    # file is intentionally named by hash and would make a poor title.
     metadata = extract_metadata(path)
 
     # The connection context commits on success and rolls back on error.
@@ -108,6 +150,9 @@ def ingest_pdf(file_path: str | Path) -> dict:
             publication_year=metadata["publication_year"],
             filename=path.name,
             file_hash=file_hash,
+            stored_path=str(stored_path),
+            file_size_bytes=path.stat().st_size,
+            page_count=len(pages),
         )
 
         # Another process may have ingested the same PDF concurrently.

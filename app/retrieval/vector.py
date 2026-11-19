@@ -48,8 +48,10 @@ def search_vector(
         FROM chunks AS c
         JOIN documents AS d ON d.id = c.document_id
         WHERE c.embedding IS NOT NULL
+          AND c.embedding_model = %s
+          AND c.embedding_dimensions = %s
     """
-    params = [Vector(query_embedding)]
+    params = [Vector(query_embedding), settings.embedding_model, settings.embedding_dimensions]
 
     if document_id is not None:
         sql += " AND c.document_id = %s"

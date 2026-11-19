@@ -1,10 +1,8 @@
 
 import json
 
-from google import genai
-from google.genai import types
-
 from app.core.config import get_settings
+from app.generation.providers import get_generation_provider
 
 
 SYSTEM_INSTRUCTION = """
@@ -53,34 +51,15 @@ def generate_answer(
 
     settings = get_settings()
 
-    if not settings.gemini_api_key:
-        raise RuntimeError(
-            "GEMINI_API_KEY is not configured. "
-            "Set it in your local .env file."
-        )
-
     allowed_ids = {item["evidence_id"] for item in evidence}
-
-    client = genai.Client(api_key=settings.gemini_api_key)
-
-    response = client.models.generate_content(
-        model=settings.gemini_model,
-        contents=(
-            f"Question:\n{query}\n\n"
-            f"Evidence passages:\n{context}"
-        ),
-        config=types.GenerateContentConfig(
-            system_instruction=SYSTEM_INSTRUCTION,
-            response_mime_type="application/json",
-            temperature=0.1,
-        ),
+    provider = get_generation_provider(settings)
+    response_text = provider.generate_json(
+        prompt=f"Question:\n{query}\n\nEvidence passages:\n{context}",
+        system_instruction=SYSTEM_INSTRUCTION,
     )
 
-    if not response.text:
-        raise RuntimeError("Gemini returned an empty response.")
-
     try:
-        result = json.loads(response.text)
+        result = json.loads(response_text)
     except json.JSONDecodeError as exc:
         raise RuntimeError(
             "Gemini returned invalid JSON."
