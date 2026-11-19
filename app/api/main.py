@@ -27,6 +27,7 @@ from app.db.repository import (
 from app.generation.answerer import generate_answer
 from app.ingestion.pipeline import ingest_pdf
 from app.retrieval.service import retrieve_evidence
+from research.comparison import compare_documents
 
 
 app = FastAPI(
@@ -58,6 +59,11 @@ class ConversationRequest(BaseModel):
 class WorkspaceRequest(BaseModel):
     name: str = Field(min_length=1, max_length=160)
     description: str | None = Field(default=None, max_length=2_000)
+
+
+class ComparisonRequest(BaseModel):
+    document_ids: list[int] = Field(min_length=2, max_length=12)
+    passages_per_field: int = Field(default=2, ge=1, le=5)
 
 
 def _bad_request(error: ValueError) -> HTTPException:
@@ -299,3 +305,13 @@ def attach_document_to_workspace(workspace_id: int, document_id: int) -> dict:
             conn, workspace_id=workspace_id, document_id=document_id
         )
     return {"workspace_id": workspace_id, "document_id": document_id, "added": added}
+
+
+@app.post("/comparisons")
+def comparison(request: ComparisonRequest) -> dict:
+    try:
+        return compare_documents(
+            request.document_ids, passages_per_field=request.passages_per_field
+        )
+    except ValueError as exc:
+        raise _bad_request(exc) from exc
