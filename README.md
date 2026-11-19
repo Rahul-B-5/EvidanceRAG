@@ -50,7 +50,8 @@ The application is served at `http://127.0.0.1:5173` and uses the local API at
 - `GET/POST /workspaces`, `GET /workspaces/{workspace_id}`, and
   `PUT /workspaces/{workspace_id}/documents/{document_id}` — organize a
   local research library into persistent workspaces. Workspace retrieval
-  isolation is still being implemented.
+  isolation is available through the optional `workspace_id` filter on search
+  and answers. Frontend scope selection and comparison integration remain pending.
 - `POST /comparisons` — accepts 2–12 distinct existing `document_ids` and
   retrieves passages for six research topics. This is passage comparison, not
   structured finding extraction or an assessment of experimental comparability.

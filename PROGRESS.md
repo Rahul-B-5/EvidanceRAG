@@ -18,7 +18,11 @@
 
 ### Remaining work (product is not complete)
 
-Workspace membership persists, but retrieval is NOT workspace-isolated yet.
+Workspace-scoped keyword/vector/hybrid retrieval and answers now accept
+`workspace_id`; SQL filters candidates before ranking. Four isolation tests,
+including an opt-in PostgreSQL test with automatically rolled-back fixtures,
+passed. This is query scoping, not multi-user authorization. The frontend and
+comparison endpoint still need workspace scope integration.
 Conversation records exist, but the UI is single-turn and the backend does not
 use conversation context. Message-pair persistence is not atomic. Only Gemini
 is implemented and no live generation was verified without a configured key.
@@ -35,12 +39,17 @@ version tracking. The current dark theme uses inversion and needs replacement.
 
 ### Exact next implementation task
 
-Add workspace/document-set filtering through keyword/vector retrievers, fusion,
-answers and comparisons, with isolation regression tests. Then wire workspace
+Wire the workspace retrieval filter into the frontend and comparisons, including
+missing workspace validation. Then wire workspace
 membership and scoped conversations into the UI, make message writes atomic,
 and add bounded conversation context. Follow with additional providers and
 structured research analysis. Keep `.env`, private PDFs and generated build
 files out of Git. See `git log -1` for the commit containing this checkpoint.
+
+Latest verification: 35 unit tests pass, one database integration test is skipped
+by default. `EVIDENCERAG_INTEGRATION=1 .venv/bin/pytest tests/test_workspace_integration.py`
+passes against local PostgreSQL. Evidence explorer/source recovery was pushed as
+`d556304`; the following scope commit includes this record.
 
 ## Historical checkpoint (outdated)
 

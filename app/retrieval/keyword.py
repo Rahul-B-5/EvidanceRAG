@@ -7,6 +7,7 @@ def search_keyword(
     query: str,
     top_k: int | None = None,
     document_id: int | None = None,
+    workspace_id: int | None = None,
 ) -> list[dict]:
     """
     Retrieve relevant chunks using PostgreSQL full-text search.
@@ -25,6 +26,8 @@ def search_keyword(
 
     if document_id is not None and document_id <= 0:
         raise ValueError("document_id must be positive.")
+    if workspace_id is not None and workspace_id <= 0:
+        raise ValueError("workspace_id must be positive.")
 
     sql = """
         WITH search_query AS (
@@ -52,6 +55,13 @@ def search_keyword(
     if document_id is not None:
         sql += " AND c.document_id = %s"
         params.append(document_id)
+
+    if workspace_id is not None:
+        sql += """ AND EXISTS (
+            SELECT 1 FROM workspace_documents wd
+            WHERE wd.document_id = c.document_id AND wd.workspace_id = %s
+        )"""
+        params.append(workspace_id)
 
     sql += """
         ORDER BY keyword_score DESC, c.id ASC

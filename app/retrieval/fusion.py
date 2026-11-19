@@ -66,6 +66,7 @@ def search_hybrid(
     document_id: int | None = None,
     candidate_k: int = 20,
     rrf_k: int = 60,
+    workspace_id: int | None = None,
 ) -> list[dict]:
     """
     Retrieve candidates using vector and keyword search, then fuse rankings.
@@ -83,12 +84,14 @@ def search_hybrid(
         query,
         top_k=candidate_k,
         document_id=document_id,
+        workspace_id=workspace_id,
     )
 
     keyword_results = search_keyword(
         query,
         top_k=candidate_k,
         document_id=document_id,
+        workspace_id=workspace_id,
     )
 
     settings_top_k = top_k

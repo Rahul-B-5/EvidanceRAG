@@ -50,6 +50,7 @@ class AnswerRequest(BaseModel):
     document_id: int | None = Field(default=None, gt=0)
     top_k: int | None = Field(default=None, ge=1, le=50)
     conversation_id: int | None = Field(default=None, gt=0)
+    workspace_id: int | None = Field(default=None, gt=0)
 
 
 class ConversationRequest(BaseModel):
@@ -199,9 +200,11 @@ def search(
     query: str = Query(min_length=1, max_length=10_000),
     document_id: int | None = Query(default=None, gt=0),
     top_k: int | None = Query(default=None, ge=1, le=50),
+    workspace_id: int | None = Query(default=None, gt=0),
 ) -> dict:
     try:
-        return retrieve_evidence(query, top_k=top_k, document_id=document_id)
+        return retrieve_evidence(query, top_k=top_k, document_id=document_id,
+                                 **({"workspace_id": workspace_id} if workspace_id is not None else {}))
     except ValueError as exc:
         raise _bad_request(exc) from exc
 
@@ -223,6 +226,7 @@ def answer(request: AnswerRequest) -> dict:
             request.query,
             top_k=request.top_k,
             document_id=request.document_id,
+            workspace_id=request.workspace_id,
         )
         generated = generate_answer(
             request.query, retrieval["context"], retrieval["evidence"]
