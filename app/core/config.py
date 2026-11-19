@@ -31,6 +31,10 @@ class Settings(BaseSettings):
         alias="GEMINI_MODEL",
     )
     generation_provider: str = Field(default="gemini", alias="GENERATION_PROVIDER")
+    generation_model: str = Field(default="", alias="GENERATION_MODEL")
+    generation_base_url: str = Field(default="", alias="GENERATION_BASE_URL")
+    generation_api_key: str = Field(default="", alias="GENERATION_API_KEY", repr=False)
+    generation_timeout_seconds: float = Field(default=90, gt=0, le=300, alias="GENERATION_TIMEOUT_SECONDS")
     upload_dir: Path = Field(
         default=PROJECT_ROOT / "data" / "uploads",
         alias="UPLOAD_DIR",

@@ -68,21 +68,21 @@ def generate_answer(
         result = json.loads(response_text)
     except json.JSONDecodeError as exc:
         raise RuntimeError(
-            "Gemini returned invalid JSON."
+            "Generation provider returned invalid JSON."
         ) from exc
 
     if not isinstance(result, dict):
-        raise RuntimeError("Gemini response must be a JSON object.")
+        raise RuntimeError("Generation response must be a JSON object.")
 
     answer = result.get("answer")
     abstained = result.get("abstained")
     reason = result.get("reason")
 
     if not isinstance(answer, str) or not isinstance(abstained, bool):
-        raise RuntimeError("Gemini response has an invalid schema.")
+        raise RuntimeError("Generation response has an invalid schema.")
 
     if reason is not None and not isinstance(reason, str):
-        raise RuntimeError("Gemini abstention reason must be a string or null.")
+        raise RuntimeError("Abstention reason must be a string or null.")
 
     if abstained and answer.strip():
         raise RuntimeError(
@@ -113,12 +113,12 @@ def generate_answer(
 
     if unknown_ids:
         raise RuntimeError(
-            f"Gemini cited unknown evidence IDs: {unknown_ids}"
+            "Generation response cited unknown evidence IDs."
         )
 
     if not cited_ids:
         raise RuntimeError(
-            "Gemini returned an answer without evidence citations."
+            "Generation response did not cite any evidence."
         )
 
     evidence_by_id = {
