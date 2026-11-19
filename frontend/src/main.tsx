@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { api, Document, Evidence, Workspace } from "./api";
 import "./styles.css";
+import { ResearchTools } from "./ResearchTools";
 
-type View = "dashboard" | "library" | "assistant" | "workspaces";
+type View = "dashboard" | "library" | "assistant" | "workspaces" | "research";
 const nav: Array<[View, string, string]> = [["dashboard", "Overview", "◇"], ["library", "Library", "▣"], ["assistant", "Assistant", "✦"], ["workspaces", "Workspaces", "⊞"]];
+nav.push(["research", "Evidence explorer", "⌕"]);
 
 function App() {
   const [view, setView] = useState<View>("dashboard"); const [dark, setDark] = useState(false);
@@ -13,6 +15,7 @@ function App() {
   const refresh = async () => { try { const [d, w] = await Promise.all([api.documents(), api.workspaces()]); setDocuments(d.documents); setWorkspaces(w.workspaces); setError(""); } catch (e) { setError(e instanceof Error ? e.message : "Could not reach EvidenceRAG API."); } };
   useEffect(() => { refresh(); }, []);
   const content = useMemo(() => {
+    if (view === "research") return <ResearchTools documents={documents} />;
     if (view === "library") return <Library documents={documents} refresh={refresh} setBusy={setBusy} setError={setError} selected={selected} setSelected={setSelected} />;
     if (view === "assistant") return <Assistant documents={documents} selected={selected} setSelected={setSelected} />;
     if (view === "workspaces") return <Workspaces workspaces={workspaces} refresh={refresh} setBusy={setBusy} setError={setError} />;

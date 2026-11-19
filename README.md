@@ -49,7 +49,17 @@ The application is served at `http://127.0.0.1:5173` and uses the local API at
   research-assistant conversation history and cited assistant responses.
 - `GET/POST /workspaces`, `GET /workspaces/{workspace_id}`, and
   `PUT /workspaces/{workspace_id}/documents/{document_id}` — organize a
-  local research library into persistent, source-isolated workspaces.
+  local research library into persistent workspaces. Workspace retrieval
+  isolation is still being implemented.
+- `POST /comparisons` — accepts 2–12 distinct existing `document_ids` and
+  retrieves passages for six research topics. This is passage comparison, not
+  structured finding extraction or an assessment of experimental comparability.
+
+Use **Evidence explorer** in the frontend for search and side-by-side comparisons
+without a generation API key. Source links open at the cited PDF page when the
+original is stored. Re-uploading an identical legacy PDF restores its source link
+and page count without replacing embeddings. Missing matches do not prove that a
+paper omits information.
 
 ## Embedding profiles
 

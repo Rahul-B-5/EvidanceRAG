@@ -28,6 +28,7 @@ from app.generation.answerer import generate_answer
 from app.ingestion.pipeline import ingest_pdf
 from app.retrieval.service import retrieve_evidence
 from research.comparison import compare_documents
+from typing import Annotated
 
 
 app = FastAPI(
@@ -62,7 +63,7 @@ class WorkspaceRequest(BaseModel):
 
 
 class ComparisonRequest(BaseModel):
-    document_ids: list[int] = Field(min_length=2, max_length=12)
+    document_ids: list[Annotated[int, Field(gt=0)]] = Field(min_length=2, max_length=12)
     passages_per_field: int = Field(default=2, ge=1, le=5)
 
 
@@ -309,9 +310,22 @@ def attach_document_to_workspace(workspace_id: int, document_id: int) -> dict:
 
 @app.post("/comparisons")
 def comparison(request: ComparisonRequest) -> dict:
+    if len(set(request.document_ids)) != len(request.document_ids):
+        raise HTTPException(status_code=422, detail="Select distinct documents.")
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT id, title FROM documents WHERE id = ANY(%s)",
+            (request.document_ids,),
+        ).fetchall()
+    titles = dict(rows)
+    if set(request.document_ids) - titles.keys():
+        raise HTTPException(status_code=404, detail="One or more documents were not found.")
     try:
-        return compare_documents(
+        result = compare_documents(
             request.document_ids, passages_per_field=request.passages_per_field
         )
+        for paper in result["papers"]:
+            paper["title"] = titles[paper["document_id"]]
+        return result
     except ValueError as exc:
         raise _bad_request(exc) from exc

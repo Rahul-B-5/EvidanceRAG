@@ -1,5 +1,49 @@
 # EvidenceRAG implementation progress
 
+## Current checkpoint — 2026-11-20 (supersedes historical notes below)
+
+- Branch `main`; GitHub authentication works. Commits through `4b4d14e` were
+  pushed. Node/npm is installed at `/opt/homebrew/opt/node@20/bin`; Node 20 is
+  deprecated and should be upgraded before production deployment.
+- Python suite: 32 tests passing; React/Vite production build passes.
+- Browser-verified dashboard, evidence search and comparison against the actual
+  library: 2 papers / 34 chunks; search returns five passages; comparison loads
+  both existing papers. No existing private records were modified in these checks.
+- Comparison now rejects missing/duplicate/nonpositive IDs and preserves titles
+  when no passages match. Earlier tests guessed IDs [1,2], incorrectly treating
+  one nonexistent document as missing evidence. This is fixed.
+- Duplicate upload restores source paths/page counts without re-embedding.
+  Unit tests cover recovery, changed source bytes and corrupted stored files.
+  Existing library source paths have not been backfilled.
+
+### Remaining work (product is not complete)
+
+Workspace membership persists, but retrieval is NOT workspace-isolated yet.
+Conversation records exist, but the UI is single-turn and the backend does not
+use conversation context. Message-pair persistence is not atomic. Only Gemini
+is implemented and no live generation was verified without a configured key.
+Status columns exist, but ingestion is synchronous without a job lifecycle.
+
+Comparison retrieves topic passages; it does not extract structured findings,
+assess comparability or detect contradictions. Reference-section matches can
+rank too highly. Citation IDs are checked syntactically, not for entailment.
+Saved evidence, notes, metadata editing, re-embedding, collections, graph, gap
+analysis, reproducibility analysis, briefs and clustering remain unfinished.
+Evaluation datasets and automated browser regressions are also missing.
+Source-file deletion needs concurrency/recovery hardening; migrations need
+version tracking. The current dark theme uses inversion and needs replacement.
+
+### Exact next implementation task
+
+Add workspace/document-set filtering through keyword/vector retrievers, fusion,
+answers and comparisons, with isolation regression tests. Then wire workspace
+membership and scoped conversations into the UI, make message writes atomic,
+and add bounded conversation context. Follow with additional providers and
+structured research analysis. Keep `.env`, private PDFs and generated build
+files out of Git. See `git log -1` for the commit containing this checkpoint.
+
+## Historical checkpoint (outdated)
+
 ## Completed and verified
 
 - PostgreSQL/pgvector ingestion, content-addressed source storage, hybrid

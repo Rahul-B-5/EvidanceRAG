@@ -1,6 +1,7 @@
 
 import hashlib
 import os
+import re
 import shutil
 import uuid
 from pathlib import Path
@@ -37,15 +38,22 @@ def persist_source_pdf(
     The copy is written to a sibling temporary file and atomically renamed, so
     a partial upload is never exposed as a reusable document source.
     """
+    if not re.fullmatch(r"[0-9a-f]{64}", file_hash):
+        raise ValueError("Invalid source hash.")
+    upload_dir = upload_dir.resolve()
     upload_dir.mkdir(parents=True, exist_ok=True)
     destination = upload_dir / f"{file_hash}.pdf"
 
     if destination.exists():
+        if destination.is_symlink() or calculate_file_hash(destination) != file_hash:
+            raise ValueError("Stored source failed its integrity check.")
         return destination
 
     temporary = upload_dir / f".{file_hash}.{uuid.uuid4().hex}.tmp"
     try:
         shutil.copyfile(source_path, temporary)
+        if calculate_file_hash(temporary) != file_hash:
+            raise ValueError("Source changed during import; retry the upload.")
         with temporary.open("rb+") as copied_file:
             copied_file.flush()
             os.fsync(copied_file.fileno())
@@ -114,6 +122,23 @@ def ingest_pdf(file_path: str | Path) -> dict:
         ).fetchone()
 
     if existing is not None:
+        # Recover source links for legacy records while retaining their chunks
+        # and embedding profile. Only a byte-identical PDF can reach this path.
+        stored_path = persist_source_pdf(
+            path, file_hash=file_hash, upload_dir=settings.upload_dir,
+        )
+        with pymupdf.open(stored_path) as pdf:
+            page_count = len(pdf)
+        with get_connection() as conn:
+            conn.execute(
+                """
+                UPDATE documents SET stored_path = %s,
+                    file_size_bytes = %s, page_count = %s
+                WHERE id = %s AND file_hash = %s
+                """,
+                (str(stored_path), stored_path.stat().st_size, page_count,
+                 existing[0], file_hash),
+            )
         return {
             "status": "already_exists",
             "document_id": existing[0],

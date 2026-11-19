@@ -1,0 +1,18 @@
+.research-tools {display:grid;gap:1.25rem;font-size:1rem}
+.research-controls {display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.research-controls label {display:block;font-size:.9rem;margin:1rem 0}
+.research-controls input:not([type=checkbox]),.research-controls select {display:block;width:100%;padding:.7rem;margin-top:.4rem;border:1px solid #adbdb3;border-radius:6px;font:inherit}
+.research-controls fieldset {border:0;padding:0;max-height:220px;overflow:auto}
+.research-controls input[type=checkbox] {margin-right:.6rem}
+.research-passages article {padding:1rem 0;border-bottom:1px solid #dae3dd;line-height:1.55}
+.research-passages p {white-space:pre-wrap}
+.research-passages a {color:#245f4c;text-decoration:underline}
+.research-passages small {display:block;margin-top:.4rem}
+.comparison-scroll {overflow:auto}
+.comparison-scroll table {border-collapse:collapse;width:100%;text-align:left}
+.comparison-scroll th,.comparison-scroll td {border:1px solid #dae3dd;padding:1rem;vertical-align:top;min-width:230px}
+.comparison-scroll th[scope=row] {min-width:120px;text-transform:capitalize}
+.notice {padding:1rem;background:#e8f1ed;border-radius:8px;margin-bottom:1rem}
+.notice.error {background:#fbecec;color:#943529}
+button:disabled {opacity:.5;cursor:not-allowed}
+@media(max-width:850px){.research-controls{grid-template-columns:1fr}}
