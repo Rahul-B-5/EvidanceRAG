@@ -3,6 +3,7 @@ import { api, type ComparisonRun, type Document, type Finding, type StructuredCo
 import { SavePassage } from "./SavedEvidence";
 import { EvidenceGraph } from "./EvidenceGraph";
 import { comparisonBrief, followUpExcerpts } from "./comparisonBrief";
+import { OpposingFindings } from "./OpposingFindings";
 
 export type FindingQuestion = { documentId?: number; documentIds?: number[]; workspaceId?: number; question: string };
 const labels: Record<string, string> = {
@@ -215,6 +216,7 @@ export function ComparisonStudio({documents, workspaceId, ask}: {
           </div>)}
         </div>)}
       </section>
+      <OpposingFindings pairs={result.contradictions ?? []} ask={ask} workspaceId={workspaceId} />
       <section className="panel">
         <h2>Author-reported follow-up</h2>
         <p>These candidate directions come from the selected papers. Check the broader literature before claiming a research gap.</p>

@@ -78,3 +78,19 @@ def find_passages(finding: dict, workspace_id: int | None) -> list[dict]:
             ORDER BY rank DESC, c.id LIMIT 60
         """, (query, finding["provenance"]["document_id"], workspace_id, workspace_id)).fetchall()
     return rank_passages(rows, finding, terms)
+
+
+def find_candidates(finding: dict, workspace_id: int | None, contradictions: list[dict]) -> list[dict]:
+    candidates = {}
+    for pair in contradictions:
+        for side, other in (("left", "right"), ("right", "left")):
+            if pair[side]["finding_id"] == finding["id"]:
+                opposing = pair[other]
+                candidates.setdefault(opposing["source"]["chunk_id"], {
+                    **opposing["source"], "title": opposing["title"], "excerpt": opposing["quote"],
+                    "signal": None, "matched_terms": [], "condition_labels": pair["conditions"],
+                    "opposing_statement": True,
+                })
+    for passage in find_passages(finding, workspace_id):
+        candidates.setdefault(passage["chunk_id"], passage)
+    return list(candidates.values())

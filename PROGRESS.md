@@ -4,8 +4,8 @@
 
 - Repository uses `main` and pushes to `Rahul-B-5/EvidanceRAG`. See `git log` and `git ls-remote --heads origin main` for current delivery status.
 - Local PostgreSQL with pgvector uses configured port 5433. Existing library has two papers and 34 indexed passages. Earlier smoke tests verified PDF import, duplicate detection, search, download and disposal of synthetic test records. Existing legacy papers still need byte-identical reimport to restore the original PDF links.
-- React has dedicated light and dark themes, a searchable keyboard command palette, a sortable library and a reader with page controls, adjustable split and indexed page passages. Browser verification covered theme switching, Ctrl/⌘K with keyboard selection, opening a real library record, advancing a page and resizing with the keyboard. Browser rendering of an imported original PDF remains outstanding.
-- Search, comparison passages and answers support workspace scope. Workspace membership is query scoping within a single-user app. Browser verification previously covered search and two-paper passage comparison. Membership mutations and chat reload still need browser verification.
+- React has dedicated light and dark themes, a searchable keyboard command palette, a sortable library and a reader with page controls, an adjustable split and indexed passages. Browser verification covered theme switching, Ctrl/⌘K selection, Reader navigation, and rendering a synthetic original PDF.
+- Search, comparison and answers support workspace scope in a single-user app. Browser verification covered search, two-paper comparison and reloading a scoped conversation.
 - Conversations persist with fixed scope, bounded history and atomic message pairs. Integration tests cover retry after failed persistence and scoped retrieval.
 - Gemini, OpenAI-compatible Chat Completions and Ollama generation are supported. A real local Ollama `qwen3:8b` call through `POST /answers` answered a synthetic question with the expected page citation. Remote OpenAI and Gemini have transport/configuration coverage only for their applicable paths, with no live cloud verification.
 - The reader, comparison/search and assistant citations can save indexed passages. Saved evidence stores a provenance snapshot with editable notes. Markdown export downloads the currently saved notebook. PostgreSQL tests verify idempotent saves, notes and snapshots after synthetic source deletion. Notebook browser edit/export still needs verification.
@@ -123,18 +123,24 @@
   Ollama response that cited both, a citation link to Reader, and reopening
   the saved conversation. Disposable fixtures were removed. Full gate:
   88 PostgreSQL-enabled tests, 5 frontend tests and production build.
-- Assistant streams retrieval, generation and persistence progress through
+- Assistant streaming pushed as `bd7ecd1`. It streams progress through
   NDJSON. A disconnect during generation cancels the exchange before commit.
   Browser verified local Ollama cancellation retained the question without
   messages, then retry saved exactly one cited exchange. Automated tests cover
   ASGI disconnects, transaction rollback and incomplete-stream handling.
   Full gate: 91 PostgreSQL-enabled tests, 7 frontend tests and production build.
+- Comparison Studio and Evidence Atlas flag explicit opposing comparative
+  statements only when both report the same methods and evaluation labels.
+  Browser verified a real local Ollama comparison of two synthetic papers, an
+  Atlas edge with two source references, a saved assessment and a two-paper
+  Assistant handoff. A fallback fills literal labels for explicit source
+  clauses. Full gate: 97 PostgreSQL-enabled tests, 8 frontend tests and build.
 
 ## Outstanding
 
-1. Add contradiction candidates only for aligned study conditions and opposing
-   claims with two citable sources. Improve reproducibility disclosure
-   validation, gap coverage and evidence-grounded briefing templates.
+1. Improve reproducibility disclosure validation, gap coverage and
+   evidence-grounded briefing templates. Evaluate disagreement detection on a
+   representative public or synthetic corpus.
 2. Expand graph exploration across workspaces and notebook sources.
 3. Extend the notebook with tags, collections and integrated annotations.
    Refine page attribution for chunks that span several pages.

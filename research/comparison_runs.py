@@ -35,7 +35,7 @@ def run_details(run_id: UUID) -> dict | None:
         expire_runs(conn)
         row = cursor.execute(f"SELECT {RUN_FIELDS}, papers FROM comparison_runs WHERE id=%s", (run_id,)).fetchone()
         if row is not None:
-            row["result"] = comparison_result(row.pop("papers"))
+            row["result"] = comparison_result(row.pop("papers"), conn)
         return row
 
 

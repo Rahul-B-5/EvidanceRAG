@@ -3,6 +3,7 @@ import { api, type Atlas, type AtlasNode, type Workspace } from "./api";
 import type { FindingQuestion } from "./ComparisonStudio";
 import { SavePassage } from "./SavedEvidence";
 import { CounterevidencePanel } from "./CounterevidencePanel";
+import { OpposingFindings } from "./OpposingFindings";
 import "./atlas.css";
 
 const typeNames: Record<string, string> = {
@@ -87,7 +88,17 @@ export function EvidenceAtlas({compare, ask}: {compare: () => void; ask: (q: Fin
       <p>This scope has no comparison findings yet. Compare papers to populate the atlas.</p>
       <button onClick={compare}>Open Comparison Studio</button>
     </section>}
-    {!!atlas?.edges.length && <div className="atlas-layout">
+    {!!atlas?.edges.length && <>
+      <OpposingFindings pairs={atlas.contradictions ?? []} ask={ask} workspaceId={workspace ? Number(workspace) : undefined}
+        focus={id => {
+          const node = nodes.get(id);
+          if (!node) return;
+          setRelation("potential_disagreement");
+          setKind("");
+          focus(node);
+          stage.current?.focus();
+        }} />
+      <div className="atlas-layout">
       <section className="panel atlas-index" aria-label="Graph node search results">
         <h2>Nodes</h2><p>{matching.length} matches</p>
         <ul>{matching.slice(0, 40).map(n => <li key={n.id}>
@@ -148,11 +159,14 @@ export function EvidenceAtlas({compare, ask}: {compare: () => void; ask: (q: Fin
             <button className="secondary" onClick={() => focus(node)}>{clampLabel(node.label)}</button>
             <span>{edge.relation.replaceAll("_", " ")}</span>
             <a href={`#paper=${edge.provenance.document_id}&page=${edge.provenance.page_start}`}>Passage {edge.provenance.chunk_id} · p. {edge.provenance.page_start}</a>
+            {edge.related_provenance && <a href={`#paper=${edge.related_provenance.document_id}&page=${edge.related_provenance.page_start}`}>
+              Passage {edge.related_provenance.chunk_id} · p. {edge.related_provenance.page_start}
+            </a>}
           </li>)}</ul>
           <p>Relationships describe the selected indexed text and its extracted labels. Assess scientific support in the original source.</p>
           {center.kind === "finding" && <CounterevidencePanel key={center.id} finding={center} workspace={workspace} />}
         </section>}
       </div>
-    </div>}
+    </div></>}
   </div>;
 }

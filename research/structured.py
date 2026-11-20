@@ -6,18 +6,19 @@ from itertools import combinations
 from typing import Literal
 
 from pydantic import BaseModel, Field, ValidationError
+from psycopg import Connection
 
 from app.core.config import get_settings
 from app.generation.providers import GenerationProvider, get_generation_provider
 from app.retrieval.keyword import search_keyword
 from research.comparison import COMPARISON_FIELDS
+from research.contradictions import CONDITIONS, opposing_statements, recover_relative_statement, relative_statement
 
 TOPICS = {
     **COMPARISON_FIELDS,
     "architecture": "architecture OR backbone OR layer OR encoder OR network",
     "protocol": "protocol OR split OR validation OR test OR cross-validation",
 }
-CONDITIONS = ("metric", "dataset", "task", "split", "protocol", "baseline")
 UNIT_SUFFIX = r"(?:%|percent\b|percentage points?\b|ms\b|s\b|seconds?\b|minutes?\b|hours?\b|Hz\b|kHz\b|MHz\b|GHz\b|bytes?\b|[KMG]i?B\b|J\b|W\b|flops\b|[kMGT]FLOPS\b)"
 METRIC_VALUE = re.compile(
     r"\b(?P<metric>ROC[- ]AUC|AUROC|AUC|F1(?:[- ]score)?|accuracy|precision|recall|latency|"
@@ -45,6 +46,7 @@ class Candidate(BaseModel):
     split: str | None = Field(default=None, max_length=140)
     protocol: str | None = Field(default=None, max_length=140)
     baseline: str | None = Field(default=None, max_length=140)
+    subject: str | None = Field(default=None, max_length=140)
     units: str | None = Field(default=None, max_length=40)
     direction: str | None = Field(default=None, max_length=100)
 
@@ -58,9 +60,11 @@ Example output: {"findings":[{"topic":"methodology","source":3},
 {"topic":"results","source":7,"metric":"F1","value":"87%"}]}.
 Do not reproduce or rewrite the window text. Omit absent findings. Skip references,
 claims about cited papers, and guesses. Prefer at least one result if supported.
-For a result, include metric and value as exact strings within the selected window.
-Include dataset, task, split, protocol, baseline, units and metric direction only if each appears exactly within that
-same window and describes that specific result. Otherwise omit the condition.
+For a result, include metric and value as exact strings within the selected window when stated.
+For an explicit statement that a named method outperformed or underperformed a baseline,
+include "subject" (the exact evaluated method name) and "baseline" (the exact comparator name).
+Include dataset, task, split, protocol, baseline, units and metric direction only if each
+appears exactly within that same window and describes that specific result.
 Preserve the metric's scale and units."""
 
 
@@ -129,17 +133,17 @@ def extract_findings(provider: GenerationProvider, passages: list[dict]) -> tupl
             continue
         quote = passage["text"]
         source = {key: passage[key] for key in ("document_id", "chunk_id", "page_start", "page_end", "excerpt_id")}
-        key = (claim.topic, quote, claim.metric, claim.value)
-        if key in seen:
-            continue
         outcome = {}
+        comparative = None
         if claim.topic == "results":
             for field in (*CONDITIONS, "value", "units", "direction"):
                 value = normalize(getattr(claim, field) or "")
                 if value and literal_in(value, quote):
                     outcome[field] = value
+            comparable = {**outcome, "subject": normalize(claim.subject or "")}
+            comparative = recover_relative_statement(quote) or relative_statement(quote, comparable)
             if not outcome.get("metric") or not reported_value_in(outcome.get("value", ""), quote):
-                if claim.metric or claim.value:
+                if (claim.metric or claim.value) and comparative is None:
                     rejected += 1
                     continue
                 # Some local models select a relevant source but omit numerical
@@ -147,8 +151,13 @@ def extract_findings(provider: GenerationProvider, passages: list[dict]) -> tupl
                 # from the index. Otherwise retain only the source excerpt.
                 matches = list(METRIC_VALUE.finditer(quote))
                 outcome = matches[0].groupdict() if len(matches) == 1 else {}
+        key = (claim.topic, quote, claim.metric, claim.value,
+               tuple(comparative["conditions"].items()) if comparative else None)
+        if key in seen:
+            continue
         seen.add(key)
-        findings.append({"topic": claim.topic, "quote": quote, "source": source, "outcome": outcome})
+        findings.append({"topic": claim.topic, "quote": quote, "source": source, "outcome": outcome,
+                         **({"relative_statement": comparative} if comparative else {})})
     return findings, rejected
 
 
@@ -219,5 +228,6 @@ def extract_paper(document_id: int, title: str, workspace_id: int | None) -> dic
             "reproducibility": reproducibility_mentions(document_id, workspace_id)}
 
 
-def comparison_result(papers: list[dict]) -> dict:
-    return {"topics": list(TOPICS), "papers": papers, "checks": pairwise_checks(papers)}
+def comparison_result(papers: list[dict], conn: Connection | None = None) -> dict:
+    return {"topics": list(TOPICS), "papers": papers, "checks": pairwise_checks(papers),
+            "contradictions": opposing_statements(papers, conn)}

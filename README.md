@@ -144,6 +144,13 @@ excerpts for up to 30 papers from 50 recent runs in the selected scope.
 Select **Library comparisons** for runs made outside a named workspace.
 Dataset and metric edges reflect labels found in the excerpt. Topic labels
 come from extraction and deserve review in the source.
+**Potential disagreements** appears in Comparison Studio, its Markdown export,
+and Evidence Atlas. It pairs explicit opposite comparisons only when both
+excerpts report matching method, baseline, metric, dataset, task, split and
+protocol labels. Both source passages are linked. Use the graph or Assistant
+to review the methods and uncertainty. Coverage is limited to comparison
+excerpts with sufficiently explicit wording and labels.
+
 **Find counterevidence** ranks cross-paper passages with shared terms and
 nearby qualifying phrases. Overlapping condition labels are shown separately
 so the researcher can check whether the studies asked the same question.

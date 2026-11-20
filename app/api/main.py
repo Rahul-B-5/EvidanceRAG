@@ -42,7 +42,7 @@ from research.comparison import compare_documents
 from research.comparison_runs import cancel_run, create_run, execute_run, list_runs, run_details
 from research.structured import structured_comparison
 from research.atlas import atlas_for_workspace
-from research.counterevidence import find_passages
+from research.counterevidence import find_candidates
 from research.claim_reviews import read_reviews, write_review
 from research.reproducibility import assess_document
 from research.coverage import question_coverage
@@ -636,18 +636,19 @@ def finding_counterevidence(
     finding_id: Annotated[str, ApiPath(pattern=r"^finding:[0-9a-f]{24}$")],
     workspace_id: int | None = Query(default=None, gt=0, le=9223372036854775807),
 ) -> dict:
-    finding = resolve_finding(finding_id, workspace_id)
-    return {"finding": finding, "passages": find_passages(finding, workspace_id),
+    finding, contradictions = resolve_finding(finding_id, workspace_id)
+    return {"finding": finding, "passages": find_candidates(finding, workspace_id, contradictions),
             "reviews": read_reviews(finding_id, workspace_id)}
 
 
-def resolve_finding(finding_id: str, workspace_id: int | None) -> dict:
+def resolve_finding(finding_id: str, workspace_id: int | None) -> tuple[dict, list[dict]]:
     validate_workspace_scope(workspace_id, [])
-    finding = next((node for node in atlas_for_workspace(workspace_id)["nodes"]
+    atlas = atlas_for_workspace(workspace_id)
+    finding = next((node for node in atlas["nodes"]
                     if node["kind"] == "finding" and node["id"] == finding_id), None)
     if finding is None:
         raise HTTPException(status_code=404, detail="Finding not found in this scope.")
-    return finding
+    return finding, atlas["contradictions"]
 
 
 @app.put("/evidence-atlas/{finding_id}/reviews/{chunk_id}")
@@ -657,8 +658,8 @@ def save_claim_review(
     request: ClaimReviewRequest,
     workspace_id: int | None = Query(default=None, gt=0, le=9223372036854775807),
 ) -> dict:
-    finding = resolve_finding(finding_id, workspace_id)
-    matches = find_passages(finding, workspace_id)
+    finding, contradictions = resolve_finding(finding_id, workspace_id)
+    matches = find_candidates(finding, workspace_id, contradictions)
     candidate = next((p for p in matches if p["chunk_id"] == chunk_id), None)
     if candidate is None:
         saved = next((item for item in read_reviews(finding_id, workspace_id)

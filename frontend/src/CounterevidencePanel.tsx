@@ -82,6 +82,7 @@ export function CounterevidencePanel({finding, workspace}: {finding: AtlasNode; 
       {Array.from(candidates.values(), p => <article className="finding-card" key={p.chunk_id}>
         <strong>{p.title}</strong>
         <blockquote>{p.excerpt}</blockquote>
+        {p.opposing_statement && <p>Opposing statement under matching reported conditions.</p>}
         {p.signal && <p>Language to review: “{p.signal}”</p>}
         <p>{Object.keys(p.condition_labels).length
           ? `Overlapping reported labels: ${Object.entries(p.condition_labels).map(([key, value]) => `${key} · ${value}`).join(", ")}.`

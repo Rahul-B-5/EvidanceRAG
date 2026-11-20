@@ -35,6 +35,7 @@ export type StructuredComparison = {
     left: Finding; right: Finding; status: "reported_difference" | "insufficient_context" | "candidate_match";
     differences: string[]; missing: string[];
   }> }>;
+  contradictions: Contradiction[];
 };
 export type ComparisonRun = {
   id: string; workspace_id: number | null; document_ids: number[]; titles: string[];
@@ -42,9 +43,13 @@ export type ComparisonRun = {
   error: string | null;
 };
 export type Provenance = Finding["source"];
+export type OpposingStatement = {title: string; source: Provenance; quote: string; direction: "better" | "worse"; finding_id?: string};
+export type Contradiction = {left: OpposingStatement; right: OpposingStatement; conditions: Record<string, string>};
 export type AtlasNode = {id: string; kind: string; label: string; document_id?: number; provenance?: Provenance};
-export type Atlas = {nodes: AtlasNode[]; edges: Array<{source: string; target: string; relation: string; provenance: Provenance}>};
-export type CandidatePassage = Provenance & {title: string; excerpt: string; signal: string | null; matched_terms: string[]; condition_labels: Record<string,string>};
+export type Atlas = {nodes: AtlasNode[]; contradictions: Contradiction[]; edges: Array<{source: string; target: string; relation: string;
+  provenance: Provenance; related_provenance?: Provenance}>};
+export type CandidatePassage = Provenance & {title: string; excerpt: string; signal: string | null; matched_terms: string[];
+  condition_labels: Record<string,string>; opposing_statement?: boolean};
 export type ClaimReview = {
   candidate_chunk_id: number;
   candidate_snapshot: CandidatePassage;

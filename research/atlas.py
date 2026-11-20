@@ -1,15 +1,21 @@
 """Reproducible graph built from persisted source-backed comparison excerpts."""
 
 from hashlib import sha256
+from psycopg import Connection
 
 from app.db.connection import get_connection
+from research.contradictions import opposing_statements
 
 
 def node_key(kind: str, value: str) -> str:
     return kind + ":" + sha256(value.encode()).hexdigest()[:24]
 
 
-def build_atlas(papers: list[dict]) -> dict:
+def finding_key(document_id: int, chunk_id: int, topic: str, quote: str) -> str:
+    return node_key("finding", f"{document_id}:{chunk_id}:{topic}:{quote}")
+
+
+def build_atlas(papers: list[dict], conn: Connection | None = None) -> dict:
     nodes: dict[str, dict] = {}
     edges: dict[tuple[str, str, str], dict] = {}
 
@@ -28,7 +34,7 @@ def build_atlas(papers: list[dict]) -> dict:
             source = f["source"]
             if source["document_id"] != paper_id:
                 continue
-            claim_id = node_key("finding", f"{paper_id}:{source['chunk_id']}:{f['topic']}:{f['quote']}")
+            claim_id = finding_key(paper_id, source["chunk_id"], f["topic"], f["quote"])
             claim = node(claim_id, "finding", f["quote"], provenance=source, outcome=f["outcome"])
             passage = node(f"passage:{source['chunk_id']}", "passage",
                            f"Page {source['page_start']} · Passage {source['chunk_id']}", provenance=source)
@@ -40,7 +46,16 @@ def build_atlas(papers: list[dict]) -> dict:
                 if value := f["outcome"].get(field):
                     entity = node(node_key(field, value.casefold()), field, value)
                     edge(claim, entity, "mentions_" + field, source)
-    return {"nodes": list(nodes.values()), "edges": list(edges.values())}
+    contradictions = opposing_statements(papers, conn)
+    for pair in contradictions:
+        for side in ("left", "right"):
+            item = pair[side]
+            source = item["source"]
+            item["finding_id"] = finding_key(source["document_id"], source["chunk_id"], "results", item["finding_quote"])
+        left, right = pair["left"], pair["right"]
+        edge(left["finding_id"], right["finding_id"], "potential_disagreement", left["source"])
+        edges[(left["finding_id"], right["finding_id"], "potential_disagreement")]["related_provenance"] = right["source"]
+    return {"nodes": list(nodes.values()), "edges": list(edges.values()), "contradictions": contradictions}
 
 
 def atlas_for_workspace(workspace_id: int | None) -> dict:
@@ -63,4 +78,4 @@ def atlas_for_workspace(workspace_id: int | None) -> dict:
             )
             SELECT paper FROM paper_extracts ORDER BY updated_at DESC, id DESC LIMIT 30
         """, (workspace_id,)).fetchall()
-    return build_atlas([r[0] for r in rows])
+        return build_atlas([r[0] for r in rows], conn)

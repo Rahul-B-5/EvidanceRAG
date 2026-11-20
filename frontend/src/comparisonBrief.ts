@@ -1,4 +1,4 @@
-import type { Finding, StructuredComparison } from "./api";
+import type { Provenance, StructuredComparison } from "./api";
 
 function plain(value: string) {
   return value.replace(/[<>&]/g, char => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" })[char] ?? char);
@@ -13,7 +13,7 @@ export function followUpExcerpts(result: StructuredComparison) {
 
 export function comparisonBrief(result: StructuredComparison, labels: Record<string, string>) {
   const titles = new Map(result.papers.map(p => [p.document_id, p.title]));
-  const cite = (f: Finding) => {
+  const cite = (f: {source: Provenance; quote: string}) => {
     const s = f.source;
     const range = s.page_start === s.page_end ? String(s.page_start) : `${s.page_start}–${s.page_end}`;
     return `> ${plain(f.quote)}\n\nSource: paper ${s.document_id}, pages ${range}, indexed passage ${s.chunk_id}.`;
@@ -39,6 +39,15 @@ export function comparisonBrief(result: StructuredComparison, labels: Record<str
         cite(outcome.left),
         cite(outcome.right),
       );
+    }
+  }
+  if (result.contradictions?.length) {
+    lines.push("## Potential disagreements",
+      "Opposing statements have matching reported labels. Review the original experimental conditions and uncertainty.");
+    for (const {left, right, conditions} of result.contradictions) {
+      lines.push(`### ${plain(conditions.subject)} vs. ${plain(conditions.baseline)} · ${plain(conditions.metric)}`,
+        Object.entries(conditions).map(([key, value]) => `- ${key} · ${plain(value)}`).join("\n"),
+        `**${plain(left.title)}**\n\n${cite(left)}`, `**${plain(right.title)}**\n\n${cite(right)}`);
     }
   }
   lines.push("## Author-reported follow-up");
