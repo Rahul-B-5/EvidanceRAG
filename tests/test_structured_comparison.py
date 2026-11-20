@@ -101,6 +101,22 @@ def test_numeric_fields_cannot_extract_fragment_of_signed_or_grouped_number(valu
     assert not reported_value_in(value, quote)
 
 
+@pytest.mark.parametrize(("text", "value"), [
+    ("The evaluation reported an F1 of 87% in the first held-out trial.", "87%"),
+    ("The training used 87 examples, with a report of precision and recall.", None),
+    ("The accuracy was 81% and recall was 72% in the holdout.", None),
+])
+def test_missing_model_metric_fields_use_only_an_unambiguous_literal_expression(text, value):
+    provider = Mock()
+    provider.generate_json.return_value = json.dumps({"findings": [{"topic": "results", "source": 1}]})
+    findings, rejected = extract_findings(provider, [
+        {"text": text, "document_id": 8, "chunk_id": 3, "page_start": 2, "page_end": 3}
+    ])
+    assert rejected == 0
+    assert findings[0]["quote"] == text
+    assert findings[0]["outcome"].get("value") == value
+
+
 def test_reproducibility_reports_mention_without_inventing_unseen_details(monkeypatch):
     search = Mock(return_value=[{"text": "We ran the benchmark across five groups and 3 random seeds.",
                                  "document_id": 6, "chunk_id": 20, "page_start": 4, "page_end": 4}])

@@ -9,7 +9,7 @@ delivery status live in [PROGRESS.md](PROGRESS.md).
 | Library | Import one PDF, index, search, attach to workspace, recover identical source | Multi-file progress, metadata editing, tags and collections, retry and re-embedding |
 | Investigation | Scoped hybrid search and persistent Assistant with page citations | Explicit selection of several papers, streaming and cancellation, full browser upload-to-answer regression |
 | Comparison | Matrix, source preview, evidence saving, durable partial results and condition checks | More experimental fields, confidence and support checks, representative corpus evaluation |
-| Evidence Atlas | Inspect comparison-derived paper, topic and passage connections | Durable claims, typed evidence relationships, graph navigation, layout, zoom, and larger-library testing |
+| Evidence Atlas | Browse persisted workspace graphs with paper, excerpt, topic, metric and dataset edges and source provenance | Durable reviewed claims, opposing-claim edges, alternative layouts and larger-library testing |
 | Disagreement | Surface differing or missing experimental conditions | Compare opposing propositions under compatible conditions and retrieve candidate counterevidence |
 | Reproduction | Find source mentions for five checklist items | Distinguish complete disclosures from mentions, extend fields and export a reproduction dossier |
 | Research directions | Surface explicit follow-up wording in selected limitations | Corpus coverage analysis, hypothesis and experiment plan, broader verification status |

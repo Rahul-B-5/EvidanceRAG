@@ -6,6 +6,7 @@ import { Conversations } from "./Conversations";
 import { Reader } from "./Reader";
 import { SavedEvidence } from "./SavedEvidence";
 import type { FindingQuestion } from "./ComparisonStudio";
+import { EvidenceAtlas } from "./EvidenceAtlas";
 import "./styles.css";
 
 const views = [
@@ -15,6 +16,7 @@ const views = [
   ["assistant", "Assistant", "✧"],
   ["research", "Evidence & compare", "⌕"],
   ["compare", "Comparison studio", "▥"],
+  ["atlas", "Evidence Atlas", "⌘"],
   ["saved", "Saved evidence", "◇"],
   ["workspaces", "Workspaces", "⊞"],
 ] as const;
@@ -64,6 +66,11 @@ function App() {
     setSelectedId(id);
     setReaderPage(1);
     navigate("reader");
+  }
+
+  function askFinding(question: FindingQuestion) {
+    setFindingQuestion(question);
+    setView("assistant");
   }
 
   useEffect(() => { void refresh(); }, []);
@@ -140,6 +147,7 @@ function App() {
     : loading ? <p role="status">Loading paper…</p>
     : <section className="panel empty"><h2>Select a paper to read</h2><button onClick={() => navigate("library")}>Open library</button></section>;
   else if (view === "assistant") content = <Conversations documents={documents} initial={findingQuestion} />;
+  else if (view === "atlas") content = <EvidenceAtlas compare={() => navigate("compare")} ask={askFinding} />;
   else if (view === "compare") content = null;
   else if (view === "saved") content = <SavedEvidence />;
   else if (view === "research" || view === "workspaces") content = <WorkspaceArea key={view} documents={documents} manage={view === "workspaces"} />;
@@ -166,10 +174,7 @@ function App() {
       {error && <p className="notice error" role="alert">{error}</p>}
       {notice && <p className="notice" role="status">{notice}</p>}
       {content}
-      {studioOpened && <div hidden={view !== "compare"}><WorkspaceArea documents={documents} compare={question => {
-        setFindingQuestion(question);
-        setView("assistant");
-      }} /></div>}
+      {studioOpened && <div hidden={view !== "compare"}><WorkspaceArea documents={documents} compare={askFinding} /></div>}
     </main>
     <dialog ref={palette} className="palette" aria-label="Quick open">
       <form onSubmit={e => {e.preventDefault(); if (commands[0]) {palette.current?.close();commands[0].run();}}}>

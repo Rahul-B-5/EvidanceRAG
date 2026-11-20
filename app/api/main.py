@@ -31,6 +31,7 @@ from app.retrieval.service import retrieve_evidence
 from research.comparison import compare_documents
 from research.comparison_runs import cancel_run, create_run, execute_run, list_runs, run_details
 from research.structured import structured_comparison
+from research.atlas import atlas_for_workspace
 from typing import Annotated
 
 
@@ -459,6 +460,12 @@ def stop_comparison(run_id: uuid.UUID) -> None:
     comparison_run(run_id)
     if not cancel_run(run_id):
         raise HTTPException(status_code=409, detail="Comparison is no longer active.")
+
+
+@app.get("/evidence-atlas")
+def evidence_atlas(workspace_id: int | None = Query(default=None, gt=0, le=9223372036854775807)) -> dict:
+    validate_workspace_scope(workspace_id, [])
+    return atlas_for_workspace(workspace_id)
 
 
 @app.delete("/workspaces/{workspace_id}/documents/{document_id}", status_code=204)

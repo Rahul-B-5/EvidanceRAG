@@ -29,6 +29,9 @@ export type ComparisonRun = {
   created_at: string; status: "queued" | "running" | "completed" | "failed" | "cancelled" | "interrupted";
   error: string | null;
 };
+export type Provenance = Finding["source"];
+export type AtlasNode = {id: string; kind: string; label: string; document_id?: number; provenance?: Provenance};
+export type Atlas = {nodes: AtlasNode[]; edges: Array<{source: string; target: string; relation: string; provenance: Provenance}>};
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, init);
@@ -63,6 +66,7 @@ export const api = {
   }),
   comparisonRun: (id: string, signal?: AbortSignal) => request<ComparisonRun & {result: StructuredComparison}>(`/comparison-runs/${id}`, {signal}),
   cancelComparison: (id: string) => request<void>(`/comparison-runs/${id}/cancel`, {method:"POST"}),
+  atlas: (workspaceId: string, signal?: AbortSignal) => request<Atlas>(workspaceId ? `/evidence-atlas?workspace_id=${workspaceId}` : "/evidence-atlas", {signal}),
   documents: () => request<{ documents: Document[] }>("/documents"),
   document: (id: number) => request<Document>(`/documents/${id}`),
   passages: (id: number, page: number, signal?: AbortSignal) => request<{passages: Passage[]}>(`/documents/${id}/passages?page=${page}`, {signal}),

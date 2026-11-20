@@ -48,7 +48,7 @@ def test_comparison_keeps_each_result_and_invalidates_removed_workspace_scope(fi
     run = client.get(f"/comparison-runs/{id_}").json()
     assert run["status"] == "completed"
     assert [paper["title"] for paper in run["result"]["papers"]] == list(titles.values())
-    assert client.get("/comparison-runs").json()["runs"] == []
+    assert all(row["id"] != id_ for row in client.get("/comparison-runs").json()["runs"])
     conn.execute("DELETE FROM workspace_documents WHERE workspace_id=%s AND document_id=%s", (workspace, next(iter(titles))))
     assert client.get(f"/comparison-runs/{id_}").status_code == 422
     assert client.get("/comparison-runs", params={"workspace_id": workspace}).json()["runs"] == []

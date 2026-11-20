@@ -38,25 +38,31 @@
 - Browser verified that a real two-paper run starts with a progress indicator,
   persists to history, completes, and reopens after a full browser reload.
   That run returned 24 rejected selection records and no accepted findings.
-  A local-provider shape diagnostic is in progress. This is an extraction
-  quality bug, separate from the successful persistence workflow.
+  The local-provider diagnostic found valid window selections with omitted
+  metric/value keys. The extractor now keeps those as source excerpts and
+  copies a numeric value only for one explicit metric/value expression.
+  A subsequent live two-paper comparison retained six findings, with 18
+  rejected records still surfaced for review. Extraction quality remains
+  model-dependent and bounded by sampled passage coverage.
+- Durable comparison history pushed as `5cda273` and confirmed on
+  `origin/main`. Evidence Atlas reconstructs typed nodes and edges from
+  persisted comparison excerpts, rechecks current workspace members and
+  turns each edge into a source reference. Browser tested populated desktop
+  and 390-pixel views, node-type filtering, keyboard zoom and Reader handoff.
+  Full test gate: 72 PostgreSQL-enabled tests, production build and diff check.
 
 ## Outstanding
 
-1. Diagnose the local model's rejected selection records on a real paper and
-   tighten its output contract. Retain exact evidence checks and verify using
-   both a synthetic source and the local browser workflow.
-2. Build a workspace Evidence Atlas from the latest persisted findings per paper.
-   Derive paper, excerpt, topic, dataset and metric nodes with typed edges.
-   Verify workspace membership, open citations in Reader and test the graph
-   at desktop and narrow layouts.
-3. Add contradiction candidates only for aligned study conditions and opposing
+1. Add claim-level review and candidate counterevidence retrieval across other
+   papers in the same scope. Resolve the original finding from the Atlas before
+   retrieval, preserve both source references and record unresolved alignment.
+2. Add contradiction candidates only for aligned study conditions and opposing
    claims with two citable sources. Add reproducibility disclosure validation,
    corpus-scoped gap exploration and evidence-grounded research briefings.
-4. Expand graph exploration across workspaces and notebook sources.
-5. Extend the notebook with tags, collections, annotations and bibliography export. Add browser coverage for save, edit, reopen and export. Add source view smoke coverage using a synthetic PDF.
-6. Add retrieval and answer evaluation fixtures, quality/latency reporting and automated browser regressions. Identifier validation does not establish factual entailment.
-7. Harden ingestion lifecycle, source cleanup races, legacy conversation scope backfill and re-embedding. Upgrade the local Node runtime from Node 20 to a supported release when convenient.
+3. Expand graph exploration across workspaces and notebook sources.
+4. Extend the notebook with tags, collections, annotations and bibliography export. Add browser coverage for save, edit, reopen and export. Add source view smoke coverage using a synthetic PDF.
+5. Add retrieval and answer evaluation fixtures, quality/latency reporting and automated browser regressions. Identifier validation does not establish factual entailment.
+6. Harden ingestion lifecycle, source cleanup races, legacy conversation scope backfill and re-embedding. Upgrade the local Node runtime from Node 20 to a supported release when convenient.
 
 ## Continuation
 

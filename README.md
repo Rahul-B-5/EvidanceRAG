@@ -75,6 +75,8 @@ The application is served at `http://127.0.0.1:5173` and uses the local API at
   `GET /comparison-runs` lists workspace-scoped history, and
   `POST /comparison-runs/{id}/cancel` stops further extraction and preserves
   previously saved findings.
+- `GET /evidence-atlas` — reconstructs a graph from recent comparisons in
+  the selected scope. Each relationship includes the source passage and page.
 
 Use **Evidence explorer** in the frontend for search and side-by-side comparisons
 without a generation API key. Source links open at the cited PDF page when the
@@ -98,6 +100,14 @@ completed results after a reload. The local service runs one comparison at a
 time. If it stops during a run, the run becomes interrupted when its lease
 expires, and completed papers remain available. Cancellation stops future work
 and discards any in-flight result. The model request itself may finish locally.
+
+**Evidence Atlas** draws a neighborhood around the selected node. Search and
+filter by node or relationship type, expand or zoom the neighborhood, and
+follow source links to Reader. The graph is rebuilt from saved comparison
+excerpts for up to 30 papers from 50 recent runs in the selected scope.
+Select **Library comparisons** for runs made outside a named workspace.
+Dataset and metric edges reflect labels found in the excerpt. Topic labels
+come from extraction and deserve review in the source.
 
 Use **Quick open** (Ctrl/⌘K) to navigate by view or paper title. The reader shows
 the original PDF and indexed passages for the selected page. Its width slider

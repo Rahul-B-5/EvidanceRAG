@@ -17,6 +17,7 @@ function FindingCard({finding, ask}: {finding: Finding; ask: () => void}) {
   const {source, outcome, quote} = finding;
   return <article className="finding-card">
     {outcome.metric && <strong>{outcome.metric} · {outcome.value}</strong>}
+    {finding.topic === "results" && !outcome.metric && <small>Result excerpt · numerical fields unavailable</small>}
     <blockquote>{quote}</blockquote>
     {outcome.metric && <dl>{Object.entries(outcome).filter(([key]) => key !== "metric" && key !== "value")
       .map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}</dl>}
