@@ -144,8 +144,9 @@ export function ClaimExplorer({initial, documents, workspaces, ask}: {
               question:`What evidence and qualifications does this paper provide for this excerpt?\n\n${claim.quote}`})}>Ask Assistant</button>
           </div>
           <p className="muted">Passage {claim.chunk_id} · Comparison run {claim.run_id.slice(0,8)}</p>
-          {!!Object.entries(claim.finding.outcome).length && <dl className="claim-labels">
-            {Object.entries(claim.finding.outcome).map(([key,value]) => <div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}
+          {(claim.finding.method || Object.keys(claim.finding.outcome).length > 0) && <dl className="claim-labels">
+            {Object.entries({...claim.finding.outcome, ...(claim.finding.method ? {method:claim.finding.method} : {})})
+              .map(([key,value]) => <div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}
           </dl>}
           <AssessmentEditor key={`assessment:${claim.id}`} claim={claim} workspace={workspace} saved={assessment => {
             setClaim({...claim,assessment}); setRefresh(value => value + 1);

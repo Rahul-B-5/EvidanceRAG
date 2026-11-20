@@ -99,7 +99,7 @@ test("keyboard navigation and responsive layout work on a narrow viewport", asyn
   await expect(page.locator("html")).toHaveAttribute("data-theme", theme === "dark" ? "light" : "dark");
 });
 
-test("comparison claims stay searchable and assessments survive reopening", async ({page}) => {
+test("comparison claims stay searchable and assessments survive reopening", async ({page,request}) => {
   await page.goto("/");
   await page.getByRole("button", {name:"Library", exact:true}).click();
   await page.locator("input[type=file]").setInputFiles([
@@ -119,16 +119,38 @@ test("comparison claims stay searchable and assessments survive reopening", asyn
   await detail.getByLabel("Assessment note").fill("The excerpt reports the sample size.");
   await detail.getByRole("button", {name:"Save assessment",exact:true}).click();
   await expect(detail.getByText("Assessment saved.",{exact:true})).toBeVisible();
+  await detail.getByRole("button", {name:"Save passage",exact:true}).click();
+  await expect(detail.getByRole("button", {name:"Saved",exact:true})).toBeVisible();
   await detail.getByRole("link", {name:"Explore in Atlas"}).click();
   await expect(page.getByRole("heading", {name:"Evidence Atlas",exact:true})).toBeVisible();
+  await page.getByLabel("Relationship").selectOption("shared_dataset_metric");
+  await expect(page.locator(".atlas-detail").getByText("Shared dataset and metric",{exact:true})).toBeVisible();
   await page.getByRole("link", {name:"Open claim",exact:true}).click();
   await expect(detail.getByLabel("Evidence status")).toHaveValue("qualified");
   await detail.getByRole("link", {name:/Open source/}).click();
   await expect(page.getByRole("img", {name:"PDF page 2"})).toBeVisible();
+  const original = new URL((await page.getByRole("link", {name:"Open original PDF"}).getAttribute("href"))!);
+  const documentURL = original.origin + original.pathname.replace(/\/source$/, "");
+  const passages = await (await request.get(documentURL + "/passages?page=2")).json();
+  const passage = passages.passages[0];
+  const start = passage.text.indexOf("StarlingNet");
+  const highlight = await request.post(documentURL + "/reader-highlights", {data:{
+    chunk_id:passage.chunk_id,page:2,start_offset:start,end_offset:start+"StarlingNet".length,note:"Graph annotation fixture",
+  }});
+  expect(highlight.status()).toBe(201);
   await page.getByRole("link", {name:"Explore claims",exact:true}).click();
   await page.getByRole("searchbox", {name:"Search claims",exact:true}).fill("observations");
   await page.getByRole("button", {name:"Search",exact:true}).click();
   const list = page.getByRole("region", {name:"Claim search results"});
   await expect(list.getByRole("button", {name:/37 observations/})).toBeVisible();
   await expect(list.getByRole("button", {name:/42 observations/})).toHaveCount(0);
+  await page.getByRole("button", {name:"Evidence Atlas",exact:true}).click();
+  const nodes = page.getByRole("region",{name:"Graph node search results"});
+  await page.getByLabel("Node type").selectOption("annotation");
+  await nodes.getByRole("button",{name:/StarlingNet/}).click();
+  await expect(page.getByText("Graph annotation fixture",{exact:true})).toBeVisible();
+  await page.getByLabel("Node type").selectOption("saved_evidence");
+  await expect(nodes.getByRole("button",{name:/37 observations/})).toBeVisible();
+  await page.getByLabel("Node type").selectOption("method");
+  await expect(nodes.getByRole("button",{name:/StarlingNet/})).toBeVisible();
 });

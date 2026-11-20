@@ -39,6 +39,7 @@ export type Finding = {
   topic: string; quote: string; outcome: Record<string, string>;
   claim_id?: string;
   relative_statement?: {quote: string; direction: string; conditions: Record<string,string>};
+  method?: string;
   source: {document_id: number; chunk_id: number; page_start: number; page_end: number; excerpt_id?: string};
 };
 export type ResearchAssessment = {status: "supported" | "qualified" | "unsupported" | "uncertain"; note: string; revision: number};
@@ -65,9 +66,9 @@ export type ComparisonRun = {
 export type Provenance = Finding["source"];
 export type OpposingStatement = {title: string; source: Provenance; quote: string; direction: "better" | "worse"; finding_id?: string};
 export type Contradiction = {left: OpposingStatement; right: OpposingStatement; conditions: Record<string, string>};
-export type AtlasNode = {id: string; kind: string; label: string; document_id?: number; provenance?: Provenance};
+export type AtlasNode = {id: string; kind: string; label: string; document_id?: number; provenance?: Provenance; note?: string};
 export type Atlas = {nodes: AtlasNode[]; contradictions: Contradiction[]; edges: Array<{source: string; target: string; relation: string;
-  provenance: Provenance; related_provenance?: Provenance}>};
+  provenance: Provenance; related_provenance?: Provenance; shared_labels?: Record<string,string>}>};
 export type CandidatePassage = Provenance & {title: string; excerpt: string; signal: string | null; matched_terms: string[];
   condition_labels: Record<string,string>; opposing_statement?: boolean};
 export type ClaimReview = {

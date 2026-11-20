@@ -75,9 +75,9 @@ def claim_detail(claim_id: ClaimID, workspace_id: Scope = None) -> dict:
             CROSS JOIN LATERAL (
                 SELECT jsonb_object_agg(item.key,item.value) AS labels
                 FROM jsonb_each_text(%s::jsonb) item
-                WHERE item.key IN ('subject','metric','dataset','baseline','protocol')
+                WHERE item.key IN ('subject','metric','dataset','baseline','protocol','method')
                   AND item.value<>'' AND lower(coalesce(finding->'relative_statement'->'conditions'->>item.key,
-                                                        finding->'outcome'->>item.key))=lower(item.value)
+                                                        finding->'outcome'->>item.key,finding->>item.key))=lower(item.value)
             ) shared
             WHERE scope_key=%s AND document_id<>%s AND shared.labels IS NOT NULL
             ORDER BY (SELECT count(*) FROM jsonb_object_keys(shared.labels)) DESC, observed_at DESC, id
@@ -85,6 +85,7 @@ def claim_detail(claim_id: ClaimID, workspace_id: Scope = None) -> dict:
         """, (Jsonb({
             **claim["finding"].get("outcome", {}),
             **(claim["finding"].get("relative_statement") or {}).get("conditions", {}),
+            "method":claim["finding"].get("method", ""),
         }), workspace_id or 0, claim["document_id"])).fetchall()
     return {**claim, "related": related}
 

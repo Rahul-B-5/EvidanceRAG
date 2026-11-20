@@ -89,10 +89,13 @@ def test_opposing_claims_have_two_current_workspace_sources_and_can_be_reviewed(
             """, (doc, EXPERIMENT.format(verb=verb))).fetchone()[0]
             papers.append(extract(doc, chunk, verb))
         ids = [p["document_id"] for p in papers]
+        run_id = uuid4()
         conn.execute("""
             INSERT INTO comparison_runs(id,workspace_id,document_ids,titles,papers,status,lease_until)
             VALUES (%s,%s,%s,%s,%s,'completed',NOW())
-        """, (uuid4(), workspace, ids, [p["title"] for p in papers], Jsonb(papers)))
+        """, (run_id, workspace, ids, [p["title"] for p in papers], Jsonb(papers)))
+        for paper in papers:
+            conn.execute("SELECT record_comparison_claims(%s,%s,%s,NOW())", (run_id, workspace, Jsonb(paper)))
 
         client = TestClient(app)
         scope = {"workspace_id":workspace}

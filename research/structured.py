@@ -47,6 +47,7 @@ class Candidate(BaseModel):
     protocol: str | None = Field(default=None, max_length=140)
     baseline: str | None = Field(default=None, max_length=140)
     subject: str | None = Field(default=None, max_length=140)
+    method: str | None = Field(default=None, max_length=140)
     units: str | None = Field(default=None, max_length=40)
     direction: str | None = Field(default=None, max_length=100)
 
@@ -60,6 +61,7 @@ Example output: {"findings":[{"topic":"methodology","source":3},
 {"topic":"results","source":7,"metric":"F1","value":"87%"}]}.
 Do not reproduce or rewrite the window text. Omit absent findings. Skip references,
 claims about cited papers, and guesses. Prefer at least one result if supported.
+For a method or architecture, include "method" if the selected window names it explicitly.
 For a result, include metric and value as exact strings within the selected window when stated.
 For an explicit statement that a named method outperformed or underperformed a baseline,
 include "subject" (the exact evaluated method name) and "baseline" (the exact comparator name).
@@ -132,6 +134,8 @@ def extract_findings(provider: GenerationProvider, passages: list[dict]) -> tupl
             rejected += 1
             continue
         quote = passage["text"]
+        method = normalize(claim.method or claim.subject or "")
+        method = method if method and literal_in(method, quote) else ""
         source = {key: passage[key] for key in ("document_id", "chunk_id", "page_start", "page_end", "excerpt_id")}
         outcome = {}
         comparative = None
@@ -151,12 +155,13 @@ def extract_findings(provider: GenerationProvider, passages: list[dict]) -> tupl
                 # from the index. Otherwise retain only the source excerpt.
                 matches = list(METRIC_VALUE.finditer(quote))
                 outcome = matches[0].groupdict() if len(matches) == 1 else {}
-        key = (claim.topic, quote, claim.metric, claim.value,
+        key = (claim.topic, quote, claim.metric, claim.value, method,
                tuple(comparative["conditions"].items()) if comparative else None)
         if key in seen:
             continue
         seen.add(key)
         findings.append({"topic": claim.topic, "quote": quote, "source": source, "outcome": outcome,
+                         **({"method": method} if method else {}),
                          **({"relative_statement": comparative} if comparative else {})})
     return findings, rejected
 

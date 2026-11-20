@@ -10,7 +10,13 @@ import "./atlas.css";
 const typeNames: Record<string, string> = {
   paper: "Paper", finding: "Excerpt", passage: "Passage", topic: "Topic",
   dataset: "Dataset", metric: "Metric", baseline: "Baseline",
+  method: "Method", saved_evidence: "Saved passage", annotation: "Reader annotation",
 };
+const relationNames: Record<string,string> = {
+  shared_dataset_metric:"Shared dataset and metric", mentions_method:"Names method",
+  has_saved_evidence:"Has saved passage", has_annotation:"Has Reader annotation", anchored_in:"Anchored in passage",
+};
+const relationName = (relation: string) => relationNames[relation] ?? relation.replaceAll("_", " ");
 
 function clampLabel(s: string) {
   return s.length > 64 ? s.slice(0, 61) + "…" : s;
@@ -82,12 +88,12 @@ export function EvidenceAtlas({compare, ask, initial}: {compare: () => void; ask
       <label>Node type<select value={kind} onChange={e => setKind(e.target.value)}><option value="">All types</option>
         {Array.from(available, k => <option key={k} value={k}>{typeNames[k]}</option>)}</select></label>
       <label>Relationship<select value={relation} onChange={e => setRelation(e.target.value)}><option value="">All relationships</option>
-        {Array.from(relations, r => <option key={r} value={r}>{r.replaceAll("_", " ")}</option>)}</select></label>
+        {Array.from(relations, r => <option key={r} value={r}>{relationName(r)}</option>)}</select></label>
     </section>
     {error && <p role="alert" className="notice error">{error}</p>}
     {!atlas && !error && <p role="status">Loading evidence graph…</p>}
     {atlas?.edges.length === 0 && <section className="panel empty">
-      <p>This scope has no comparison findings yet. Compare papers to populate the atlas.</p>
+      <p>No claims, saved passages, or indexed highlights are available in this scope.</p>
       <button onClick={compare}>Open Comparison Studio</button>
     </section>}
     {!!atlas?.edges.length && <>
@@ -149,6 +155,7 @@ export function EvidenceAtlas({compare, ask, initial}: {compare: () => void; ask
         </section>
         {center && <section className="panel atlas-detail">
           <h2>{typeNames[center.kind]}</h2><p>{center.label}</p>
+          {center.note && <p className="atlas-note">{center.note}</p>}
           {source && <div className="finding-actions">
             <a href={`#paper=${source.document_id}&page=${source.page_start}`}>Open source · p. {source.page_start}</a><SavePassage id={source.chunk_id} />
             {center.kind === "finding" && <a href={`#claim=${center.id}${workspace ? `&workspace=${workspace}` : ""}`}>Open claim</a>}
@@ -160,7 +167,8 @@ export function EvidenceAtlas({compare, ask, initial}: {compare: () => void; ask
           <h3>Relationship provenance</h3>
           <ul>{visible.map(({node, edge}) => <li key={`${node.id}-${edge.relation}`}>
             <button className="secondary" onClick={() => focus(node)}>{clampLabel(node.label)}</button>
-            <span>{edge.relation.replaceAll("_", " ")}</span>
+            <span>{relationName(edge.relation)}</span>
+            {edge.shared_labels && <small>{Object.values(edge.shared_labels).join(" · ")}</small>}
             <a href={`#paper=${edge.provenance.document_id}&page=${edge.provenance.page_start}`}>Passage {edge.provenance.chunk_id} · p. {edge.provenance.page_start}</a>
             {edge.related_provenance && <a href={`#paper=${edge.related_provenance.document_id}&page=${edge.related_provenance.page_start}`}>
               Passage {edge.related_provenance.chunk_id} · p. {edge.related_provenance.page_start}

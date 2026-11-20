@@ -19,7 +19,7 @@ def fixture_pdf(path: Path, title: str = "EvidenceRAG browser fixture", sample_s
         document.new_page().draw_rect(pymupdf.Rect(54, 54, 220, 60), color=(0.1, 0.2, 0.4), fill=(0.1, 0.2, 0.4))
         page = document.new_page()
         page.insert_text((54, 54), f"The held-out sample size was {sample_size} observations.")
-        page.insert_text((54, 72), "F1 score was 87% on OrchardBench.")
+        page.insert_text((54, 72), "StarlingNet F1 score was 87% on OrchardBench.")
         document.save(path)
 
 

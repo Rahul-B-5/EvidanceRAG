@@ -189,19 +189,23 @@
   the configured frontend still works. Live Ollama passed all six synthetic
   benchmark cases. Full gate: 114 PostgreSQL-enabled tests, 10 frontend
   tests, two browser tests and production build.
-- Migration `012_research_claims` indexes source-backed excerpts from stored
+- Claim Explorer pushed as `4c1a6bd`. Migration `012_research_claims` indexes source-backed excerpts from stored
   comparison runs and publishes new claims alongside each paper result. Claim
   Explorer searches by workspace, paper, topic, text and researcher status. It
   displays exact indexed quotations, links to Reader and Atlas, and keeps human
   assessments separate from source selection. Browser-tested comparison to
   assessment to Atlas to Reader. Full gate: 115 PostgreSQL tests, 10 frontend
   tests, three browser tests and the production build.
+- Atlas now builds from persisted claims and includes source-matched notebook
+  entries, indexed highlights and literal method names. Cross-paper shared
+  dataset-and-metric edges cite both passages. The browser test verified graph
+  filters, connection to Claim Explorer and both kinds of research artifact.
+  Full gate: 116 PostgreSQL tests, 10 frontend tests, three browser tests and build.
 
 ## Outstanding
 
-1. Expand Atlas to use persisted claims and incorporate saved passages,
-   Reader annotations, method entities and source-backed cross-paper edges.
-2. Persist import jobs and recover queued or abandoned work after restart.
+1. Persist import jobs and recover queued or abandoned work after restart.
+2. Improve graph navigation and evaluate representative research material.
 3. Extend the notebook with tags, collections and integrated annotations.
    Refine page attribution for chunks that span several pages.
 4. Evaluate disagreement, gap and disclosure detection on representative

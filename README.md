@@ -47,6 +47,9 @@ The application is served at `http://127.0.0.1:5173` and uses the local API at
   claims with their shared study labels. Use `PUT /claims/{id}/assessment`
   for revision-checked human assessments. Claim Explorer links to Reader,
   Evidence Atlas and the original excerpts.
+- `GET /evidence-atlas` combines persisted claims and exact indexed anchors
+  for notebook passages and Reader annotations. Shared dataset and metric
+  links point to both source excerpts.
 - `POST /settings/test-provider` — accepts `{"synthetic": true}` and checks
   JSON generation with a fixed prompt containing no library excerpts.
 - `GET /documents` — lists library metadata and chunk counts.

@@ -10,7 +10,7 @@ delivery status live in [PROGRESS.md](PROGRESS.md).
 | Investigation | Hybrid search, fixed multi-paper scopes, page citations, streamed progress and cancel-before-commit | Broader browser coverage and evaluation of contextual follow-ups |
 | Comparison | Matrix, source preview, evidence saving, durable partial results and condition checks | More experimental fields, confidence and support checks, representative corpus evaluation |
 | Claim Explorer | Persistent workspace-scoped excerpts, indexed search, revisioned human assessments, shared-label links, counterevidence, and Reader and Atlas navigation | More precise claim spans and a representative support evaluation |
-| Evidence Atlas | Persisted workspace graphs with paper, excerpt, topic, metric and dataset edges, plus two-source disagreement edges | Integrate notebook evidence, alternate layouts and larger-library testing |
+| Evidence Atlas | Persisted claim, paper, method, metric, dataset, notebook and Reader annotation nodes, plus two-source shared-label and disagreement edges | Alternate layouts and larger-library testing |
 | Disagreement | Scope candidates to matching reported setups and explicitly opposing statements, and persist separate human judgments | Evaluate false positives and expand coverage to other types of disagreement |
 | Reproduction | Assess 24 components across 11 categories, cite access limitations and export a Markdown dossier | Verify artifact access and test experiments against documented instructions |
 | Research directions | Topic-focused workspace sampling separates stated limitations and reported evaluations, with editable plans and dual-source Markdown export | Cross-theme corpus analysis and wider literature verification |

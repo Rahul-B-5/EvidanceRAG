@@ -682,7 +682,7 @@ def finding_counterevidence(
 
 def resolve_finding(finding_id: str, workspace_id: int | None) -> tuple[dict, list[dict]]:
     validate_workspace_scope(workspace_id, [])
-    atlas = atlas_for_workspace(workspace_id, finding_id)
+    atlas = atlas_for_workspace(workspace_id, finding_id, include_notebook=False)
     finding = next((node for node in atlas["nodes"]
                     if node["kind"] == "finding" and node["id"] == finding_id), None)
     if finding is None:

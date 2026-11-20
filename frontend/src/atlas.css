@@ -44,3 +44,4 @@
 .collection-manage fieldset label {display:block;padding:.22rem 0}
 @media(max-width:760px){.nav-group{display:flex}.nav-group > small {display:none}}
 @media(max-width:900px) {.atlas-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}.atlas-layout{grid-template-columns:minmax(0,1fr)}.atlas-index ul{max-height:11rem}}
+.atlas-note {white-space:pre-wrap;overflow-wrap:anywhere;padding:.7rem;border-left:2px solid var(--line);background:var(--bg)}

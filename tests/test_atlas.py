@@ -29,6 +29,43 @@ def test_edges_keep_citations_and_deduplicate_shared_metric_labels():
     assert {e["provenance"]["chunk_id"] for e in result["edges"]} == {12, 13}
     ids = {n["id"] for n in result["nodes"]}
     assert all(e["source"] in ids and e["target"] in ids for e in result["edges"])
+    shared = next(e for e in result["edges"] if e["relation"] == "shared_dataset_metric")
+    assert {shared["provenance"]["chunk_id"], shared["related_provenance"]["chunk_id"]} == {12,13}
+
+
+@pytest.mark.skipif(os.getenv("EVIDENCERAG_INTEGRATION") != "1", reason="Requires PostgreSQL")
+def test_atlas_notebook_and_annotations_require_live_scoped_anchors(monkeypatch):
+    with get_connection() as conn, conn.transaction(force_rollback=True):
+        monkeypatch.setattr("app.api.main.get_connection", lambda: nullcontext(conn))
+        monkeypatch.setattr("research.atlas.get_connection", lambda: nullcontext(conn))
+        workspace = conn.execute("INSERT INTO workspaces(name) VALUES ('Notebook graph') RETURNING id").fetchone()[0]
+        paper = conn.execute("""
+            INSERT INTO documents(title,filename,file_hash) VALUES ('Source','fixture.pdf',%s) RETURNING id
+        """, (uuid4().hex * 2,)).fetchone()[0]
+        conn.execute("INSERT INTO workspace_documents(workspace_id,document_id) VALUES (%s,%s)", (workspace,paper))
+        quote = "The calibration result was 87 percent."
+        chunk = conn.execute("""
+            INSERT INTO chunks(document_id,chunk_index,text,page_start,page_end,embedding_model,embedding_dimensions)
+            VALUES (%s,0,%s,2,2,'fixture',3) RETURNING id
+        """, (paper,quote)).fetchone()[0]
+        conn.execute("""
+            INSERT INTO saved_evidence(chunk_id,document_id,title,page_start,page_end,passage,note)
+            VALUES (%s,%s,'Source',2,2,%s,'Notebook note')
+        """, (chunk,paper,quote))
+        conn.execute("""
+            INSERT INTO reader_highlights(id,document_id,chunk_id,page,start_offset,end_offset,quote,note)
+            VALUES (%s,%s,%s,2,4,15,'calibration','Highlight note')
+        """, (uuid4(),paper,chunk))
+        client = TestClient(app)
+        url = "/evidence-atlas"
+        params = {"workspace_id":workspace}
+        atlas = client.get(url,params=params).json()
+        assert {n["note"] for n in atlas["nodes"] if n["kind"] in ("annotation","saved_evidence")} == {
+            "Notebook note","Highlight note",
+        }
+        assert {edge["provenance"]["chunk_id"] for edge in atlas["edges"]} == {chunk}
+        conn.execute("UPDATE chunks SET text='Changed indexed text.' WHERE id=%s", (chunk,))
+        assert client.get(url,params=params).json()["edges"] == []
 
 
 @pytest.mark.skipif(os.getenv("EVIDENCERAG_INTEGRATION") != "1", reason="Requires PostgreSQL")
@@ -51,10 +88,14 @@ def test_atlas_rebuilds_current_workspace_graph_from_persisted_results(monkeypat
             """, (doc,)).fetchone()[0]
             papers.append({"document_id": doc, "title": title, "findings": [finding(doc, chunk)]})
         ids = [p["document_id"] for p in papers]
+        run_id = uuid4()
         conn.execute("""
             INSERT INTO comparison_runs(id, workspace_id, document_ids, titles, papers, status, lease_until)
             VALUES (%s,%s,%s,%s,%s,'completed',NOW())
-        """, (uuid4(), workspace, ids, [p["title"] for p in papers], Jsonb(papers)))
+        """, (run_id, workspace, ids, [p["title"] for p in papers], Jsonb(papers)))
+        for paper in papers:
+            conn.execute("SELECT record_comparison_claims(%s,%s,%s,NOW())", (run_id, workspace, Jsonb(paper)))
+
         client = TestClient(app)
         initial = client.get("/evidence-atlas", params={"workspace_id": workspace}).json()
         assert initial == build_atlas(sorted(papers, key=lambda p: -p["document_id"]))
