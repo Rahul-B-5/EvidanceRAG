@@ -28,7 +28,7 @@ export type RuntimeSettings = {
   index: {model: string; dimensions: number; papers: number | null; passages: number | null; compatible_vectors: number | null};
   database_connected: boolean;
 };
-export type SavedPassage = {chunk_id: number; document_id: number; title: string; page_start: number; page_end: number; passage: string; note: string; source_exists: boolean};
+export type SavedPassage = {chunk_id: number; document_id: number; title: string; page_start: number; page_end: number; passage: string; note: string; tags: string[]; source_exists: boolean};
 export type Evidence = { evidence_id: string; chunk_id: number; document_id: number; title: string; page_start: number; page_end: number; text: string };
 export type Workspace = { id: number; name: string; description: string | null; document_count: number };
 export type Collection = {id: number; name: string; workspace_id: number | null; document_count: number};
@@ -149,6 +149,9 @@ export const api = {
   savePassage: (id: number) => request<{chunk_id: number}>(`/saved-evidence/${id}`, {method:"PUT"}),
   updateNote: (id: number, note: string) => request<{note: string}>(`/saved-evidence/${id}`, {
     method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({note}),
+  }),
+  updatePassageTags: (id: number, tags: string[]) => request<{tags: string[]}>(`/saved-evidence/${id}/tags`, {
+    method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({tags}),
   }),
   conversations: () => request<{conversations: Array<{id: number; title: string}>}>("/conversations"),
   conversation: (id: number) => request<Conversation>(`/conversations/${id}`),

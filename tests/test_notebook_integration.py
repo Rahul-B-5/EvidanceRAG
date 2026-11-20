@@ -30,10 +30,19 @@ def test_saved_evidence_keeps_note_and_authoritative_provenance(monkeypatch):
         assert client.get(f"/documents/{doc_id}/passages", params={"page": 3}).json()["passages"][0]["chunk_id"] == chunk_id
         assert client.put(f"/saved-evidence/{chunk_id}").status_code == 200
         assert client.patch(f"/saved-evidence/{chunk_id}", json={"note": "Check calibration sample."}).status_code == 200
+        tags_url = f"/saved-evidence/{chunk_id}/tags"
+        assert client.put(tags_url, json={"tags": [" Calibration ", "CALIBRATION", "check   sample"]}).json()["tags"] == [
+            "calibration", "check sample",
+        ]
+        assert client.put(tags_url, json={"tags": ["two,tags"]}).status_code == 422
+        assert client.put(tags_url, json={"tags": [""]}).status_code == 422
+        assert client.put(tags_url, json={"tags": ["x"] * 13}).status_code == 422
         assert client.put(f"/saved-evidence/{chunk_id}").status_code == 200
         conn.execute("DELETE FROM documents WHERE id = %s", (doc_id,))
         item = next(p for p in client.get("/saved-evidence").json()["items"] if p["chunk_id"] == chunk_id)
         assert item["note"] == "Check calibration sample."
+        assert item["tags"] == ["calibration", "check sample"]
         assert item["passage"] == "Synthetic calibration passage"
         assert item["page_start"] == 2
         assert item["source_exists"] is False
+        assert client.put(tags_url, json={"tags": []}).json()["tags"] == []

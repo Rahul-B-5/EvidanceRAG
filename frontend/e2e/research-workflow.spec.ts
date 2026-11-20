@@ -50,9 +50,21 @@ test("import, inspect, save, answer and export a real PDF", async ({page, reques
   await page.getByRole("textbox", {name:"Research note"}).fill("Verify the held-out sample counts.");
   await page.getByRole("button", {name:"Save note", exact:true}).click();
   await expect(page.getByText("Note saved.", {exact:true})).toBeVisible();
+  await page.getByRole("textbox", {name:"Tags"}).fill("Calibration, REVIEW");
+  await page.getByRole("button", {name:"Save tags",exact:true}).click();
+  await expect(page.getByText("Tags saved.", {exact:true})).toBeVisible();
+  await page.reload();
+  await page.getByRole("button", {name:"Saved evidence", exact:true}).click();
+  await page.getByRole("combobox", {name:"Filter by tag"}).selectOption("review");
+  await page.getByRole("searchbox", {name:"Search saved evidence"}).fill("Verify counts");
+  await expect(page.getByText("1 of 1 passages", {exact:true})).toBeVisible();
+  await page.getByRole("searchbox", {name:"Search saved evidence"}).fill("nonexistent term");
+  await expect(page.getByText("No passages match these filters.")).toBeVisible();
   const notebook = page.waitForEvent("download");
   await page.getByRole("button", {name:"Export Markdown"}).click();
-  expect(await readFile(await (await notebook).path(), "utf8")).toContain("Verify the held-out sample counts.");
+  const notes = await readFile(await (await notebook).path(), "utf8");
+  expect(notes).toContain("Verify the held-out sample counts.");
+  expect(notes).toContain("Tags: calibration, review");
 
   await page.getByRole("button", {name:"Assistant", exact:true}).click();
   await page.getByRole("combobox", {name:"Sources"}).selectOption("selected");

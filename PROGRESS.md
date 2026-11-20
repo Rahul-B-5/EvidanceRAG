@@ -206,20 +206,25 @@
   the job recorded success. A fresh worker replayed it and retained the same
   document and chunk. Browser verified queue history after reload. Full gate:
   118 PostgreSQL tests, 10 frontend tests, three browser tests and build.
-- New PDF imports keep chunks inside their physical PDF pages. PostgreSQL
+- Page attribution and legacy scope recovery pushed as `cf847a0`. New PDF imports keep chunks inside their physical PDF pages. PostgreSQL
   verified separate citations across a blank page. The Assistant preserves older
   transcripts and requires an explicit paper selection when their original scope
   is unavailable. Known legacy paper scopes and existing index anchors retain
   their saved identifiers. Chrome verified scope selection and a fresh citation
   alongside the archived transcript. Full gate: 122 PostgreSQL tests, 10
   frontend tests, three browser tests and the production build.
+- Migration `014_saved_evidence_tags` adds searchable notebook tags to
+  saved passages. Tags and notes are edited independently and retained with
+  their source snapshot. Chrome verified reload, filtering across tags and
+  notes, and Markdown export. Full gate: 122 PostgreSQL tests, 10 frontend
+  tests, three browser tests and the production build.
 
 ## Outstanding
 
-1. Extend the notebook with searchable tags, collections and integrated annotations.
-2. Evaluate citation support, disagreement, comparability, gap and disclosure
+1. Evaluate citation support, disagreement, comparability, gap and disclosure
    detection on representative research material.
-3. Refine major screens and inspect desktop and narrow layouts in the browser.
+2. Refine major screens and inspect desktop and narrow layouts in the browser.
+3. Integrate annotation browsing and paper collections into the notebook.
 4. Improve graph navigation and test larger corpora. Retain exact stored ranges
    for legacy passages with several pages.
 
