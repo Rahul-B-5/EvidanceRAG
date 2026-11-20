@@ -334,6 +334,11 @@ workspace isolation, abstention, and p50 and p95 latency. The database role
 needs permission to create a schema. The benchmark creates an isolated
 schema in a transaction and rolls it back.
 
+Hybrid retrieval tries exact keyword matching first. When a natural-language
+question has no exact lexical match, it can rank partial term matches within
+the same scope. Quoted phrases, explicit OR and exclusions retain their
+search semantics. The keyword column measures this fallback when enabled.
+
 ```bash
 .venv/bin/python -m evaluation.run
 .venv/bin/python -m evaluation.run --corpus reading-comprehension --json

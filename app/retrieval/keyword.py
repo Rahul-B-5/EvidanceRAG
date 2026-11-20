@@ -1,6 +1,10 @@
 
+import re
+
 from app.core.config import get_settings
 from app.db.connection import get_connection
+
+EXPLICIT_SEARCH = re.compile(r'"|(?:^|\s)-\w|\bOR\b', re.IGNORECASE)
 
 
 def search_keyword(
@@ -9,6 +13,8 @@ def search_keyword(
     document_id: int | None = None,
     workspace_id: int | None = None,
     document_ids: list[int] | None = None,
+    *,
+    allow_partial: bool = False,
 ) -> list[dict]:
     """
     Retrieve relevant chunks using PostgreSQL full-text search.
@@ -31,9 +37,6 @@ def search_keyword(
         raise ValueError("workspace_id must be positive.")
 
     sql = """
-        WITH search_query AS (
-            SELECT websearch_to_tsquery('english', %s) AS tsq
-        )
         SELECT
             c.id AS chunk_id,
             c.document_id,
@@ -75,7 +78,15 @@ def search_keyword(
     params.append(limit)
 
     with get_connection() as conn:
-        rows = conn.execute(sql, params).fetchall()
+        rows = conn.execute("""
+            WITH search_query AS (SELECT websearch_to_tsquery('english', %s) AS tsq)
+        """ + sql, params).fetchall()
+        if not rows and allow_partial and not EXPLICIT_SEARCH.search(query):
+            rows = conn.execute("""
+                WITH search_query AS (
+                    SELECT replace(plainto_tsquery('english', %s)::text, ' & ', ' | ')::tsquery AS tsq
+                )
+            """ + sql, params).fetchall()
 
     return [
         {

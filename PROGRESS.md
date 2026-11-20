@@ -259,13 +259,19 @@
   in the current comparison scope. Both claims remain inspectable from the
   result. PostgreSQL verified source pages, workspace isolation and exclusion
   after detachment. Chrome verified the related paper and both claim links.
-- The pinned NREL whole-PDF benchmark imported 52 pages and 104 passages in
+- Whole-report evaluation pushed as `735a2fe`. The pinned NREL benchmark imported 52 pages and 104 passages in
   isolation and downloaded byte-identical source bytes. Retrieval found the
   required pages and values in all three numeric cases. New imports index
   captioned, ruled table rows individually with column names and page anchors.
   Live Ollama answers remain a separate quality gap. Runs selected values
   from the wrong row, confused sections, and sometimes returned invalid
   response schemas. Existing indexed passages were preserved.
+- Hybrid search now falls back to partial natural-language keyword matches
+  when exact lexical search returns nothing. PostgreSQL tests checked workspace
+  isolation and explicit search syntax. On the small reading-comprehension
+  corpus, keyword recall@4 increased from 0.25 to 1.00 and hybrid recall@4
+  stayed at 1.00 in the fixture run. Full gate: 132 PostgreSQL tests, 10
+  frontend tests, three Chrome workflows and build.
 
 ## Outstanding
 

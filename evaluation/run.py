@@ -159,7 +159,8 @@ def evaluate(live_provider: bool = False, live_embeddings: bool = False, corpus:
                     for name, search in (("keyword", keyword.search_keyword), ("vector", vector.search_vector),
                                          ("hybrid", fusion.search_hybrid)):
                         started = perf_counter()
-                        rows = search(case["query"], top_k=TOP_K, workspace_id=ws)
+                        options = {"allow_partial": True} if name == "keyword" else {}
+                        rows = search(case["query"], top_k=TOP_K, workspace_id=ws, **options)
                         ranking = [identifiers[item["chunk_id"]] for item in rows]
                         stages[name] = {**retrieval_metrics(ranking, expected), "ranked": ranking,
                                         "scope_ok": all(item["document_id"] in allowed for item in rows),

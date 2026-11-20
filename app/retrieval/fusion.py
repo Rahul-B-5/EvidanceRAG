@@ -94,6 +94,7 @@ def search_hybrid(
         top_k=candidate_k,
         document_id=document_id,
         workspace_id=workspace_id,
+        allow_partial=True,
         **({"document_ids": document_ids} if document_ids is not None else {}),
     )
 
