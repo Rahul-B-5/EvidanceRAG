@@ -12,6 +12,7 @@ import { ResearchCoverage } from "./ResearchCoverage";
 import { ResearchDirectionStudio } from "./ResearchDirections";
 import { EvidencePackets } from "./EvidencePackets";
 import { LibraryCollections } from "./LibraryCollections";
+import { SettingsView } from "./SettingsView";
 import "./styles.css";
 
 const views = [
@@ -28,6 +29,7 @@ const views = [
   ["saved", "Saved evidence", "◇"],
   ["packets", "Evidence packets", "▱"],
   ["workspaces", "Workspaces", "⊞"],
+  ["settings", "Settings", "⚙"],
 ] as const;
 type View = typeof views[number][0];
 const keptViews: View[] = ["library", "compare", "reproduction", "coverage", "directions", "packets"];
@@ -35,6 +37,7 @@ const navGroups: Array<[string, View[]]> = [
   ["Library", ["dashboard", "library", "reader", "workspaces"]],
   ["Investigate", ["assistant", "research", "compare", "atlas", "reproduction", "coverage", "directions"]],
   ["Write", ["saved", "packets"]],
+  ["Preferences", ["settings"]],
 ];
 type ImportJob = {id: string; name: string; file?: File; state: "queued" | "indexing" | "imported" | "duplicate" | "failed";
   error?: string; documentId?: number};
@@ -183,6 +186,7 @@ function App() {
   else if (view === "atlas") content = <EvidenceAtlas compare={() => navigate("compare")} ask={askFinding} />;
   else if (keptViews.includes(view)) content = null;
   else if (view === "saved") content = <SavedEvidence />;
+  else if (view === "settings") content = <SettingsView />;
   else if (view === "research" || view === "workspaces") content = <WorkspaceArea key={view} documents={documents} manage={view === "workspaces"} />;
   else content = <section className="panel overview">
     <div className="overview-summary"><div><h2>Research library</h2><p>{documents.length} papers · {documents.reduce((n, d) => n + d.chunk_count, 0)} passages · {workspaces.length} workspaces</p></div>

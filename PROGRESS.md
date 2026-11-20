@@ -171,17 +171,23 @@
   unreferenced copy. Database error responses omit driver details.
   Full gate: 107 PostgreSQL-enabled tests, 10 frontend tests, two browser
   regressions and production build.
-- Migration `011_embedding_rebuilds` adds durable rebuild status, cancellation
+- Embedding rebuilds pushed as `09d6455`. Migration `011_embedding_rebuilds` adds durable rebuild status, cancellation
   and stale-worker detection. Browser tested Reader controls and retention
   of page citations. A real local model rebuilt a synthetic vector while
   keeping passage ID and pages. PostgreSQL tests verified atomic replacement
   and retention after failure, cancellation or interruption. Full gate:
   109 PostgreSQL-enabled tests, 10 frontend tests, two browser tests and build.
+- Settings reports the configured model, local or remote transport,
+  PostgreSQL availability and active index coverage. Browser tested the
+  diagnostics and provider check with isolated fixtures. Live loopback
+  Ollama passed the fixed JSON check in 2.7 seconds without library content.
+  Full gate: 111 PostgreSQL-enabled tests, 10 frontend tests, two browser
+  tests and production build.
 
 ## Outstanding
 
-1. Add clear model and index diagnostics in Settings, with a synthetic
-   provider check that sends no library content.
+1. Harden the local API against browser requests from untrusted origins
+   while preserving the configured frontend, CLI clients and source viewing.
 2. Expand graph exploration across workspaces and notebook sources.
 3. Extend the notebook with tags, collections and integrated annotations.
    Refine page attribution for chunks that span several pages.

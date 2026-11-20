@@ -36,6 +36,10 @@ The application is served at `http://127.0.0.1:5173` and uses the local API at
 ## Core endpoints
 
 - `GET /health` — checks database reachability.
+- `GET /settings` — reports the active generation configuration, PostgreSQL
+  reachability, and embedding coverage without exposing credentials.
+- `POST /settings/test-provider` — accepts `{"synthetic": true}` and checks
+  JSON generation with a fixed prompt containing no library excerpts.
 - `GET /documents` — lists library metadata and chunk counts.
 - `GET /documents/{document_id}` — returns document metadata and processing status.
 - `PATCH /documents/{document_id}/metadata` — updates title, authors, publication
@@ -221,6 +225,10 @@ GENERATION_MODEL=qwen3:8b
 GENERATION_TIMEOUT_SECONDS=90
 OLLAMA_REASONING_EFFORT=none
 ```
+
+Open **Settings** to see the active model and whether generation is local or
+remote. Use **Test provider** to exercise the configured model. Update
+server-side environment variables and restart to change the configuration.
 
 OpenAI uses `GENERATION_PROVIDER=openai`, `GENERATION_MODEL` and
 `GENERATION_API_KEY`. For a compatible server, select

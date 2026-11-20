@@ -19,6 +19,11 @@ export type EmbeddingRebuild = {
 export type EmbeddingStatus = {
   model: string; dimensions: number; total_chunks: number; active_chunks: number; job: EmbeddingRebuild | null;
 };
+export type RuntimeSettings = {
+  generation: {provider: string | null; model: string | null; transport: "local" | "remote" | null; configured: boolean; timeout_seconds: number};
+  index: {model: string; dimensions: number; papers: number | null; passages: number | null; compatible_vectors: number | null};
+  database_connected: boolean;
+};
 export type SavedPassage = {chunk_id: number; document_id: number; title: string; page_start: number; page_end: number; passage: string; note: string; source_exists: boolean};
 export type Evidence = { evidence_id: string; chunk_id: number; document_id: number; title: string; page_start: number; page_end: number; text: string };
 export type Workspace = { id: number; name: string; description: string | null; document_count: number };
@@ -114,6 +119,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   health: () => request<{ status: string }>("/health"),
+  runtimeSettings: (signal?: AbortSignal) => request<RuntimeSettings>("/settings", {signal}),
+  testProvider: (signal?: AbortSignal) => request<{elapsed_ms: number}>("/settings/test-provider", {
+    method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({synthetic:true}), signal,
+  }),
   savedEvidence: () => request<{items: SavedPassage[]}>("/saved-evidence"),
   savePassage: (id: number) => request<{chunk_id: number}>(`/saved-evidence/${id}`, {method:"PUT"}),
   updateNote: (id: number, note: string) => request<{note: string}>(`/saved-evidence/${id}`, {

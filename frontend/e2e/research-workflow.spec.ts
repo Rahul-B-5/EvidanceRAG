@@ -75,6 +75,11 @@ test("import, inspect, save, answer and export a real PDF", async ({page, reques
   const markup = await readFile(await (await exportEvent).path(), "utf8");
   expect(markup).toContain('<a href="#E1">[E1]</a>');
   expect(markup).toContain("Verify the held-out sample counts.");
+  await page.getByRole("button", {name:"Settings", exact:true}).click();
+  await expect(page.getByText("PostgreSQL connected", {exact:true})).toBeVisible();
+  await expect(page.getByText("1 of 1 passages", {exact:true})).toBeVisible();
+  await page.getByRole("button", {name:"Test provider", exact:true}).click();
+  await expect(page.getByRole("status").filter({hasText:/Provider check passed/})).toBeVisible();
 });
 
 test("keyboard navigation and responsive layout work on a narrow viewport", async ({page}) => {
