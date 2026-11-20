@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, type DirectionSource, type InvestigationPlan, type ResearchDirections, type Workspace } from "./api";
 import type { FindingQuestion } from "./ComparisonStudio";
 import { SavePassage } from "./SavedEvidence";
+import { sourceLink } from "./sourceLink";
 
 const fields: Array<[keyof InvestigationPlan, string]> = [
   ["question", "Research question"],
@@ -34,12 +35,12 @@ function exportPlan(direction: ResearchDirections["directions"][number], plan: I
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function SourceCard({source}: {source: DirectionSource}) {
+function SourceCard({source, workspace}: {source: DirectionSource; workspace: string}) {
   const pages = source.page_start === source.page_end ? `p. ${source.page_start}` : `pp. ${source.page_start}–${source.page_end}`;
   return <article className="finding-card">
     <strong>{source.title}</strong><blockquote>{source.excerpt}</blockquote>
     <div className="finding-actions">
-      <a href={`#paper=${source.document_id}&page=${source.page_start}`}>Open source · {pages}</a>
+      <a href={sourceLink(source.document_id, source.page_start, source.chunk_id, workspace)}>Open source · {pages}</a>
       <SavePassage id={source.chunk_id} />
     </div>
   </article>;
@@ -92,16 +93,16 @@ export function ResearchDirectionStudio({workspaces, ask}: {
     {error && <p role="alert" className="notice error">{error}</p>}
     {!data && !error && <p role="status">Reviewing indexed limitations…</p>}
     {data && !selected && <section className="panel empty">No qualifying limitations matched in this scope’s reviewed passages.</section>}
-    {selected && plan && <div className="research-controls">
+    {selected && plan && <div className="research-controls direction-layout">
       <section className="panel">
         <h2>{selected.title}</h2>
-        <p>{selected.reviewed_paper_count} papers sampled for this theme. Verify the direction against the wider literature.</p>
+        <p>{selected.reviewed_paper_count} {selected.reviewed_paper_count === 1 ? "paper" : "papers"} sampled for this theme. Verify the direction against the wider literature.</p>
         <div className="claim-group"><h3>Limitations and follow-ups · {selected.paper_count}</h3>
-          {selected.evidence.map(source => <SourceCard source={source} key={source.chunk_id} />)}
+          {selected.evidence.map(source => <SourceCard source={source} workspace={workspace} key={source.chunk_id} />)}
         </div>
         <div className="claim-group"><h3>Reported coverage · {selected.coverage_paper_count}</h3>
           <p className="muted">Check whether these studies address the same methods and conditions as the limitation.</p>
-          {selected.coverage.length ? selected.coverage.map(source => <SourceCard source={source} key={source.chunk_id} />)
+          {selected.coverage.length ? selected.coverage.map(source => <SourceCard source={source} workspace={workspace} key={source.chunk_id} />)
             : <p>No explicit coverage was located in the sampled passages.</p>}
         </div>
       </section>
@@ -126,7 +127,7 @@ export function ResearchDirectionStudio({workspaces, ask}: {
       <h2>Other themes with reported coverage</h2>
       {data.coverage_only.map(theme => <details className="claim-group" key={theme.id}>
         <summary>{theme.title} · {theme.paper_count} {theme.paper_count === 1 ? "paper" : "papers"}</summary>
-        {theme.evidence.map(source => <SourceCard source={source} key={source.chunk_id} />)}
+        {theme.evidence.map(source => <SourceCard source={source} workspace={workspace} key={source.chunk_id} />)}
       </details>)}
     </section>}
   </div>;

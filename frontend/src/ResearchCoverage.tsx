@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api, type CoverageMap, type Workspace } from "./api";
 import type { FindingQuestion } from "./ComparisonStudio";
 import { SavePassage } from "./SavedEvidence";
+import { sourceLink } from "./sourceLink";
 
 const statuses = {
   multiple_papers: "Matches across papers",
@@ -62,7 +63,7 @@ export function ResearchCoverage({workspaces, ask}: {workspaces: Workspace[]; as
         })}>Ask Assistant about this subquestion</button>
         {facet.passages.map(p => <article className="finding-card" key={p.chunk_id}>
           <strong>{p.title}</strong><blockquote>{p.excerpt}</blockquote>
-          <div className="finding-actions"><a href={`#paper=${p.document_id}&page=${p.page_start}`}>Open source · p. {p.page_start}</a><SavePassage id={p.chunk_id} /></div>
+          <div className="finding-actions"><a href={sourceLink(p.document_id, p.page_start, p.chunk_id, workspace)}>Open source · p. {p.page_start}</a><SavePassage id={p.chunk_id} /></div>
         </article>)}
       </details>)}
     </section>}

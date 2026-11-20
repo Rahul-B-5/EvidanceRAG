@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api, type Document, type Provenance, type ReproductionDossier, type Workspace } from "./api";
 import { SavePassage } from "./SavedEvidence";
 import { categoryLabels, disclosureLabels, evidenceLabels, reproductionMarkdown } from "./reproductionDossier";
+import { sourceLink } from "./sourceLink";
 
 function exportDossier(dossier: ReproductionDossier, notes: string) {
   const url = URL.createObjectURL(new Blob([reproductionMarkdown(dossier, notes)], {type:"text/markdown;charset=utf-8"}));
@@ -12,7 +13,7 @@ function exportDossier(dossier: ReproductionDossier, notes: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function DisclosureQuote({excerpt, source, match}: {excerpt: string; source: Provenance; match?: string}) {
+function DisclosureQuote({excerpt, source, match, workspace}: {excerpt: string; source: Provenance; match?: string; workspace: string}) {
   const pages = source.page_start === source.page_end ? `p. ${source.page_start}` : `pp. ${source.page_start}–${source.page_end}`;
   const start = match ? excerpt.indexOf(match) : -1;
   return <div className="finding-card">
@@ -20,7 +21,7 @@ function DisclosureQuote({excerpt, source, match}: {excerpt: string; source: Pro
       ? <>{excerpt.slice(0, start)}<mark>{match}</mark>{excerpt.slice(start + match.length)}</>
       : excerpt}</blockquote>
     <div className="finding-actions">
-      <a href={`#paper=${source.document_id}&page=${source.page_start}`}>Open source · {pages}</a>
+      <a href={sourceLink(source.document_id, source.page_start, source.chunk_id, workspace)}>Open source · {pages}</a>
       <SavePassage id={source.chunk_id} />
     </div>
   </div>;
@@ -76,7 +77,7 @@ export function ReproductionStudio({documents, workspaces}: {documents: Document
         }}>
           <option value="">Entire library</option>{workspaces.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
         </select></label>
-        <label>Paper<select value={paper} disabled={busy || (!!workspace && members === null)} onChange={e => {
+        <label>Paper<select aria-label="Paper to assess" value={paper} disabled={busy || (!!workspace && members === null)} onChange={e => {
           setPaper(e.target.value);setResult(null);setError("");setNotes("");
         }}>
           <option value="">Select a paper</option>{scoped.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}
@@ -103,12 +104,12 @@ export function ReproductionStudio({documents, workspaces}: {documents: Document
       {visibleItems.map(item => <details key={item.label} className="check-row dossier-item">
           <summary><strong>{item.label}</strong> <span>{categoryLabels[item.status]}</span></summary>
           {item.excerpt && item.source && !item.disclosures.some(check => check.evidence.length) &&
-            <DisclosureQuote excerpt={item.excerpt} source={item.source} />}
+            <DisclosureQuote excerpt={item.excerpt} source={item.source} workspace={workspace} />}
           <ul className="dossier-checks">{item.disclosures.map(check => <li key={check.label}>
             <div className="comparison-heading"><strong>{check.label}</strong><span>{disclosureLabels[check.status]}</span></div>
             {check.evidence.map(hit => <div key={hit.kind}>
               {check.status === "mixed" && <small>{evidenceLabels[hit.kind]}</small>}
-              <DisclosureQuote excerpt={hit.excerpt} source={hit.source} match={hit.match} />
+              <DisclosureQuote excerpt={hit.excerpt} source={hit.source} match={hit.match} workspace={workspace} />
             </div>)}
           </li>)}</ul>
           <p>{item.verify}</p>

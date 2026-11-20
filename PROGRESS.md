@@ -306,7 +306,9 @@ launcher, wider browser review and release validation to the previous scope.
 1. Expand numerical grounding beyond explicit exclusions in named tables.
    Tighten the association between the requested metric and cited prose values,
    and verify stability across repeated runs and additional scientific PDFs.
-2. Test larger corpora and review legacy passages with several pages.
+2. Test larger imported corpora, concurrent load, and legacy passages with
+   several pages. Local retrieval timing is available for up to 30,000
+   synthetic passages in the latest benchmark run.
 3. Verify authenticated cloud providers against real accounts when credentials
    are available. Expand end-to-end testing for extraction profile selection.
 
@@ -372,6 +374,37 @@ launcher, wider browser review and release validation to the previous scope.
 - Passed 148 PostgreSQL tests. The new regressions cover distractor columns,
   wrong units, raw table text citations, ambiguous matches and ambiguous
   abbreviations.
+
+## Local scale check
+
+- Ran 20 warm samples per operation on the local PostgreSQL 17.11 server.
+  At 250 papers and 15,000 passages, the whole-library hybrid p95 was 51.6 ms.
+  At 500 papers and 30,000 passages, it was 104.2 ms. At 500 papers, the
+  library listing p95 was 13.5 ms, keyword 52.7 ms, and vector 34.2 ms.
+  A ten-paper workspace returned the correct scope at a p95 of 12.7 ms.
+- These measurements use synthetic 384-dimensional vectors and repeated
+  research text. They include connection setup. Model latency, PDF parsing,
+  frontend rendering and concurrent load still need separate measurements.
+
+## Research screen review
+
+- Added desktop light, desktop dark and narrow screenshots for Overview,
+  Reproducibility, Research directions and Evidence packets. The view review
+  led to a compact mobile header, full-width narrow research selectors and
+  top-aligned research results and editors.
+- Reproducibility, Research directions, Question coverage and Evidence
+  packets now link readers to the exact indexed passage, retaining the
+  workspace when the result is scoped. Browser fixtures verify passage
+  targets in the dossier, directions and packet, as well as real Markdown
+  and HTML downloads.
+- In the optional live browser test, Settings discovered and saved both
+  Gemma and Qwen against the local Ollama server. Both answered from an
+  isolated synthetic PDF in the same running application and linked to
+  the exact passage on page 2. Confirmed by read-only counts that the
+  existing database on port 5433 still has 3 papers, 75 passages and 19
+  applied migrations.
+- Release gate passed 148 PostgreSQL tests, 10 frontend tests, six Chrome
+  workflows including live Ollama, and the production build.
 
 ## Continuation
 

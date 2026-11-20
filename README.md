@@ -412,6 +412,23 @@ npm --prefix frontend exec -- playwright install chromium
 ```
 
 Add `--screenshots /tmp/evidencerag-browser-audit` to capture Library, Reader,
-Assistant, Comparison Studio, Claim Explorer and Evidence Atlas in light
-desktop, dark desktop and narrow layouts. The images use only synthetic
-browser fixtures.
+Overview, Assistant, Comparison Studio, Claim Explorer, Evidence Atlas,
+Reproducibility, Research directions, Evidence packets and AI Provider
+Settings in light desktop, dark desktop and narrow layouts. The images use
+only synthetic browser fixtures. To test real Ollama configuration and
+Assistant citations through the browser, supply two installed model names.
+
+```bash
+EVIDENCERAG_BROWSER_OLLAMA_MODELS=gemma4:e4b,qwen3:8b \
+  .venv/bin/python -m evaluation.browser
+```
+
+The library scale benchmark creates and removes a disposable schema. It
+measures metadata listing and keyword, exact vector and hybrid retrieval
+with synthetic 384-dimensional vectors and an optional ten-paper scope.
+It includes local connection overhead and excludes PDF import, query
+embedding, generation and rendering.
+
+```bash
+.venv/bin/python -m evaluation.library_scale --papers 500 --repetitions 20
+```

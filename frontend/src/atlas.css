@@ -46,3 +46,4 @@
 @media(max-width:900px) {.atlas-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}.atlas-layout{grid-template-columns:minmax(0,1fr)}.atlas-index ul{max-height:11rem}}
 .atlas-note {white-space:pre-wrap;overflow-wrap:anywhere;padding:.7rem;border-left:2px solid var(--line);background:var(--bg)}
 @media(max-width:540px) {.atlas-index ul{max-height:8rem}}
+@media(max-width:540px) {.atlas-toolbar.dossier-controls{grid-template-columns:minmax(0,1fr)}}

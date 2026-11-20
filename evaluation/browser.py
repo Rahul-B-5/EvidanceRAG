@@ -21,6 +21,8 @@ def fixture_pdf(path: Path, title: str = "EvidenceRAG browser fixture", sample_s
         page = document.new_page()
         page.insert_text((54, 54), f"The held-out sample size was {sample_size} observations.")
         page.insert_text((54, 72), "StarlingNet F1 score was 87% on OrchardBench.")
+        page.insert_text((54, 90), "The random seed was 42. We used a single A100 GPU.")
+        page.insert_text((54, 108), "A limitation was that we only evaluated one site and lacked external validation.")
         document.set_toc([[1, "Calibration results", 2]])
         document.save(path)
 
@@ -51,7 +53,7 @@ def available_ports() -> tuple[int, int]:
         return api.getsockname()[1], web.getsockname()[1]
 
 
-def run_browser_tests(screenshots: Path | None = None) -> int:
+def run_browser_tests(screenshots: Path | None = None, grep: str | None = None) -> int:
     with TemporaryDirectory(prefix="evidencerag-browser-") as workdir, isolated_database() as (schema, database_url):
         root = Path(workdir)
         fixture_pdf(root / "browser-fixture.pdf")
@@ -82,10 +84,15 @@ def run_browser_tests(screenshots: Path | None = None) -> int:
         if screenshots is not None:
             screenshots.mkdir(parents=True, exist_ok=True)
             env["EVIDENCERAG_E2E_SCREENSHOTS"] = str(screenshots.resolve())
-        return subprocess.run(["npm", "run", "test:e2e"], cwd=ROOT / "frontend", env=env, check=False).returncode
+        command = ["npm", "run", "test:e2e"]
+        if grep:
+            command.extend(["--", "--grep", grep])
+        return subprocess.run(command, cwd=ROOT / "frontend", env=env, check=False).returncode
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--screenshots", type=Path, help="Save UI screenshots from the isolated synthetic workflows.")
-    raise SystemExit(run_browser_tests(parser.parse_args().screenshots))
+    parser.add_argument("--grep", help="Run only browser tests matching this Playwright expression.")
+    args = parser.parse_args()
+    raise SystemExit(run_browser_tests(args.screenshots, args.grep))

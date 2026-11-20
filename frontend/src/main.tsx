@@ -279,7 +279,11 @@ function App() {
   else if (view === "settings") content = <SettingsView />;
   else if (view === "research" || view === "workspaces") content = <WorkspaceArea key={view} documents={documents} manage={view === "workspaces"} />;
   else content = <section className="panel overview">
-    <div className="overview-summary"><div><h2>Research library</h2><p>{documents.length} papers · {documents.reduce((n, d) => n + d.chunk_count, 0)} passages · {workspaces.length} workspaces</p></div>
+    <div className="overview-summary"><div><h2>Research library</h2><p>{[
+      [documents.length, "paper"],
+      [documents.reduce((n, d) => n + d.chunk_count, 0), "passage"],
+      [workspaces.length, "workspace"],
+    ].map(([count, noun]) => `${count} ${noun}${count === 1 ? "" : "s"}`).join(" · ")}</p></div>
       <button onClick={() => navigate("library")}>Open library</button></div>
     <h3>Recent papers</h3>
     {loading ? <p role="status">Loading papers…</p> : documents.length ? <PaperRows documents={documents.slice(0, 6)} openPaper={openPaper} /> : <p>Import a PDF from the library to start.</p>}

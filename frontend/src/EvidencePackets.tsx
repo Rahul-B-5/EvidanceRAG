@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api, type EvidencePacket, type PacketSummary, type PacketTemplate, type SavedPassage, type Workspace } from "./api";
 import { downloadPacket, packetCitationStatus, type PacketFormat } from "./packetExport";
+import { sourceLink } from "./sourceLink";
 
 const formats: Array<[PacketFormat, string]> = [["md","Markdown"],["html","HTML"],["json","JSON"],["bib","BibTeX"]];
 
@@ -59,10 +60,10 @@ function PacketEditor({packet, templates, update}: {
     });
   }
 
-  return <div className="research-controls">
+  return <div className="research-controls packet-layout">
     <section className="panel plan-editor">
       <h2>Research briefing</h2>
-      <form onSubmit={e => {e.preventDefault();void save();}}>
+      <form className="packet-form" onSubmit={e => {e.preventDefault();void save();}}>
         <label>Packet title<input value={title} disabled={busy} maxLength={160} onChange={e => setTitle(e.target.value)} /></label>
         <label>Briefing template<select value={template} disabled={busy} onChange={e => setTemplate(e.target.value)}>
           {templates.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
@@ -97,7 +98,7 @@ function PacketEditor({packet, templates, update}: {
         <article className="finding-card"><blockquote>{item.passage}</blockquote>
           {item.note && <p>{item.note}</p>}
           <div className="finding-actions">
-            <a href={`#paper=${item.document_id}&page=${item.page_start}`}>Open source</a>
+            <a href={sourceLink(item.document_id, item.page_start, item.chunk_id, packet.workspace_id ?? undefined)}>Open source</a>
             <button className="secondary" disabled={busy || narrative.length + ` [E${index + 1}]`.length > 30000}
               onClick={() => insertCitation(index)}>Insert [E{index + 1}]</button>
           </div>
@@ -163,7 +164,7 @@ export function EvidencePackets({workspaces}: {workspaces: Workspace[]}) {
         <option value="">Library packets</option>{workspaces.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
       </select></label>
       <label>Saved packet <select value={packet?.id ?? ""} disabled={busy} onChange={e => {if (!e.target.value) setPacket(null); else void open(e.target.value);}}>
-        <option value="">New evidence packet</option>{packets.map(p => <option key={p.id} value={p.id}>{p.title} · {p.item_count} passages</option>)}
+        <option value="">New evidence packet</option>{packets.map(p => <option key={p.id} value={p.id}>{p.title} · {p.item_count} {p.item_count === 1 ? "passage" : "passages"}</option>)}
       </select></label>
       <div><button className="secondary" disabled={busy} onClick={() => setRefresh(n => n + 1)}>Refresh saved passages</button></div>
     </div>

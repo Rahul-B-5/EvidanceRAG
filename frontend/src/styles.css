@@ -135,7 +135,7 @@ kbd {color: var(--muted); font-size: .76rem}
 .skip-link {position: absolute; left: -10000px}
 .skip-link:focus {left: .5rem; top: .5rem; z-index: 10; background: var(--surface); padding: .5rem}
 @media (max-width: 760px) {
-  .app {grid-template-columns: minmax(0, 1fr)}
+  .app {grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr}
   .app-sidebar {height: auto; z-index: 3; border-right: 0; border-bottom: 1px solid var(--line); padding: .65rem 1rem; gap: .4rem}
   .app-sidebar-top {justify-content: space-between}
   .app-sidebar nav {display: none}

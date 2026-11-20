@@ -34,12 +34,16 @@ async function capture(page: Page, name: string) {
     if (folder) await page.locator(".indexed-table-row").first().screenshot({path:join(folder, "reader-table-cell-narrow.png"), animations:"disabled"});
     await page.evaluate(() => window.scrollTo(0, 0));
   }
+  if (name === "overview") {
+    expect(await page.locator(".app-sidebar").evaluate(sidebar => sidebar.getBoundingClientRect().height)).toBeLessThan(125);
+  }
   if (folder) await page.screenshot({path:join(folder, `${name}-narrow.png`), animations:"disabled"});
   await page.setViewportSize(original);
   await page.evaluate(top => window.scrollTo(0, top), scroll);
 }
 
 test("import, inspect, save, answer and export a real PDF", async ({page, request}) => {
+  page.setDefaultTimeout(10_000);
   const fixture = join(process.env.EVIDENCERAG_E2E_TEMP!, "browser-fixture.pdf");
   await page.goto("/");
   await page.getByRole("button", {name:"Library", exact:true}).click();
@@ -157,6 +161,41 @@ test("import, inspect, save, answer and export a real PDF", async ({page, reques
   const markup = await readFile(await (await exportEvent).path(), "utf8");
   expect(markup).toContain('<a href="#E1">[E1]</a>');
   expect(markup).toContain("Verify the held-out sample counts.");
+  await capture(page, "evidence-packets");
+  await page.getByText(/^\[E1\] EvidenceRAG browser fixture · p\. 2$/).click();
+  await expect(page.getByRole("link", {name:"Open source",exact:true})).toHaveAttribute("href", /page=2&chunk=\d+/);
+
+  await page.getByRole("button", {name:"Reproducibility", exact:true}).click();
+  await expect(page.getByRole("heading", {level:1,name:"Reproducibility"})).toBeVisible();
+  await page.getByRole("combobox", {name:"Paper to assess"}).selectOption({label:title});
+  await page.getByRole("button", {name:"Assess reproducibility"}).click();
+  await expect(page.getByRole("heading", {name:title,exact:true})).toBeVisible();
+  await page.getByText("Random seeds", {exact:true}).click();
+  await expect(page.getByRole("link", {name:"Open source · p. 2"}).first()).toHaveAttribute("href", /page=2&chunk=\d+/);
+  await page.getByLabel("Notes for export").fill("Verify the training run with seed 42.");
+  const dossierEvent = page.waitForEvent("download");
+  await page.getByRole("button", {name:"Export Reproduction Dossier"}).click();
+  const dossier = await readFile(await (await dossierEvent).path(), "utf8");
+  expect(dossier).toContain("random seed was 42");
+  expect(dossier).toContain("Verify the training run with seed 42.");
+  await capture(page, "reproducibility");
+
+  await page.getByRole("button", {name:"Research directions", exact:true}).click();
+  await expect(page.getByRole("heading", {name:"Generalization and external validation"})).toBeVisible();
+  const panels = await page.locator(".direction-layout > section").evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().top));
+  expect(panels[0]).toBe(panels[1]);
+  await expect(page.getByRole("link", {name:"Open source · p. 2"}).first()).toHaveAttribute("href", /page=2&chunk=\d+/);
+  await page.getByRole("textbox", {name:"Research question",exact:true}).fill("Does StarlingNet generalize to new sites?");
+  const planEvent = page.waitForEvent("download");
+  await page.getByRole("button", {name:"Export investigation plan"}).click();
+  const plan = await readFile(await (await planEvent).path(), "utf8");
+  expect(plan).toContain("Does StarlingNet generalize to new sites?");
+  expect(plan).toContain("lacked external validation");
+  await capture(page, "research-directions");
+
+  await page.getByRole("button", {name:"Overview", exact:true}).click();
+  await expect(page.getByRole("heading", {level:1,name:"Overview"})).toBeVisible();
+  await capture(page, "overview");
   await page.getByRole("button", {name:"Settings", exact:true}).click();
   await expect(page.getByText("PostgreSQL connected", {exact:true})).toBeVisible();
   await expect(page.getByText("1 of 1 passages", {exact:true})).toBeVisible();
@@ -326,4 +365,42 @@ test("Reader preserves table cells and separates neighboring measurements", asyn
   await precision.getByText("Indexed text", {exact:true}).click();
   await expect(precision.getByText(/Reconstructed table row/)).toBeVisible();
   await capture(page, "reader-table");
+});
+
+test("configured local Ollama models answer with PDF citations", async ({page}) => {
+  const models = (process.env.EVIDENCERAG_BROWSER_OLLAMA_MODELS ?? "").split(",").map(model => model.trim()).filter(Boolean);
+  test.skip(models.length !== 2, "Provide two installed Ollama models to run the live browser check.");
+  test.setTimeout(180_000);
+  const fixture = join(process.env.EVIDENCERAG_E2E_TEMP!, "browser-fixture.pdf");
+  await page.goto("/");
+  await page.getByRole("button", {name:"Library", exact:true}).click();
+  await page.locator("input[type=file]").setInputFiles(fixture);
+  await expect(page.getByRole("button", {name:title,exact:true})).toBeVisible();
+
+  for (const model of models) {
+    await test.step(model, async () => {
+      await page.getByRole("button", {name:"Settings",exact:true}).click();
+      const settings = page.getByRole("region", {name:"AI Providers"});
+      await settings.getByText("Advanced connection").click();
+      await settings.getByRole("textbox", {name:"Ollama endpoint"}).fill("http://127.0.0.1:11434");
+      await expect(settings.getByText(/Ollama connected/)).toBeVisible();
+      const field = settings.getByRole("combobox", {name:"Model identifier"});
+      await field.fill(model);
+      await settings.getByRole("button", {name:"Test connection"}).click();
+      await expect(settings.getByText("Connection passed.")).toBeVisible({timeout:60_000});
+      await settings.getByRole("button", {name:"Save provider"}).click();
+      await expect(settings.getByText(`Active model · ${model}`)).toBeVisible();
+      await page.getByRole("button", {name:"Assistant",exact:true}).click();
+      await page.getByRole("combobox", {name:"Sources"}).selectOption("selected");
+      await page.getByRole("checkbox", {name:title}).check();
+      const question = page.getByRole("textbox", {name:"Question"});
+      await question.fill("How many observations were in the held-out sample? Include the source citation.");
+      await page.getByRole("button", {name:"Send question"}).click();
+      await expect(question).toBeEnabled({timeout:90_000});
+      expect(await page.locator("main [role=alert]").allTextContents()).toEqual([]);
+      const reply = page.locator(".assistant-turn.assistant").last();
+      await expect(reply).toContainText(/\b37\b/);
+      await expect(reply.locator(".citation-row a").first()).toHaveAttribute("href", /page=2&chunk=\d+/);
+    });
+  }
 });
