@@ -35,4 +35,12 @@
 .import-queue ul {list-style:none;padding:0;margin:.5rem 0}
 .import-queue li {display:flex;flex-wrap:wrap;align-items:center;gap:.65rem;padding:.35rem 0;overflow-wrap:anywhere}
 .import-queue li span[role=status] {color:var(--muted);font-size:.9rem}
+.nav-group {display:grid;gap:.15rem}
+.nav-group > small {padding:.35rem .7rem .15rem;font-size:.76rem}
+.library-collections {display:grid;gap:.55rem;margin-bottom:1rem;padding-bottom:.85rem;border-bottom:1px solid var(--line)}
+.library-collections > button {justify-self:start}
+.collection-manage {display:grid;gap:.6rem}
+.collection-manage fieldset {max-height:15rem;overflow:auto;border:1px solid var(--line);border-radius:.45rem}
+.collection-manage fieldset label {display:block;padding:.22rem 0}
+@media(max-width:760px){.nav-group{display:flex}.nav-group > small {display:none}}
 @media(max-width:900px) {.atlas-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}.atlas-layout{grid-template-columns:minmax(0,1fr)}.atlas-index ul{max-height:11rem}}

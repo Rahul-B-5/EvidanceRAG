@@ -93,6 +93,13 @@
   passed. Both hash-identified synthetic records and managed copies were
   removed afterward. Full gate: 84 PostgreSQL-enabled tests, 3 frontend
   export tests and production build.
+- Imports and metadata pushed as `5dd2e08`, verified on `origin/main`.
+  Additive migration `007_collections` supports library and workspace
+  collections with case-insensitive unique names and scoped membership.
+  Library can create, rename, attach, detach, and filter. Browser tests verified
+  state retention, non-destructive removal, and cleanup of the disposable
+  empty collection. Full gate: 85 PostgreSQL-enabled tests, 3 frontend
+  export tests and production build.
 - Research Directions pushed as `22fb392` and confirmed on `origin/main`.
   Additive migration `005_evidence_packets` persists scoped saved-passage
   snapshots, notes, bibliography fields and editable briefings with revision
@@ -104,9 +111,9 @@
 
 ## Outstanding
 
-1. Add persistent Library collections within workspaces, attach papers without
-   duplicating source files, and filter/organize from the Library view. Follow
-   with Reader annotations/bookmarks and a richer PDF viewer.
+1. Add persistent Reader bookmarks and exact indexed-text highlights with
+   editable notes. Validate the selected offsets against the indexed passage.
+   Follow with integrated PDF text search, zoom and richer page rendering.
 2. Add contradiction candidates only for aligned study conditions and opposing
    claims with two citable sources. Add reproducibility disclosure validation,
    corpus-scoped gap exploration and evidence-grounded research briefings.

@@ -10,10 +10,12 @@ from fastapi import Path as ApiPath
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
+from psycopg.errors import ForeignKeyViolation, UniqueViolation
 from app.api.saved_evidence import router as saved_evidence_router
 
 from app.core.config import get_settings
 from app.db.connection import get_connection
+from app.db import collections as library_collections
 from app.db.repository import (
     add_message,
     create_conversation,
@@ -124,6 +126,14 @@ class DocumentMetadata(BaseModel):
     venue: str | None = Field(default=None, max_length=200)
     tags: list[Annotated[str, Field(max_length=48)]] = Field(default_factory=list, max_length=30)
     metadata_revision: int = Field(gt=0, le=2147483646)
+
+
+class CollectionName(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+
+
+class CollectionRequest(CollectionName):
+    workspace_id: int | None = Field(default=None, gt=0, le=9223372036854775807)
 
 
 def validate_workspace_scope(workspace_id: int | None, document_ids: list[int]) -> None:
@@ -667,6 +677,70 @@ def draft_packet(packet_id: uuid.UUID) -> dict:
         return generate_answer(query, context, evidence)
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+CollectionID = Annotated[int, ApiPath(gt=0, le=9223372036854775807)]
+
+
+def checked_collection_name(name: str) -> str:
+    if not (name := name.strip()):
+        raise HTTPException(status_code=422, detail="Supply a collection name.")
+    return name
+
+
+@app.get("/collections")
+def collections(workspace_id: int | None = Query(default=None, gt=0, le=9223372036854775807)) -> dict:
+    validate_workspace_scope(workspace_id, [])
+    return {"collections": library_collections.collection_list(workspace_id)}
+
+
+@app.post("/collections", status_code=201)
+def new_collection(request: CollectionRequest) -> dict:
+    validate_workspace_scope(request.workspace_id, [])
+    try:
+        return library_collections.create_collection(request.workspace_id, checked_collection_name(request.name))
+    except UniqueViolation:
+        raise HTTPException(status_code=409, detail="A collection with this name already exists in the scope.") from None
+    except ForeignKeyViolation:
+        raise HTTPException(status_code=404, detail="Workspace not found.") from None
+
+
+@app.get("/collections/{collection_id}")
+def get_collection(collection_id: CollectionID) -> dict:
+    result = library_collections.collection_detail(collection_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Collection not found.")
+    return result
+
+
+@app.patch("/collections/{collection_id}")
+def update_collection(collection_id: CollectionID, request: CollectionName) -> dict:
+    try:
+        if not library_collections.rename_collection(collection_id, checked_collection_name(request.name)):
+            raise HTTPException(status_code=404, detail="Collection not found.")
+    except UniqueViolation:
+        raise HTTPException(status_code=409, detail="A collection with this name already exists in the scope.") from None
+    return get_collection(collection_id)
+
+
+def set_collection_membership(collection_id: int, document_id: int, attach: bool) -> None:
+    result = library_collections.change_collection_membership(collection_id, document_id, attach)
+    if result == "missing_collection":
+        raise HTTPException(status_code=404, detail="Collection not found.")
+    if result == "missing_document":
+        raise HTTPException(status_code=404, detail="Document not found.")
+    if result == "outside_workspace":
+        raise HTTPException(status_code=422, detail="The paper must be in the collection's workspace.")
+
+
+@app.put("/collections/{collection_id}/documents/{document_id}", status_code=204)
+def attach_collection_paper(collection_id: CollectionID, document_id: CollectionID) -> None:
+    set_collection_membership(collection_id, document_id, True)
+
+
+@app.delete("/collections/{collection_id}/documents/{document_id}", status_code=204)
+def detach_collection_paper(collection_id: CollectionID, document_id: CollectionID) -> None:
+    set_collection_membership(collection_id, document_id, False)
 
 
 @app.delete("/workspaces/{workspace_id}/documents/{document_id}", status_code=204)

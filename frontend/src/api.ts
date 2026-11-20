@@ -8,6 +8,7 @@ export type Passage = {chunk_id: number; page_start: number; page_end: number; t
 export type SavedPassage = {chunk_id: number; document_id: number; title: string; page_start: number; page_end: number; passage: string; note: string; source_exists: boolean};
 export type Evidence = { evidence_id: string; chunk_id: number; document_id: number; title: string; page_start: number; page_end: number; text: string };
 export type Workspace = { id: number; name: string; description: string | null; document_count: number };
+export type Collection = {id: number; name: string; workspace_id: number | null; document_count: number};
 export type Conversation = {id: number; title: string; document_id: number | null; workspace_id: number | null; messages: Array<{id: number; role: string; content: string; citations: Evidence[]}>};
 export type Comparison = {
   fields: string[];
@@ -142,6 +143,18 @@ export const api = {
   search: (query: string, documentId?: number, workspaceId?: number) => request<{ evidence: Evidence[]; evidence_count: number }>(`/search?${new URLSearchParams({ query, ...(documentId ? { document_id: String(documentId) } : {}), ...(workspaceId ? {workspace_id: String(workspaceId)} : {}) })}`),
   answer: (query: string, documentId?: number) => request<{ answer: string; abstained: boolean; reason: string | null; citations: Evidence[]; evidence: Evidence[] }>("/answers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query, document_id: documentId }) }),
   workspaces: () => request<{ workspaces: Workspace[] }>("/workspaces"),
+  collections: (workspaceId: string) => request<{collections: Collection[]}>(
+    workspaceId ? `/collections?workspace_id=${workspaceId}` : "/collections"),
+  collection: (id: string) => request<Collection & {document_ids: number[]}>(`/collections/${id}`),
+  createCollection: (workspaceId: string, name: string) => request<Collection>("/collections", {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({workspace_id:workspaceId ? Number(workspaceId) : undefined, name}),
+  }),
+  renameCollection: (id: string, name: string) => request<Collection>(`/collections/${id}`, {
+    method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({name}),
+  }),
+  collectionMembership: (id: string, documentId: number, attach: boolean) => request<void>(
+    `/collections/${id}/documents/${documentId}`, {method:attach ? "PUT" : "DELETE"}),
   workspace: (id: number) => request<Workspace & {documents: Array<{id: number}>}>(`/workspaces/${id}`),
   membership: (workspaceId: number, documentId: number, add: boolean) => request<unknown>(`/workspaces/${workspaceId}/documents/${documentId}`, {method: add ? "PUT" : "DELETE"}),
   createWorkspace: (name: string, description: string) => request<Workspace>("/workspaces", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, description }) }),

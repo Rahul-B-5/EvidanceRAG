@@ -40,6 +40,9 @@ The application is served at `http://127.0.0.1:5173` and uses the local API at
 - `GET /documents/{document_id}` — returns document metadata and processing status.
 - `PATCH /documents/{document_id}/metadata` — updates title, authors, publication
   year, venue, DOI and tags using a metadata revision. Source and passage IDs persist.
+- `GET/POST /collections`, `GET/PATCH /collections/{id}`, and
+  `PUT/DELETE /collections/{id}/documents/{document_id}` — manage collections
+  and paper membership within a library scope.
 - `POST /documents` — imports one PDF as multipart field `file`.
 - `GET /documents/{document_id}/source` — serves a persisted original PDF.
 - `GET /documents/{document_id}/passages?page=...` — lists indexed chunks intersecting the page.
@@ -161,6 +164,10 @@ Choose multiple PDFs in **Library** to index them in order. The queue reports
 imported, duplicate and failed items independently and lets you retry a failed
 file. Use **Edit metadata** in Reader to correct bibliographic details and tags.
 Library filtering includes DOI, venue and tags.
+Use **Manage collections** in Library to create or rename a collection and
+toggle paper membership. Choose a workspace to restrict the collection’s
+eligible papers. Membership changes update the Library filter and keep the
+original papers in the library.
 
 ## Generation providers
 

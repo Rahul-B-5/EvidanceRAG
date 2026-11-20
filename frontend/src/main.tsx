@@ -11,6 +11,7 @@ import { ReproductionStudio } from "./ReproductionStudio";
 import { ResearchCoverage } from "./ResearchCoverage";
 import { ResearchDirectionStudio } from "./ResearchDirections";
 import { EvidencePackets } from "./EvidencePackets";
+import { LibraryCollections } from "./LibraryCollections";
 import "./styles.css";
 
 const views = [
@@ -29,6 +30,12 @@ const views = [
   ["workspaces", "Workspaces", "⊞"],
 ] as const;
 type View = typeof views[number][0];
+const keptViews: View[] = ["library", "compare", "reproduction", "coverage", "directions", "packets"];
+const navGroups: Array<[string, View[]]> = [
+  ["Library", ["dashboard", "library", "reader", "workspaces"]],
+  ["Investigate", ["assistant", "research", "compare", "atlas", "reproduction", "coverage", "directions"]],
+  ["Write", ["saved", "packets"]],
+];
 type ImportJob = {id: string; name: string; file?: File; state: "queued" | "indexing" | "imported" | "duplicate" | "failed";
   error?: string; documentId?: number};
 const importLabels = {queued:"Queued", indexing:"Indexing", imported:"Imported", duplicate:"Already in library", failed:"Failed"};
@@ -68,7 +75,7 @@ function App() {
 
   function navigate(next: View) {
     setView(next);
-    if (next === "compare" || next === "reproduction" || next === "coverage" || next === "directions" || next === "packets") {
+    if (keptViews.includes(next)) {
       setOpenedResearchViews(previous => previous.has(next) ? previous : new Set([...previous, next]));
     }
     if (next === "assistant") setFindingQuestion(undefined);
@@ -167,17 +174,14 @@ function App() {
   }
 
   let content: ReactNode;
-  if (view === "library") content = <Library documents={documents} loading={loading} uploading={uploading}
-    imports={imports} queue={files => void runImports(files.map(file => ({id:crypto.randomUUID(), name:file.name, file, state:"queued"})))}
-    retry={job => void runImports([{...job, state:"queued", error:undefined}])} openPaper={openPaper} />;
-  else if (view === "reader") content = selected
+  if (view === "reader") content = selected
     ? <Reader key={`${selected.id}-${readerPage}`} document={selected} initialPage={readerPage}
       update={paper => setDocuments(current => current.map(d => d.id === paper.id ? paper : d))} remove={() => void remove(selected)} />
     : loading ? <p role="status">Loading paper…</p>
     : <section className="panel empty"><h2>Select a paper to read</h2><button onClick={() => navigate("library")}>Open library</button></section>;
   else if (view === "assistant") content = <Conversations documents={documents} initial={findingQuestion} />;
   else if (view === "atlas") content = <EvidenceAtlas compare={() => navigate("compare")} ask={askFinding} />;
-  else if (view === "compare" || view === "reproduction" || view === "coverage" || view === "directions" || view === "packets") content = null;
+  else if (keptViews.includes(view)) content = null;
   else if (view === "saved") content = <SavedEvidence />;
   else if (view === "research" || view === "workspaces") content = <WorkspaceArea key={view} documents={documents} manage={view === "workspaces"} />;
   else content = <section className="panel overview">
@@ -192,16 +196,27 @@ function App() {
     <aside className="sidebar">
       <div className="brand"><span aria-hidden="true">E</span> EvidenceRAG</div>
       <button className="command-trigger" onClick={() => {setCommand("");palette.current?.showModal();}}>Quick open <kbd>Ctrl/⌘ K</kbd></button>
-      <nav aria-label="Research navigation">{views.map(([id, label, icon]) =>
-        <button key={id} className="nav" aria-current={view === id ? "page" : undefined} onClick={() => navigate(id)}>
-          <span aria-hidden="true">{icon}</span>{label}
-        </button>)}</nav>
+      <nav aria-label="Research navigation">{navGroups.map(([group, ids]) =>
+        <div className="nav-group" key={group} role="group" aria-label={group}>
+          <small aria-hidden="true">{group}</small>
+          {ids.map(id => {
+            const [,label, icon] = views.find(v => v[0] === id)!;
+            return <button key={id} className="nav" aria-current={view === id ? "page" : undefined} onClick={() => navigate(id)}>
+              <span aria-hidden="true">{icon}</span>{label}
+            </button>;
+          })}
+        </div>)}</nav>
       <div className="sidebar-bottom"><button className="nav" onClick={() => setDark(!dark)}><span aria-hidden="true">◐</span>{dark ? "Light theme" : "Dark theme"}</button></div>
     </aside>
     <main id="content" className="shell">
       <header className="page-header"><h1>{title}</h1><button className="secondary" disabled={loading} onClick={() => void refresh()}>Refresh library</button></header>
       {error && <p className="notice error" role="alert">{error}</p>}
       {content}
+      {openedResearchViews.has("library") && <div hidden={view !== "library"}>
+        <Library documents={documents} workspaces={workspaces} active={view === "library"} loading={loading} uploading={uploading} imports={imports}
+          queue={files => void runImports(files.map(file => ({id:crypto.randomUUID(), name:file.name, file, state:"queued"})))}
+          retry={job => void runImports([{...job, state:"queued", error:undefined}])} openPaper={openPaper} />
+      </div>}
       {openedResearchViews.has("compare") && <div hidden={view !== "compare"}><WorkspaceArea documents={documents} compare={askFinding} /></div>}
       {openedResearchViews.has("reproduction") && <div hidden={view !== "reproduction"}><ReproductionStudio documents={documents} workspaces={workspaces} /></div>}
       {openedResearchViews.has("coverage") && <div hidden={view !== "coverage"}><ResearchCoverage workspaces={workspaces} ask={askFinding} /></div>}
@@ -233,18 +248,20 @@ function PaperRows({documents, openPaper}: {documents: Document[]; openPaper: (i
   </table></div>;
 }
 
-function Library({documents, loading, uploading, imports, queue, retry, openPaper}: {
-  documents: Document[]; loading: boolean; uploading: boolean; imports: ImportJob[];
+function Library({documents, workspaces, active, loading, uploading, imports, queue, retry, openPaper}: {
+  documents: Document[]; workspaces: Workspace[]; active: boolean; loading: boolean; uploading: boolean; imports: ImportJob[];
   queue: (files: File[]) => void; retry: (job: ImportJob) => void; openPaper: (id: number) => void;
 }) {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("recent");
+  const [scoped, setScoped] = useState<number[] | null>(null);
   const input = useRef<HTMLInputElement>(null);
-  const visible = documents.filter(d => [d.title, d.filename, d.venue ?? "", d.doi ?? "", ...d.authors, ...d.tags]
+  const visible = documents.filter(d => (scoped === null || scoped.includes(d.id)) && [d.title, d.filename, d.venue ?? "", d.doi ?? "", ...d.authors, ...d.tags]
     .some(text => text.toLowerCase().includes(query.trim().toLowerCase())));
   if (sort === "title") visible.sort((a, b) => a.title.localeCompare(b.title));
   if (sort === "year") visible.sort((a, b) => (b.publication_year ?? 0) - (a.publication_year ?? 0));
   return <section className="panel">
+    <LibraryCollections documents={documents} workspaces={workspaces} filter={setScoped} visible={active} />
     <div className="library-controls">
       <label>Filter papers<input type="search" value={query} onChange={e => setQuery(e.target.value)} placeholder="Title, author, venue, DOI or tag" /></label>
       <label>Sort by<select value={sort} onChange={e => setSort(e.target.value)}><option value="recent">Recently added</option><option value="title">Title</option><option value="year">Publication year</option></select></label>
@@ -264,7 +281,7 @@ function Library({documents, loading, uploading, imports, queue, retry, openPape
       </li>)}</ul>
     </section>}
     {loading ? <p role="status">Loading library…</p> : visible.length ? <PaperRows documents={visible} openPaper={openPaper} />
-      : <p className="empty">{query ? "No matching papers." : "Your library is empty. Import a PDF to begin."}</p>}
+      : <p className="empty">{query || scoped !== null ? "No papers match the current scope and filter." : "Your library is empty. Import a PDF to begin."}</p>}
   </section>;
 }
 
