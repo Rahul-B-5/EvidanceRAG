@@ -48,6 +48,25 @@ def test_local_ollama_does_not_require_an_api_key():
     assert "Authorization" not in provider.headers
 
 
+def test_local_ollama_can_constrain_the_answer_schema():
+    from app.generation.answerer import ANSWER_SCHEMA
+
+    def handle(request):
+        body = json.loads(request.content)
+        assert body["response_format"] == {
+            "type": "json_schema",
+            "json_schema": {"name": "evidence_answer", "strict": True, "schema": ANSWER_SCHEMA},
+        }
+        assert body["temperature"] == 0.1
+        return httpx.Response(200, json={"choices": [{"message": {"content": '{"answer":"","abstained":true,"reason":null}'}}]})
+
+    provider = ChatCompletionsProvider(
+        base_url="http://127.0.0.1:11434/v1", model="fixture", api_key="", timeout=1,
+        transport=httpx.MockTransport(handle), structured_outputs=True,
+    )
+    assert json.loads(provider.generate_json(prompt="Question", system_instruction="Evidence", schema=ANSWER_SCHEMA))["abstained"]
+
+
 def test_gemini_provider_reopens_transport_for_each_paper(monkeypatch):
     from unittest.mock import MagicMock, Mock
 

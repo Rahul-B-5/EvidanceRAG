@@ -40,3 +40,19 @@ def test_provider_abstention_never_exposes_generated_claims(monkeypatch, answer)
     result = generate_answer("What exact seed was used?", "Seeds varied.", [citation])
     assert result["abstained"] and result["answer"] == "" and result["citations"] == []
     assert "42" not in result["reason"]
+
+
+def test_grouped_citations_are_normalized_and_every_id_is_checked(monkeypatch):
+    provider = Mock(return_value='{"answer":"The sources agree [E1, E2].","abstained":false,"reason":null}')
+    monkeypatch.setattr("app.generation.answerer.get_generation_provider",
+                        lambda _: SimpleNamespace(generate_json=provider))
+    passages = [{
+        "evidence_id": f"E{i}", "chunk_id": i, "document_id": i,
+        "page_start": 1, "page_end": 1, "title": f"Paper {i}", "text": "Calibration result.",
+    } for i in (1, 2)]
+    result = generate_answer("Do the results agree?", "Calibration result.", passages)
+    assert result["answer"] == "The sources agree [E1] [E2]."
+    assert [source["evidence_id"] for source in result["citations"]] == ["E1", "E2"]
+    provider.return_value = '{"answer":"The sources agree [E1, E99].","abstained":false,"reason":null}'
+    with pytest.raises(RuntimeError, match="unknown evidence IDs"):
+        generate_answer("Do the results agree?", "Calibration result.", passages)

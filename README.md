@@ -354,6 +354,10 @@ replies. Add `--live-embeddings` and `--live-provider` to evaluate the configure
 models on the selected fixture. The JSON report includes the evaluated model
 answers for review.
 
+Assistant requests a constrained answer format from Ollama and Gemini and
+validates citations locally. OpenAI-compatible endpoints can use JSON object
+mode. Citation validation confirms the passage identifiers and their pages.
+
 The whole-PDF benchmark uses the [public NREL solar cost report](https://www.osti.gov/servlets/purl/2005540).
 It imports the pinned PDF through the durable queue in a disposable schema,
 checks a byte-identical source download, and measures retrieval and cited

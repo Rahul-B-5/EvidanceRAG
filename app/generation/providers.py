@@ -13,7 +13,7 @@ from app.core.config import Settings
 class GenerationProvider(Protocol):
     """A provider that returns the requested structured JSON response text."""
 
-    def generate_json(self, *, prompt: str, system_instruction: str) -> str:
+    def generate_json(self, *, prompt: str, system_instruction: str, schema: dict | None = None) -> str:
         ...
 
 
@@ -25,7 +25,7 @@ class GeminiProvider:
         )
         self._model = model
 
-    def generate_json(self, *, prompt: str, system_instruction: str) -> str:
+    def generate_json(self, *, prompt: str, system_instruction: str, schema: dict | None = None) -> str:
         try:
             with genai.Client(api_key=self._api_key, http_options=self._http_options) as client:
                 response = client.models.generate_content(
@@ -34,6 +34,7 @@ class GeminiProvider:
                     config=types.GenerateContentConfig(
                         system_instruction=system_instruction,
                         response_mime_type="application/json",
+                        response_json_schema=schema,
                         temperature=0.1,
                     ),
                 )
@@ -49,6 +50,7 @@ class ChatCompletionsProvider:
         self, *, base_url: str, model: str, api_key: str, timeout: float,
         transport: httpx.BaseTransport | None = None,
         reasoning_effort: str = "",
+        structured_outputs: bool = False,
     ) -> None:
         try:
             url = urlsplit(base_url)
@@ -64,8 +66,14 @@ class ChatCompletionsProvider:
         self.timeout = timeout
         self.transport = transport
         self.reasoning_effort = reasoning_effort
+        self.structured_outputs = structured_outputs
 
-    def generate_json(self, *, prompt: str, system_instruction: str) -> str:
+    def generate_json(self, *, prompt: str, system_instruction: str, schema: dict | None = None) -> str:
+        response_format = {"type": "json_object"}
+        if self.structured_outputs and schema is not None:
+            response_format = {"type": "json_schema", "json_schema": {
+                "name": "evidence_answer", "strict": True, "schema": schema,
+            }}
         try:
             with httpx.Client(
                 timeout=httpx.Timeout(self.timeout, connect=min(10, self.timeout)),
@@ -77,7 +85,8 @@ class ChatCompletionsProvider:
                         {"role": "system", "content": system_instruction},
                         {"role": "user", "content": prompt},
                     ],
-                    "response_format": {"type": "json_object"},
+                    "response_format": response_format,
+                    **({"temperature": 0.1} if self.structured_outputs and schema is not None else {}),
                     **({"reasoning_effort": self.reasoning_effort} if self.reasoning_effort else {}),
                 })
                 response.raise_for_status()
@@ -107,6 +116,7 @@ def get_generation_provider(settings: Settings) -> GenerationProvider:
             model=settings.generation_model.strip(), api_key=settings.generation_api_key.strip(),
             timeout=settings.generation_timeout_seconds,
             reasoning_effort=settings.ollama_reasoning_effort if provider == "ollama" else "",
+            structured_outputs=provider == "ollama",
         )
     if provider != "gemini":
         raise RuntimeError("Unsupported generation provider.")

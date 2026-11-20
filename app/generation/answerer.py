@@ -1,9 +1,22 @@
 
 import json
+import re
 
 from app.core.config import get_settings
 from app.generation.providers import get_generation_provider
 
+ANSWER_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "answer": {"type": "string"},
+        "abstained": {"type": "boolean"},
+        "reason": {"type": ["string", "null"]},
+    },
+    "required": ["answer", "abstained", "reason"],
+    "additionalProperties": False,
+}
+GROUPED_CITATIONS = re.compile(r"\[\s*(E\d+(?:\s*[,;]\s*E\d+)+)\s*\]")
+CITATION = re.compile(r"\[(E\d+)\]")
 
 SYSTEM_INSTRUCTION = """
 You are EvidenceRAG, an evidence-grounded research assistant.
@@ -22,10 +35,11 @@ Rules:
 7. Distinguish what the sources explicitly state from reasonable interpretation.
 8. Preserve important qualifications, uncertainty, and disagreements between sources.
 9. Do not claim that you verified something unless the evidence supports it.
-10. For table questions, use rows with the named table caption, system and
-    column when available. Treat each value as belonging to its own row and
-    column. If reported values differ, state the discrepancy without guessing
-    its cause.
+10. For table questions, match the named table, row conditions, and column
+    before using a value. A result from a setup with an extra component
+    cannot answer a question about the setup without it. If asked to compare
+    named sections, cite a separate passage for each reported value. State
+    discrepancies and cite a source for any explanation of their cause.
 
 Return only a JSON object with these keys:
 {
@@ -73,6 +87,7 @@ def generate_answer(
     response_text = provider.generate_json(
         prompt=json.dumps(payload, ensure_ascii=False),
         system_instruction=SYSTEM_INSTRUCTION,
+        schema=ANSWER_SCHEMA,
     )
 
     try:
@@ -107,12 +122,10 @@ def generate_answer(
             "Invalid response: a non-abstained answer cannot be empty."
         )
 
-    # Extract citations of the form [E1], [E2], etc.
-    import re
-
-    cited_ids = list(dict.fromkeys(
-        re.findall(r"\[(E\d+)\]", answer)
-    ))
+    answer = GROUPED_CITATIONS.sub(
+        lambda match: " ".join(f"[{label}]" for label in re.findall(r"E\d+", match[1])), answer,
+    )
+    cited_ids = list(dict.fromkeys(CITATION.findall(answer)))
 
     unknown_ids = sorted(set(cited_ids) - allowed_ids)
 

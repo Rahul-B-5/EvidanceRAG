@@ -272,12 +272,20 @@
   corpus, keyword recall@4 increased from 0.25 to 1.00 and hybrid recall@4
   stayed at 1.00 in the fixture run. Full gate: 132 PostgreSQL tests, 10
   frontend tests, three Chrome workflows and build.
+- Assistant requests the answer schema from Ollama and Gemini and validates
+  every returned citation ID, including IDs in grouped citations. The latest
+  live Gemma run passed two of four NREL cases. It returned valid answer
+  objects for all four, selected the wrong utility-scale row in the
+  section comparison, and returned an explanation instead of abstaining
+  for the missing installer quote. Full gate: 134 PostgreSQL tests, 10
+  frontend tests, three Chrome workflows and build.
 
 ## Outstanding
 
-1. Improve live answer validation and table-row qualifier matching on the NREL
-   whole-PDF suite. Re-run citation support across more independent papers and
-   models.
+1. Improve qualifier and section matching on the NREL whole-PDF suite.
+   Use the PDF outline where available to distinguish source sections and verify
+   quoted row conditions before presenting numerical findings. Re-run the
+   comparison and missing-quote cases with live models.
 2. Test larger corpora and review legacy passages with several pages.
 
 ## Continuation
