@@ -12,6 +12,7 @@ def search_vector(
     top_k: int | None = None,
     document_id: int | None = None,
     workspace_id: int | None = None,
+    document_ids: list[int] | None = None,
 ) -> list[dict]:
     """Retrieve semantically similar chunks using PostgreSQL and pgvector."""
     if not query.strip():
@@ -59,6 +60,10 @@ def search_vector(
     if document_id is not None:
         sql += " AND c.document_id = %s"
         params.append(document_id)
+
+    if document_ids is not None:
+        sql += " AND c.document_id = ANY(%s::bigint[])"
+        params.append(document_ids)
 
     if workspace_id is not None:
         sql += """ AND EXISTS (

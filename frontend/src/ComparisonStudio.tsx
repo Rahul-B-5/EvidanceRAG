@@ -4,7 +4,7 @@ import { SavePassage } from "./SavedEvidence";
 import { EvidenceGraph } from "./EvidenceGraph";
 import { comparisonBrief, followUpExcerpts } from "./comparisonBrief";
 
-export type FindingQuestion = { documentId?: number; workspaceId?: number; question: string };
+export type FindingQuestion = { documentId?: number; documentIds?: number[]; workspaceId?: number; question: string };
 const labels: Record<string, string> = {
   methodology: "Methods", datasets: "Datasets", training: "Training", metrics: "Evaluation metrics",
   results: "Numerical findings", limitations: "Limitations", architecture: "Architecture", protocol: "Evaluation protocol",
@@ -172,6 +172,10 @@ export function ComparisonStudio({documents, workspaceId, ask}: {
       <section className="panel">
         <div className="comparison-heading"><div><h2>Indexed source excerpts</h2><p>Topics and result context are model-selected. Inspect the excerpts to confirm they support the interpretation.</p></div>
           <div className="finding-actions">
+            {run && <button className="secondary" onClick={() => ask({
+              documentIds:run.document_ids, workspaceId,
+              question:"How do the selected papers differ in their evaluation methods and reported findings? Cite each source and describe gaps in the evidence.",
+            })}>Ask about these papers</button>}
             <button className="secondary" aria-pressed={layout === "matrix"} onClick={() => setLayout("matrix")}>Matrix</button>
             <button className="secondary" aria-pressed={layout === "claims"} onClick={() => setLayout("claims")}>Claim explorer</button>
             <button className="secondary" aria-pressed={layout === "graph"} onClick={() => setLayout("graph")}>Evidence graph</button>

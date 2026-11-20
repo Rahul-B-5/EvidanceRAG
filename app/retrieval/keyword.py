@@ -8,6 +8,7 @@ def search_keyword(
     top_k: int | None = None,
     document_id: int | None = None,
     workspace_id: int | None = None,
+    document_ids: list[int] | None = None,
 ) -> list[dict]:
     """
     Retrieve relevant chunks using PostgreSQL full-text search.
@@ -55,6 +56,10 @@ def search_keyword(
     if document_id is not None:
         sql += " AND c.document_id = %s"
         params.append(document_id)
+
+    if document_ids is not None:
+        sql += " AND c.document_id = ANY(%s::bigint[])"
+        params.append(document_ids)
 
     if workspace_id is not None:
         sql += """ AND EXISTS (

@@ -72,10 +72,14 @@ The application is served at `http://127.0.0.1:5173` and uses the local API at
 - `POST /conversations` and `GET /conversations/{conversation_id}` — persist
   research-assistant conversation history and cited assistant responses.
 - `GET /conversations` — lists the 100 most recently updated conversations.
-  New conversations accept optional `workspace_id` or `document_id` scope.
+  New conversations accept optional `workspace_id` and up to 12 distinct
+  `document_ids`. The legacy `document_id` field also accepts a single paper.
   `/answers` accepts `conversation_id`, uses its saved scope and bounded history,
   and saves each user/assistant pair atomically after successful generation.
   Concurrent replies return `409` if the conversation changed during generation.
+  A selected paper that leaves the workspace blocks new replies until the
+  scope is restored. Standalone searches also accept repeated `document_ids`
+  query parameters alongside an optional workspace filter.
 - `GET/POST /workspaces`, `GET /workspaces/{workspace_id}`, and
   `PUT /workspaces/{workspace_id}/documents/{document_id}` — organize a
   local research library into persistent workspaces. Workspace retrieval

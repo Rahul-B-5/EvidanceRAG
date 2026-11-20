@@ -111,16 +111,23 @@
   highlighting text, saving a note and reopening it via the bookmark. The
   synthetic PDF and annotations were removed afterward. Full gate: 86
   PostgreSQL-enabled tests, 3 frontend tests and production build.
-- Reader now renders locally with a lazy-loaded PDF.js worker and selectable
+- Integrated PDF Reader pushed as `e086b43`. It renders locally with a lazy-loaded PDF.js worker and selectable
   text. Browser verified phrase search to the correct synthetic source page,
   fit-width and 125% zoom, a no-match result and a 390px layout without
   horizontal page overflow. Source range tests verify the bytes and headers.
   Full gate: 87 PostgreSQL-enabled tests, 5 frontend tests and production build.
+- Additive migration `009_conversation_papers` persists up to 12 explicit
+  source IDs per conversation. Both PostgreSQL retrieval paths constrain
+  candidates before ranking and the API rechecks workspace scope before
+  saving a reply. Browser verified two synthetic workspace papers, a live
+  Ollama response that cited both, a citation link to Reader, and reopening
+  the saved conversation. Disposable fixtures were removed. Full gate:
+  88 PostgreSQL-enabled tests, 5 frontend tests and production build.
 
 ## Outstanding
 
-1. Add durable multi-paper scope to Assistant conversations and verify
-   retrieval and citation isolation. Add streaming and cancellation.
+1. Add streamed Assistant progress and cancellation while keeping generated
+   content behind citation validation.
 2. Add contradiction candidates only for aligned study conditions and opposing
    claims with two citable sources. Improve reproducibility disclosure
    validation, gap coverage and evidence-grounded briefing templates.

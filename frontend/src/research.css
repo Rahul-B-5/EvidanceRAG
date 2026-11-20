@@ -8,6 +8,15 @@
 .research-passages p {white-space:pre-wrap}
 .research-passages a {color:var(--accent);text-decoration:underline}
 .research-passages small {display:block;margin-top:.4rem}
+.assistant-scope .research-controls label {margin-top:0}
+.assistant-papers {display:grid;justify-items:start;gap:.65rem;border:1px solid var(--line);border-radius:.5rem;padding:.8rem;min-width:0}
+.assistant-papers legend {padding-inline:.35rem;font-weight:650}
+.assistant-papers small,.assistant-scope-label {color:var(--muted)}
+.assistant-paper-list {display:grid;gap:.35rem;width:100%;max-height:13rem;overflow:auto}
+.assistant-paper-list label {display:flex;align-items:baseline;gap:.55rem;min-width:0;padding:.25rem;overflow-wrap:anywhere}
+.assistant-paper-list input {flex:none}
+.assistant-source-tags {list-style:none;padding:0;margin:.6rem 0;display:flex;flex-wrap:wrap;gap:.4rem}
+.assistant-question textarea {display:block;width:100%;margin:.65rem 0;min-height:5rem;resize:vertical}
 .comparison-scroll {overflow:auto}
 .comparison-scroll table {border-collapse:collapse;width:100%;text-align:left}
 .comparison-scroll th,.comparison-scroll td {border:1px solid var(--line);padding:1rem;vertical-align:top;min-width:230px}

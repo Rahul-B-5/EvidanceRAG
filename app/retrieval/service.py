@@ -10,6 +10,7 @@ def retrieve_evidence(
     candidate_k: int = 20,
     rrf_k: int = 60,
     workspace_id: int | None = None,
+    document_ids: list[int] | None = None,
 ) -> dict:
     """Retrieve relevant passages and prepare their evidence context."""
 
@@ -23,6 +24,7 @@ def retrieve_evidence(
         candidate_k=candidate_k,
         rrf_k=rrf_k,
         workspace_id=workspace_id,
+        **({"document_ids": document_ids} if document_ids is not None else {}),
     )
 
     context, evidence = build_evidence_context(results)

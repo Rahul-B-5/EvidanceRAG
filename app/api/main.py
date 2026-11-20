@@ -10,6 +10,7 @@ from fastapi import Path as ApiPath
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
+from psycopg import Connection
 from psycopg.errors import ForeignKeyViolation, UniqueViolation
 from app.api.saved_evidence import router as saved_evidence_router
 from app.api.reader_annotations import router as reader_annotations_router
@@ -64,10 +65,14 @@ app.add_middleware(
     expose_headers=["Accept-Ranges", "Content-Range"],
 )
 
+SourceID = Annotated[int, Field(gt=0, le=9223372036854775807)]
+SourceSet = Annotated[list[SourceID], Field(min_length=1, max_length=12)]
+
 
 class AnswerRequest(BaseModel):
     query: str = Field(min_length=1, max_length=10_000)
-    document_id: int | None = Field(default=None, gt=0)
+    document_id: SourceID | None = None
+    document_ids: SourceSet | None = None
     top_k: int | None = Field(default=None, ge=1, le=50)
     conversation_id: int | None = Field(default=None, gt=0)
     workspace_id: int | None = Field(default=None, gt=0)
@@ -75,7 +80,8 @@ class AnswerRequest(BaseModel):
 
 class ConversationRequest(BaseModel):
     title: str = Field(min_length=1, max_length=300)
-    document_id: int | None = Field(default=None, gt=0)
+    document_id: SourceID | None = None
+    document_ids: SourceSet | None = None
     workspace_id: int | None = Field(default=None, gt=0)
 
 
@@ -149,6 +155,32 @@ def validate_workspace_scope(workspace_id: int | None, document_ids: list[int]) 
     members = {d["id"] for d in workspace["documents"]}
     if set(document_ids) - members:
         raise HTTPException(status_code=422, detail="Selected documents are outside this workspace.")
+
+
+def requested_source_set(document_id: int | None, document_ids: list[int] | None) -> list[int]:
+    if document_ids is None:
+        return [document_id] if document_id is not None else []
+    if document_id is not None:
+        raise HTTPException(422, "Provide either document_id or document_ids.")
+    if len(set(document_ids)) != len(document_ids):
+        raise HTTPException(422, "Selected documents must be distinct.")
+    return document_ids
+
+
+def require_selected_papers(conn: Connection, document_ids: list[int], workspace_id: int | None = None) -> None:
+    if workspace_id is None:
+        found = conn.execute(
+            "SELECT id FROM documents WHERE id = ANY(%s::bigint[]) FOR KEY SHARE", (document_ids,),
+        ).fetchall()
+    else:
+        found = conn.execute("""
+            SELECT document_id FROM workspace_documents
+            WHERE workspace_id = %s AND document_id = ANY(%s::bigint[]) FOR KEY SHARE
+        """, (workspace_id, document_ids)).fetchall()
+    if len(found) != len(document_ids):
+        if workspace_id is not None:
+            raise HTTPException(422, "Selected documents are outside this workspace.")
+        raise HTTPException(404, "A selected paper is no longer in the library.")
 
 
 def _bad_request(error: ValueError) -> HTTPException:
@@ -326,14 +358,17 @@ def upload_document(file: UploadFile = File(...)) -> dict:
 @app.get("/search")
 def search(
     query: str = Query(min_length=1, max_length=10_000),
-    document_id: int | None = Query(default=None, gt=0),
+    document_id: SourceID | None = Query(default=None),
+    document_ids: Annotated[list[SourceID] | None, Query(min_length=1, max_length=12)] = None,
     top_k: int | None = Query(default=None, ge=1, le=50),
     workspace_id: int | None = Query(default=None, gt=0),
 ) -> dict:
-    validate_workspace_scope(workspace_id, [document_id] if document_id is not None else [])
+    selected = requested_source_set(document_id, document_ids)
+    validate_workspace_scope(workspace_id, selected)
     try:
         return retrieve_evidence(query, top_k=top_k, document_id=document_id,
-                                 **({"workspace_id": workspace_id} if workspace_id is not None else {}))
+                                 **({"workspace_id": workspace_id} if workspace_id is not None else {}),
+                                 **({"document_ids": document_ids} if document_ids is not None else {}))
     except ValueError as exc:
         raise _bad_request(exc) from exc
 
@@ -343,6 +378,8 @@ def answer(request: AnswerRequest) -> dict:
     if not request.query.strip():
         raise HTTPException(status_code=422, detail="Query must not be empty.")
     document_id, workspace_id = request.document_id, request.workspace_id
+    document_ids = request.document_ids
+    requested_source_set(document_id, document_ids)
     history = []
     try:
         if request.conversation_id is not None:
@@ -354,13 +391,22 @@ def answer(request: AnswerRequest) -> dict:
                 supplied = getattr(request, field)
                 if supplied is not None and supplied != conversation.get(field):
                     raise HTTPException(status_code=409, detail="Conversation source scope cannot change.")
+            persisted_ids = conversation.get("document_ids")
+            if document_ids is not None and set(document_ids) != set(persisted_ids or []):
+                raise HTTPException(409, "Conversation source scope cannot change.")
             document_id, workspace_id = conversation["document_id"], conversation.get("workspace_id")
+            document_ids = persisted_ids
             history = conversation["messages"]
             if document_id is not None:
                 with get_connection() as conn:
                     if get_document(conn, document_id) is None:
                         raise HTTPException(status_code=404, detail="Conversation source was deleted.")
-        validate_workspace_scope(workspace_id, [document_id] if document_id is not None else [])
+        selected = requested_source_set(document_id, document_ids)
+        retrieved = set()
+        validate_workspace_scope(workspace_id, selected)
+        if document_ids is not None:
+            with get_connection() as conn:
+                require_selected_papers(conn, document_ids)
         # Prior user questions resolve follow-ups; old assistant claims are not
         # evidence and old E-labels are never reused as current citations.
         prior_questions = [m["content"][:1000] for m in history if m["role"] == "user"][-3:]
@@ -370,10 +416,17 @@ def answer(request: AnswerRequest) -> dict:
             top_k=request.top_k,
             document_id=document_id,
             workspace_id=workspace_id,
+            **({"document_ids": document_ids} if document_ids is not None else {}),
         )
+        if workspace_id is not None:
+            retrieved = {item["document_id"] for item in retrieval["evidence"]}
+            validate_workspace_scope(workspace_id, list(retrieved.union(selected)))
+        # User turns can resolve follow-ups, while historic workspace answers
+        # may reference papers that have since been detached.
+        provider_history = [m for m in history if m["role"] == "user"] if workspace_id else history
         generated = generate_answer(
             request.query, retrieval["context"], retrieval["evidence"],
-            **({"history": history[-6:]} if history else {}),
+            **({"history": provider_history[-6:]} if provider_history else {}),
         )
     except ValueError as exc:
         raise _bad_request(exc) from exc
@@ -384,6 +437,10 @@ def answer(request: AnswerRequest) -> dict:
     if request.conversation_id is not None:
         assistant_content = generated["answer"] or generated["reason"] or "No answer generated."
         with get_connection() as conn:
+            if workspace_id is not None and (retrieved or selected):
+                require_selected_papers(conn, sorted(retrieved.union(selected)), workspace_id)
+            elif document_ids is not None:
+                require_selected_papers(conn, document_ids)
             locked = conn.execute("SELECT id FROM conversations WHERE id = %s FOR UPDATE", (request.conversation_id,)).fetchone()
             if locked is None:
                 raise HTTPException(status_code=404, detail="Conversation not found.")
@@ -405,13 +462,17 @@ def answer(request: AnswerRequest) -> dict:
 def new_conversation(request: ConversationRequest) -> dict:
     if not request.title.strip():
         raise HTTPException(status_code=422, detail="Title must not be empty.")
-    validate_workspace_scope(request.workspace_id, [request.document_id] if request.document_id is not None else [])
+    selected = requested_source_set(request.document_id, request.document_ids)
+    validate_workspace_scope(request.workspace_id, selected)
     with get_connection() as conn:
         if request.document_id is not None and get_document(conn, request.document_id) is None:
             raise HTTPException(status_code=404, detail="Document not found.")
+        if request.document_ids is not None:
+            require_selected_papers(conn, request.document_ids, request.workspace_id)
         return create_conversation(
             conn, title=request.title.strip(), document_id=request.document_id,
             workspace_id=request.workspace_id,
+            document_ids=request.document_ids,
         )
 
 
