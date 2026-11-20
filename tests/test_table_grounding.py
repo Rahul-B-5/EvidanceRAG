@@ -104,6 +104,8 @@ def test_prose_scope_checks_measured_units_while_allowing_cited_context(evidence
     assert scope.supports("The 2023 Overview reports 17% [E1].\nTable 2: 22% [E3].")
     assert not scope.supports("The 2024 Overview reports 17% [E1].\nTable 2: 22% [E3].")
     assert not scope.supports("The 2023 Overview reports $17 [E1].\nTable 2: 22% [E3].")
+    assert scope.supports("The 2023 Overview reports 17% [E1], and 22% in Table 2 [E3].")
+    assert not scope.supports("The 2023 Overview reports 22% [E1], and 17% in Table 2 [E3].")
 
 
 def test_following_metric_in_same_sentence_cannot_support_the_requested_measurement(evidence):

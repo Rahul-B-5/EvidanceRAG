@@ -111,6 +111,10 @@ class TableScope:
 
     def supports(self, answer: str) -> bool:
         seen = set()
+        answer = re.sub(
+            r"(\[E\d+\])\s*,?\s+(?:and|while|whereas)\s+(?=[$€£]|\d)",
+            r"\1.\n", answer, flags=re.I,
+        )
         for statement in re.split(r"(?<=[.!?])\s+(?!\[E\d+\])|\n+", answer):
             anchors = set(re.findall(r"\[(E\d+)\]", statement))
             results = re.sub(r"\[E\d+\]", "", statement)

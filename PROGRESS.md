@@ -473,6 +473,17 @@ launcher, wider browser review and release validation to the previous scope.
 
 ## Continuation
 
+- Gemma's comparison joined two measurements in one sentence with separate
+  citations. The grounding check now separates a cited numeric clause joined
+  by “and”, “while” or “whereas” before checking each source. Regression
+  coverage rejects swapped sources. The full Gemma run at 8,192 tokens
+  passed all four report cases. Qwen's full four-case pass is recorded above.
+  Passed 156 PostgreSQL tests and six Chrome workflows including both
+  installed models on the current row-identifier path.
+- Continue with broader table formats, metric/condition interpretation and
+  the requirement-by-requirement release audit. These two model runs cover
+  one report and do not establish general scientific correctness.
+
 - Resolved the latest Qwen cross-section abstention. It returned both
   correct measurements but included the source's capacity and numbered
   section title in the table statement. Validation now permits exact
