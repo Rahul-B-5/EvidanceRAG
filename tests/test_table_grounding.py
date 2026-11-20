@@ -116,6 +116,18 @@ def test_following_metric_in_same_sentence_cannot_support_the_requested_measurem
     assert not scope.supports("Overview: 91% [E1].\nTable 2: 22% [E3].")
 
 
+def test_prose_latency_units_cannot_be_changed(evidence):
+    evidence[2]["table_row"]["cells"][0]["value"] = "Reference model without augmentation"
+    evidence[2]["table_row"]["cells"][1] = {"column": "Latency", "value": "22 ms"}
+    evidence[0]["text"] = "The reference model has latency of 17 ms and processing time of 91 s."
+    question = QUESTION.replace("Error Rate (ER)", "Latency")
+    scope = scope_table_answer(question, evidence)
+    assert scope.supports("Overview: 17 ms [E1].\nTable 2: 22 ms [E3].")
+    assert not scope.supports("Overview: 17 s [E1].\nTable 2: 22 ms [E3].")
+    assert not scope.supports("Overview: 17 [E1].\nTable 2: 22 ms [E3].")
+    assert not scope.supports("Overview: 91 s [E1].\nTable 2: 22 ms [E3].")
+
+
 def test_table_statement_allows_exact_row_capacity_and_section_identifier(evidence):
     evidence[2]["section_title"] = "9 Results"
     evidence[2]["table_row"]["cells"][0]["value"] = "100-MW reference model without augmentation"

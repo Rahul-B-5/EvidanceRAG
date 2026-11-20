@@ -473,6 +473,13 @@ launcher, wider browser review and release validation to the previous scope.
 
 ## Continuation
 
+- Expanded the scoped prose measurement check to common scientific units.
+  A latency claim cannot replace milliseconds with seconds or omit the
+  source unit. A later measurement for a different metric in the same
+  sentence is excluded from support. Passed 157 PostgreSQL tests, the
+  Reader citation browser workflow and all five published-paper excerpt
+  cases. The full Qwen report rerun at 8,192 tokens passed all four cases.
+
 - Provider verification now covers the complete comparison-to-briefing
   browser journey. The fixture server resolves saved extraction profiles
   through the real provider factory. Its endpoint rejects structured

@@ -11,7 +11,9 @@ MEASURE = re.compile(
 )
 STANDALONE_NUMBER = re.compile(r"(?<![\w.])[-+]?\d+(?:\.\d+)?(?![\w.])")
 PROSE_MEASUREMENT = re.compile(
-    r"(?<![\w.])(?:[$€£]\s*\d+(?:[,.]\d+)*(?:\s*/\s*[A-Za-z]{1,8})?|\d+(?:[,.]\d+)*\s*%)"
+    r"(?<![\w.])(?:[$€£]\s*\d+(?:[,.]\d+)*(?:\s*/\s*[A-Za-z]{1,8})?|"
+    r"\d+(?:[,.]\d+)*\s*(?:%|(?:ns|µs|us|ms|seconds?|minutes?|hours?|s|"
+    r"[kMGT]?Hz|[kMGT]?W|[kMGT]?J|[KMGT]?i?B|bytes?|mm|cm|km|m|kg|g)\b))"
 )
 
 
@@ -156,13 +158,15 @@ class TableScope:
                 if not numbers:
                     continue
                 measurements = {compact(match.group()) for match in PROSE_MEASUREMENT.finditer(results)}
+                if not measurements:
+                    return False
                 supported = {
                     source["evidence_id"] for source in self.sources
                     if source["evidence_id"] in anchors and measurements.issubset(
                         compact(match.group()) for match in PROSE_MEASUREMENT.finditer(source["text"])
                     ) and all(
                         re.search(r"(?<![\d.])" + re.escape(value) + r"(?!\d|\.\d)",
-                                  source.get("context_text", source["text"]) if measurements else source["text"])
+                                  source.get("context_text", source["text"]))
                         for value in numbers
                     )
                 }

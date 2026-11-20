@@ -397,8 +397,9 @@ the matched columns and cell values next to their PDF source link.
 General answers and named prose sections still require researcher review of
 the linked passages.
 For a named section compared with a table, the guarded path selects prose
-about the requested row and metric and checks currency or percentage values
-against that excerpt. The PDF link retains the original passage and page.
+about the requested row and metric and checks currency, percentages and
+common scientific units against that excerpt. The PDF link retains the
+original passage and page.
 
 The whole-PDF benchmark uses the [public NREL solar cost report](https://www.osti.gov/servlets/purl/2005540).
 It imports the pinned PDF through the durable queue in a disposable schema,
