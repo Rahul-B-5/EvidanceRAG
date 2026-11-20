@@ -37,6 +37,7 @@ from research.counterevidence import find_passages
 from research.claim_reviews import read_reviews, write_review
 from research.reproducibility import assess_document
 from research.coverage import question_coverage
+from research.gaps import research_directions
 from typing import Annotated, Literal
 
 
@@ -548,6 +549,12 @@ def map_coverage(request: CoverageRequest) -> dict:
         raise _bad_request(exc) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@app.get("/research/directions")
+def explore_directions(workspace_id: int | None = Query(default=None, gt=0, le=9223372036854775807)) -> dict:
+    validate_workspace_scope(workspace_id, [])
+    return research_directions(workspace_id)
 
 
 @app.delete("/workspaces/{workspace_id}/documents/{document_id}", status_code=204)

@@ -76,12 +76,19 @@
   library results, Assistant handoff and state retention. Ollama returned four
   valid subquestions in a live smoke test. Full gate: 79 PostgreSQL-enabled
   tests and production build.
+- Question coverage pushed as `224b510` and confirmed on `origin/main`.
+  Research Directions finds five classes of limitation or follow-up language
+  in the scoped ranked sample, deduplicates papers and offers editable
+  investigation plans. Browser verified real passages, export download, Reader
+  handoff and draft retention. PostgreSQL verifies qualifying language,
+  deduplication and workspace rejection. Full gate: 81 PostgreSQL-enabled tests
+  and production build.
 
 ## Outstanding
 
-1. Build a workspace Research Gap Explorer from author-reported limitations,
-   recorded conditions and bounded corpus coverage. Show provenance and
-   external-verification status, and provide an editable hypothesis plan.
+1. Build durable Evidence Packets from selected saved passages and notes.
+   Preserve source snapshots, add a researcher-authored briefing field,
+   scope packet access and export Markdown, HTML, JSON and bibliography.
 2. Add contradiction candidates only for aligned study conditions and opposing
    claims with two citable sources. Add reproducibility disclosure validation,
    corpus-scoped gap exploration and evidence-grounded research briefings.

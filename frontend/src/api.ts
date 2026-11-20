@@ -56,6 +56,12 @@ export type CoverageMap = {
   facets: Array<{title: string; question: string; status: "multiple_papers" | "single_paper" | "not_located";
     passages: Array<Provenance & {title: string; excerpt: string}>}>;
 };
+export type InvestigationPlan = {question: string; hypothesis: string; baseline: string; metrics: string; validation: string};
+export type ResearchDirections = {
+  reviewed_paper_count: number;
+  directions: Array<{id: string; title: string; paper_count: number; verification: string; plan: InvestigationPlan;
+    evidence: Array<Provenance & {title: string; excerpt: string; signal: string}>}>;
+};
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, init);
@@ -106,6 +112,8 @@ export const api = {
     method:"POST", headers:{"Content-Type":"application/json"},
     body:JSON.stringify({question, workspace_id:workspaceId ? Number(workspaceId) : undefined, use_provider:useProvider}), signal,
   }),
+  directions: (workspaceId: string, signal?: AbortSignal) => request<ResearchDirections>(
+    workspaceId ? `/research/directions?workspace_id=${workspaceId}` : "/research/directions", {signal}),
   upload: (file: File) => { const data = new FormData(); data.append("file", file); return request<{ document_id: number; status: string }>("/documents", { method: "POST", body: data }); },
   remove: (id: number) => request<void>(`/documents/${id}`, { method: "DELETE" }),
   search: (query: string, documentId?: number, workspaceId?: number) => request<{ evidence: Evidence[]; evidence_count: number }>(`/search?${new URLSearchParams({ query, ...(documentId ? { document_id: String(documentId) } : {}), ...(workspaceId ? {workspace_id: String(workspaceId)} : {}) })}`),

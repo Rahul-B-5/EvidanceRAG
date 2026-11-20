@@ -12,7 +12,7 @@ delivery status live in [PROGRESS.md](PROGRESS.md).
 | Evidence Atlas | Browse persisted workspace graphs with paper, excerpt, topic, metric and dataset edges and source provenance | Durable reviewed claims, opposing-claim edges, alternative layouts and larger-library testing |
 | Disagreement | Surface differing or missing conditions, retrieve scoped candidate passages, and persist reviewer judgments with evidence | Model-suggested opposing propositions with protocol-sensitive checks and false-positive evaluation |
 | Reproduction | Assess 11 categories with specific wording, general mentions, missing-in-sample labels and Markdown dossier | Validate whether matched details are sufficient to reproduce the selected experiment |
-| Research directions | Surface author follow-up excerpts and map a question to scoped per-facet paper coverage | Corpus gap analysis, hypothesis and experiment plan, broader verification status |
+| Research directions | Scope-bounded limitation themes, evidence coverage, editable hypothesis and experiment plan, Markdown export | Cross-theme corpus analysis and wider literature verification |
 | Deliverables | Saved notes, Markdown notebook export, extractive comparison briefing | Editable research drafts and evidence packets with JSON, HTML and BibTeX where appropriate |
 | Everyday UX | Themes, keyboard palette, split reader, table views | Flagship visual review at desktop and narrow widths, accessibility and browser interaction regressions |
 | Operations | Versioned additive migrations, local settings, PostgreSQL tests | Recovery and retention, safer ingestion lifecycle, model error/cancellation tests, quality and latency benchmarks |
