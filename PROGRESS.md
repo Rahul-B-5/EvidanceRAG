@@ -177,17 +177,23 @@
   keeping passage ID and pages. PostgreSQL tests verified atomic replacement
   and retention after failure, cancellation or interruption. Full gate:
   109 PostgreSQL-enabled tests, 10 frontend tests, two browser tests and build.
-- Settings reports the configured model, local or remote transport,
+- Settings pushed as `6f86e59`. It reports the configured model, local or remote transport,
   PostgreSQL availability and active index coverage. Browser tested the
   diagnostics and provider check with isolated fixtures. Live loopback
   Ollama passed the fixed JSON check in 2.7 seconds without library content.
   Full gate: 111 PostgreSQL-enabled tests, 10 frontend tests, two browser
   tests and production build.
+- The local API validates accepted hosts and browser write origins. Answer
+  generation receives source fields and prior turns as JSON values and
+  rejects IDs from outside the current evidence set. Browser tests verified
+  the configured frontend still works. Live Ollama passed all six synthetic
+  benchmark cases. Full gate: 114 PostgreSQL-enabled tests, 10 frontend
+  tests, two browser tests and production build.
 
 ## Outstanding
 
-1. Harden the local API against browser requests from untrusted origins
-   while preserving the configured frontend, CLI clients and source viewing.
+1. Persist searchable claim records and build a workspace claim explorer
+   independent of individual comparison run screens.
 2. Expand graph exploration across workspaces and notebook sources.
 3. Extend the notebook with tags, collections and integrated annotations.
    Refine page attribution for chunks that span several pages.

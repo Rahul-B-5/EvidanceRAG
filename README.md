@@ -18,7 +18,7 @@ hybrid keyword/vector evidence, and returns source-linked answers.
 3. Start the API:
 
    ```bash
-   .venv/bin/uvicorn app.api.main:app --reload
+   .venv/bin/uvicorn app.api.main:app --reload --no-access-log
    ```
 
 4. In another terminal, start the React frontend (Node 22.13+):
@@ -30,6 +30,10 @@ hybrid keyword/vector evidence, and returns source-linked answers.
    ```
 
 Interactive API documentation is available at `http://127.0.0.1:8000/docs`.
+The API defaults to loopback hostnames. Set `API_ALLOWED_HOSTS` for an
+explicitly configured proxy hostname and `CORS_ORIGINS` for the browser
+frontend. Browser mutations require a same-origin request or a configured
+frontend origin. Local CLI requests do not need an Origin header.
 The application is served at `http://127.0.0.1:5173` and uses the local API at
 `http://127.0.0.1:8000` by default. Set `VITE_API_URL` to change that address.
 
@@ -239,6 +243,8 @@ Ollama uses its `none` reasoning setting by default to keep extraction latency
 down. Set `OLLAMA_REASONING_EFFORT` to a level supported by your local model if
 the workflow benefits from more reasoning.
 Cloud providers receive the question, supporting excerpts and bounded chat context.
+Generation sends those fields in a structured payload and validates cited IDs
+against evidence from the current request.
 Search, comparison passages, the reader and the notebook work without a provider.
 
 ## Reading and annotating PDFs

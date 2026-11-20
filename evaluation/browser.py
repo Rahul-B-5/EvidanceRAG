@@ -38,6 +38,7 @@ def run_browser_tests() -> int:
             "DATABASE_URL": database_url,
             "UPLOAD_DIR": str(root / "uploads"),
             "CORS_ORIGINS": f"http://127.0.0.1:{web_port}",
+            "API_ALLOWED_HOSTS": "127.0.0.1",
             "EMBEDDING_MODEL": "evidencerag-browser-fixture",
             "EMBEDDING_DIMENSIONS": "3",
             "CHUNK_SIZE": "1800",

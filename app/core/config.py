@@ -50,6 +50,7 @@ class Settings(BaseSettings):
         default="http://localhost:5173,http://127.0.0.1:5173",
         alias="CORS_ORIGINS",
     )
+    api_allowed_hosts: str = Field(default="localhost,127.0.0.1,::1", alias="API_ALLOWED_HOSTS")
 
     model_config = SettingsConfigDict(
         env_file=PROJECT_ROOT / ".env",

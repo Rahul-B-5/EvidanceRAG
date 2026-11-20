@@ -19,6 +19,7 @@ from app.api.reader_annotations import router as reader_annotations_router
 from app.api.answer_stream import stream_answer
 from app.api.embedding_rebuilds import router as embedding_rebuilds_router
 from app.api.settings import router as settings_router
+from app.api.browser_guard import BrowserGuard
 
 from app.core.config import get_settings
 from app.db.connection import get_connection
@@ -67,13 +68,17 @@ app.include_router(saved_evidence_router)
 app.include_router(reader_annotations_router)
 app.include_router(embedding_rebuilds_router)
 app.include_router(settings_router)
+configured_origins = [origin.strip() for origin in get_settings().cors_origins.split(",") if origin.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[origin.strip() for origin in get_settings().cors_origins.split(",") if origin.strip()],
+    allow_origins=configured_origins,
     allow_credentials=False,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     allow_headers=["Content-Type", "Range"],
     expose_headers=["Accept-Ranges", "Content-Range"],
+)
+app.add_middleware(
+    BrowserGuard, allowed_hosts=get_settings().api_allowed_hosts.split(","), allowed_origins=configured_origins,
 )
 
 
@@ -321,7 +326,8 @@ def document_source(document_id: int) -> FileResponse:
     if not path.is_file():
         raise HTTPException(status_code=404, detail="Original source file is missing.")
 
-    return FileResponse(path, media_type="application/pdf", filename=path.name, content_disposition_type="inline")
+    return FileResponse(path, media_type="application/pdf", filename=path.name, content_disposition_type="inline",
+                        headers={"X-Content-Type-Options": "nosniff"})
 
 
 @app.get("/documents/{document_id}/passages")
