@@ -94,6 +94,7 @@ kbd {color: var(--muted); font-size: .76rem}
 .reader-toolbar {justify-content: space-between; align-items: center}
 .reader-toolbar input[type="number"] {width: 5rem}
 .pane-size {display: flex; align-items: center; gap: .5rem}
+.reading-status-control {display: flex; align-items: center; flex-wrap: wrap; gap: .4rem; font-size: .88rem; color: var(--muted)}
 .reader-panes {display: grid; grid-template-columns: minmax(0, var(--reader-width)) minmax(0, var(--evidence-width)); gap: .75rem}
 .pdf-pane, .reader-evidence {border: 1px solid var(--line); border-radius: .5rem; min-width: 0}
 .pdf-pane {padding: .65rem; background: var(--bg)}

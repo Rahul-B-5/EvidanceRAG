@@ -228,7 +228,7 @@
   Hybrid recall@4 was 1.0, strict keyword recall@4 was 0.25, and answer p95 was
   3.7 seconds. The corpus covers a single domain with annotated excerpts.
   Full gate: 126 PostgreSQL tests, 10 frontend tests and the production build.
-- Inspected Library, Reader, Comparison Studio, Claim Explorer, Evidence Atlas
+- Flagship screen refinement pushed as `56ef0d7`. Inspected Library, Reader, Comparison Studio, Claim Explorer, Evidence Atlas
   and Assistant in Chrome at 1280 px and 390 px, with desktop screenshots in
   both themes. The mobile menu stays available after loading PDF.js.
   The comparison table scrolls inside its panel, and Atlas centers the selected
@@ -237,10 +237,17 @@
   from cited replies. Full gate: 126 PostgreSQL tests, 10 frontend tests,
   three browser tests with layout assertions across all six screens, and the
   production build.
+- Migration `015_document_reading` adds per-paper reading status and page
+  resume. Library filters and sorts by progress, and explicit citations
+  still open on their recorded page. PostgreSQL verified invalid pages,
+  finished-state retention and legacy source ranges. Chrome verified resume
+  after reload and a citation that opened a different page. Full gate:
+  127 PostgreSQL tests, 10 frontend tests, three browser tests and build.
 
 ## Outstanding
 
-1. Add durable reading progress and reading-state filters to Library and Reader.
+1. Reconcile staged copies when an import worker exits after committing job
+   completion but before removing the temporary file.
 2. Add independent disciplines and whole-paper tests. Measure standalone
    keyword recall on natural-language questions and track citation support
    under repeated live runs.

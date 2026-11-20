@@ -16,6 +16,7 @@ from psycopg import Connection, DatabaseError, OperationalError
 from psycopg.errors import ForeignKeyViolation, LockNotAvailable, UniqueViolation
 from app.api.saved_evidence import router as saved_evidence_router
 from app.api.reader_annotations import router as reader_annotations_router
+from app.api.reading import router as reading_router
 from app.api.answer_stream import stream_answer
 from app.api.embedding_rebuilds import router as embedding_rebuilds_router
 from app.api.settings import router as settings_router
@@ -69,6 +70,7 @@ app = FastAPI(
 )
 app.include_router(saved_evidence_router)
 app.include_router(reader_annotations_router)
+app.include_router(reading_router)
 app.include_router(embedding_rebuilds_router)
 app.include_router(settings_router)
 app.include_router(claims_router)

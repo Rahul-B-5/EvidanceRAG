@@ -139,7 +139,8 @@ def list_documents(conn: psycopg.Connection, document_id: int | None = None) -> 
             d.id, d.title, d.authors, d.publication_year, d.filename,
             d.stored_path, d.file_size_bytes, d.page_count,
             d.processing_status, d.processing_error, d.processed_at,
-            d.created_at, count(c.id) AS chunk_count, d.doi, d.venue, d.tags, d.metadata_revision
+            d.created_at, count(c.id) AS chunk_count, d.doi, d.venue, d.tags, d.metadata_revision,
+            d.reading_status, d.last_read_page, d.last_read_at
         FROM documents AS d
         LEFT JOIN chunks AS c ON c.document_id = d.id
         WHERE (%s::bigint IS NULL OR d.id=%s)
@@ -167,6 +168,9 @@ def list_documents(conn: psycopg.Connection, document_id: int | None = None) -> 
             "venue": row[14],
             "tags": row[15],
             "metadata_revision": row[16],
+            "reading_status": row[17],
+            "last_read_page": row[18],
+            "last_read_at": row[19],
         }
         for row in rows
     ]

@@ -1,19 +1,45 @@
 import { lazy, Suspense, useEffect, useState, type CSSProperties } from "react";
-import { api, type Document, type HighlightSelection, type Passage, type ReaderHighlight } from "./api";
+import { api, type Document, type HighlightSelection, type Passage, type ReaderHighlight, type ReadingStatus, type ReadingUpdate } from "./api";
 import { AnnotatedPassage, HighlightCard } from "./ReaderAnnotations";
 import { MetadataEditor } from "./DocumentMetadata";
 import { EmbeddingPanel } from "./EmbeddingPanel";
+import { readingStatusLabels } from "./readingStatus";
 
 const PdfViewer = lazy(() => import("./PdfViewer"));
 
-export function Reader({document, initialPage = 1, workspace = "", remove, update}: {
+export function Reader({document, initialPage = 1, workspace = "", remove, update, saveReading}: {
   document: Document; initialPage?: number; workspace?: string; remove: () => void; update: (paper: Document) => void;
+  saveReading: (id: number, change: ReadingUpdate) => Promise<void>;
 }) {
   const [page, setPage] = useState(initialPage);
   const [draft, setDraft] = useState(String(initialPage));
   const [width, setWidth] = useState(68);
   const [pdfPages, setPdfPages] = useState<number>();
+  const [readingError, setReadingError] = useState("");
+  const [savingStatus, setSavingStatus] = useState(false);
   const maximum = pdfPages ?? document.page_count ?? 100000;
+
+  useEffect(() => {
+    if (page > maximum || (document.has_stored_source && pdfPages === undefined)) return;
+    let active = true;
+    setReadingError("");
+    saveReading(document.id, {page}).catch(() => {
+      if (active) setReadingError("Unable to remember this page.");
+    });
+    return () => {active = false;};
+  }, [document.id, document.has_stored_source, maximum, page, pdfPages, saveReading]);
+
+  async function setReadingStatus(status: ReadingStatus) {
+    setSavingStatus(true);
+    setReadingError("");
+    try {
+      await saveReading(document.id, {status});
+    } catch {
+      setReadingError("Unable to change reading status.");
+    } finally {
+      setSavingStatus(false);
+    }
+  }
 
   function go(next: number) {
     if (!Number.isInteger(next) || next < 1 || next > maximum) {
@@ -38,7 +64,12 @@ export function Reader({document, initialPage = 1, workspace = "", remove, updat
         <button type="button" className="secondary" disabled={page >= maximum} onClick={() => go(page + 1)}>Next</button>
       </form>
       <label className="pane-size">PDF pane <input type="range" min={40} max={80} value={width} onChange={e => setWidth(Number(e.target.value))} /></label>
+      <label className="reading-status-control">Reading status <select disabled={savingStatus} value={document.reading_status}
+        onChange={e => void setReadingStatus(e.target.value as ReadingStatus)}>
+        {Object.entries(readingStatusLabels).map(([status, label]) => <option key={status} value={status}>{label}</option>)}
+      </select></label>
     </div>
+    {readingError && <p className="reader-hint" role="status">{readingError}</p>}
     <div className="reader-panes" style={{"--reader-width": `${width}fr`, "--evidence-width": `${100 - width}fr`} as CSSProperties}>
       <div className="pdf-pane">
         {document.has_stored_source

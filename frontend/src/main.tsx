@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
-import { api, type Document, type ImportJobRecord, type Workspace } from "./api";
+import { api, type Document, type ImportJobRecord, type ReadingUpdate, type Workspace } from "./api";
+import { readingStatusLabels } from "./readingStatus";
 import { WorkspaceArea } from "./WorkspaceArea";
 import { Conversations } from "./Conversations";
 import { Reader } from "./Reader";
@@ -74,6 +75,7 @@ function App() {
   const [command, setCommand] = useState("");
   const [mobileNavigation, setMobileNavigation] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
+  const readingUpdates = useRef(new Map<number, Promise<void>>());
   const palette = useRef<HTMLDialogElement>(null);
 
   async function refresh() {
@@ -104,7 +106,7 @@ function App() {
 
   function openPaper(id: number) {
     setSelectedId(id);
-    setReaderPage(1);
+    setReaderPage(documents.find(paper => paper.id === id)?.last_read_page ?? 1);
     setReaderWorkspace("");
     navigate("reader");
   }
@@ -113,6 +115,19 @@ function App() {
     setFindingQuestion(question);
     setView("assistant");
   }
+
+  const saveReading = useCallback((id: number, change: ReadingUpdate): Promise<void> => {
+    const earlier = readingUpdates.current.get(id) ?? Promise.resolve();
+    const update = earlier.catch(() => {}).then(async () => {
+      const progress = await api.updateReading(id, change);
+      setDocuments(current => current.map(paper => paper.id === id ? {...paper, ...progress} : paper));
+    });
+    const tracked: Promise<void> = update.finally(() => {
+      if (readingUpdates.current.get(id) === tracked) readingUpdates.current.delete(id);
+    });
+    readingUpdates.current.set(id, tracked);
+    return tracked;
+  }, []);
 
   useEffect(() => { void refresh(); }, []);
   useEffect(() => { window.scrollTo(0, 0); }, [view]);
@@ -245,7 +260,9 @@ function App() {
   let content: ReactNode;
   if (view === "reader") content = selected
     ? <Reader key={`${selected.id}-${readerPage}`} document={selected} initialPage={readerPage} workspace={readerWorkspace}
-      update={paper => setDocuments(current => current.map(d => d.id === paper.id ? paper : d))} remove={() => void remove(selected)} />
+      update={paper => setDocuments(current => current.map(d => d.id === paper.id ? {...d, ...paper,
+        reading_status:d.reading_status, last_read_page:d.last_read_page, last_read_at:d.last_read_at} : d))}
+      saveReading={saveReading} remove={() => void remove(selected)} />
     : loading ? <p role="status">Loading paper…</p>
     : <section className="panel empty"><h2>Select a paper to read</h2><button onClick={() => navigate("library")}>Open library</button></section>;
   else if (view === "assistant") content = <Conversations documents={documents} initial={findingQuestion} />;
@@ -324,12 +341,14 @@ function App() {
 
 function PaperRows({documents, openPaper}: {documents: Document[]; openPaper: (id: number) => void}) {
   return <div className="table-scroll"><table className="paper-table">
-    <thead><tr><th scope="col">Paper</th><th scope="col">Pages</th><th scope="col">Status</th></tr></thead>
+    <thead><tr><th scope="col">Paper</th><th scope="col">Pages</th><th scope="col">Reading status</th></tr></thead>
     <tbody>{documents.map(d => <tr key={d.id}>
       <td><button className="paper-link" onClick={() => openPaper(d.id)}>{d.title}</button>
         <small>{[d.authors.join(", ") || d.filename, d.venue, d.publication_year].filter(Boolean).join(" · ")}</small>
+        {d.last_read_page !== null && <small>Last read · Page {d.last_read_page}</small>}
         {!!d.tags.length && <small>{d.tags.join(" · ")}</small>}</td>
-      <td>{d.page_count ?? "—"}</td><td><span className="tag">{d.processing_status}</span></td>
+      <td>{d.page_count ?? "—"}</td><td><span className="tag">{readingStatusLabels[d.reading_status]}</span>
+        {d.processing_status !== "ready" && <small>{d.processing_status}</small>}</td>
     </tr>)}</tbody>
   </table></div>;
 }
@@ -341,12 +360,16 @@ function Library({documents, workspaces, active, loading, uploading, imports, im
 }) {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("recent");
+  const [reading, setReading] = useState("");
   const [scoped, setScoped] = useState<number[] | null>(null);
   const input = useRef<HTMLInputElement>(null);
-  const visible = documents.filter(d => (scoped === null || scoped.includes(d.id)) && [d.title, d.filename, d.venue ?? "", d.doi ?? "", ...d.authors, ...d.tags]
+  const visible = documents.filter(d => (!reading || d.reading_status === reading) &&
+    (scoped === null || scoped.includes(d.id)) && [d.title, d.filename, d.venue ?? "", d.doi ?? "", ...d.authors, ...d.tags]
     .some(text => text.toLowerCase().includes(query.trim().toLowerCase())));
   if (sort === "title") visible.sort((a, b) => a.title.localeCompare(b.title));
   if (sort === "year") visible.sort((a, b) => (b.publication_year ?? 0) - (a.publication_year ?? 0));
+  if (sort === "read") visible.sort((a, b) =>
+    (b.last_read_at ? Date.parse(b.last_read_at) : 0) - (a.last_read_at ? Date.parse(a.last_read_at) : 0));
   return <section className="panel library-panel">
     <div className="library-heading">
       <div><h2>Papers</h2><p className="muted">{visible.length} {visible.length === 1 ? "paper" : "papers"}</p></div>
@@ -360,10 +383,15 @@ function Library({documents, workspaces, active, loading, uploading, imports, im
     <LibraryCollections documents={documents} workspaces={workspaces} filter={setScoped} visible={active} />
     <div className="library-controls">
       <label>Filter papers<input type="search" value={query} onChange={e => setQuery(e.target.value)} placeholder="Title, author, venue, DOI or tag" /></label>
-      <label>Sort by<select value={sort} onChange={e => setSort(e.target.value)}><option value="recent">Recently added</option><option value="title">Title</option><option value="year">Publication year</option></select></label>
+      <label>Reading status<select value={reading} onChange={e => setReading(e.target.value)}>
+        <option value="">All reading statuses</option>{Object.entries(readingStatusLabels).map(([status, label]) =>
+          <option key={status} value={status}>{label}</option>)}
+      </select></label>
+      <label>Sort by<select value={sort} onChange={e => setSort(e.target.value)}><option value="recent">Recently added</option>
+        <option value="read">Recently read</option><option value="title">Title</option><option value="year">Publication year</option></select></label>
     </div>
     {loading ? <p role="status">Loading library…</p> : visible.length ? <PaperRows documents={visible} openPaper={openPaper} />
-      : <p className="empty">{query || scoped !== null ? "No papers match the current scope and filter." : "Your library is empty. Import a PDF to begin."}</p>}
+      : <p className="empty">{query || reading || scoped !== null ? "No papers match the current filters." : "Your library is empty. Import a PDF to begin."}</p>}
     {importError && <p role="alert">{importError}</p>}
     {!!imports.length && <section className="import-queue" aria-label="PDF import queue">
       <h2>Import queue</h2>

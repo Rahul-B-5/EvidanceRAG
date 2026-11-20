@@ -272,6 +272,12 @@ New imports index each physical PDF page separately. Their search results and
 citations point to a single page, even when blank pages occur in the source.
 Existing passages retain their recorded page ranges and identifiers.
 
+Reader remembers the last page of each paper. Open a paper from Library to
+resume there, or follow a citation to open its specific page. Library can
+filter by reading status and sort by recent reading. The Reader's status
+control lets you mark a paper finished or unread. `PATCH /documents/{id}/reading`
+updates the page or status independently of the index and bibliographic metadata.
+
 Reader renders the original PDF locally through a bundled PDF.js worker. It
 supports fit-width zoom, selectable text and phrase search with page links.
 Search uses the PDF’s text layer. Image-only pages need OCR before their text

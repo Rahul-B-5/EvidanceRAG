@@ -77,6 +77,19 @@ test("import, inspect, save, answer and export a real PDF", async ({page, reques
   await page.getByRole("button", {name:"Rebuild embeddings", exact:true}).click();
   await expect(page.getByText("Embedding rebuild complete.", {exact:true})).toBeVisible();
   await expect(page.getByText("1 of 1 passages match the active embedding profile.", {exact:true})).toBeVisible();
+  const reading = page.getByRole("combobox", {name:"Reading status",exact:true});
+  await reading.selectOption("finished");
+  await expect(reading).toHaveValue("finished");
+  await page.getByRole("button", {name:"Library", exact:true}).click();
+  await page.getByRole("combobox", {name:"Reading status",exact:true}).selectOption("finished");
+  await expect(page.getByRole("table").getByText("Last read · Page 2", {exact:true})).toBeVisible();
+  await page.reload();
+  await page.getByRole("button", {name:"Library", exact:true}).click();
+  await page.getByRole("button", {name:title,exact:true}).click();
+  await expect(page.getByRole("img", {name:"PDF page 2"})).toBeVisible();
+  await expect(reading).toHaveValue("finished");
+  await page.getByRole("button", {name:"Previous",exact:true}).click();
+  await expect(page.getByRole("img", {name:"PDF page 1"})).toBeVisible();
 
   await page.getByRole("button", {name:"Saved evidence", exact:true}).click();
   await page.getByRole("textbox", {name:"Research note"}).fill("Verify the held-out sample counts.");

@@ -6,7 +6,7 @@ delivery status live in [PROGRESS.md](PROGRESS.md).
 
 | Journey | Working path | Remaining verification or implementation |
 | --- | --- | --- |
-| Library | Durable multi-file imports with restart recovery, metadata, workspace collections, source recovery and atomic embedding rebuilds | Reading history and related-paper recommendations |
+| Library | Durable multi-file imports with restart recovery, metadata, workspace collections, reading status, source recovery and atomic embedding rebuilds | Related-paper recommendations and broader library scale testing |
 | Investigation | Hybrid search, fixed multi-paper scopes, explicit legacy scope recovery, page citations and streamed progress | Broader browser coverage and evaluation of contextual follow-ups |
 | Comparison | Matrix, source preview, evidence saving, durable partial results and condition checks | More experimental fields, confidence and support checks, representative corpus evaluation |
 | Claim Explorer | Persistent workspace-scoped excerpts, indexed search, revisioned human assessments, shared-label links, counterevidence, and Reader and Atlas navigation | More precise claim spans and a representative support evaluation |
@@ -15,7 +15,7 @@ delivery status live in [PROGRESS.md](PROGRESS.md).
 | Reproduction | Assess 24 components across 11 categories, cite access limitations and export a Markdown dossier | Verify artifact access and test experiments against documented instructions |
 | Research directions | Topic-focused workspace sampling separates stated limitations and reported evaluations, with editable plans and dual-source Markdown export | Cross-theme corpus analysis and wider literature verification |
 | Deliverables | Searchable saved notes and tags, comparison briefings, durable evidence packets, seven reusable outlines, cited drafts and Markdown/HTML/JSON/BibTeX exports | Notebook collection and annotation filters, citation managers and optional PDF export |
-| Reader | Selectable PDF text, local phrase search, zoom, persistent bookmarks, revisioned highlights and single-page anchors on new imports | Exact PDF-coordinate annotations and OCR |
+| Reader | Selectable PDF text, local phrase search, zoom, page resume, persistent bookmarks, revisioned highlights and single-page anchors on new imports | Exact PDF-coordinate annotations and OCR |
 | Everyday UX | Shared light and dark styles, keyboard palette, accessible mobile menu and six flagship screen screenshots with responsive checks | Wider assistive-technology testing and visual QA on secondary screens |
 | Operations | Additive migrations, PostgreSQL tests, evaluation and browser suites, safe source lifecycle, provider diagnostics and local API host/origin policy | Larger corpora, restart recovery and retention |
 

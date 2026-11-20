@@ -4,7 +4,10 @@ const API_BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 export type DocumentMetadata = {title: string; authors: string[]; publication_year: number | null;
   doi: string | null; venue: string | null; tags: string[]; metadata_revision: number};
-export type Document = DocumentMetadata & {id: number; filename: string; page_count: number | null;
+export type ReadingStatus = "unread" | "reading" | "finished";
+export type ReadingProgress = {reading_status: ReadingStatus; last_read_page: number | null; last_read_at: string | null};
+export type ReadingUpdate = {page: number} | {status: ReadingStatus};
+export type Document = DocumentMetadata & ReadingProgress & {id: number; filename: string; page_count: number | null;
   chunk_count: number; processing_status: string; has_stored_source: boolean; created_at: string};
 export type Passage = {chunk_id: number; page_start: number; page_end: number; text: string};
 export type ReaderHighlight = {
@@ -114,7 +117,7 @@ export type PacketTemplate = {id: string; title: string; sections: string[]};
 export type PacketSummary = {id: string; title: string; template: string; revision: number; updated_at: string; item_count: number};
 export type EvidencePacket = {
   id: string; title: string; question: string; narrative: string; template: string; revision: number; workspace_id: number | null;
-  items: Array<Omit<SavedPassage, "source_exists"> & {authors: string[]; publication_year: number | null;
+  items: Array<Omit<SavedPassage, "source_exists" | "tags"> & {authors: string[]; publication_year: number | null;
     saved_at: string; doi?: string | null; venue?: string | null}>;
 };
 
@@ -141,6 +144,9 @@ export const api = {
       method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(assessment),
     }),
   health: () => request<{ status: string }>("/health"),
+  updateReading: (id: number, change: ReadingUpdate) => request<ReadingProgress>(`/documents/${id}/reading`, {
+    method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify(change),
+  }),
   runtimeSettings: (signal?: AbortSignal) => request<RuntimeSettings>("/settings", {signal}),
   testProvider: (signal?: AbortSignal) => request<{elapsed_ms: number}>("/settings/test-provider", {
     method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({synthetic:true}), signal,
