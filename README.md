@@ -48,6 +48,9 @@ The application is served at `http://127.0.0.1:5173` and uses the local API at
   most one result per paper per facet.
 - `GET /research/directions` — finds indexed limitation language across a
   scope and returns draft experiment steps with source references.
+- `GET/POST /evidence-packets`, `GET/PATCH /evidence-packets/{id}`, and
+  `POST /evidence-packets/{id}/draft` — assemble, reopen, edit and draft
+  research briefings using immutable saved-passage snapshots.
 - `DELETE /documents/{document_id}` — removes the document, its chunks, and its
   managed source file after the database transaction commits.
 - `GET /search?query=...` — returns hybrid-retrieved evidence passages.
@@ -143,6 +146,12 @@ papers within the ranked sample. Edit the research question, hypothesis,
 baselines, metrics and validation steps before exporting a plan. The candidate
 directions require broader literature verification.
 
+**Evidence packets** combine selected saved passages, notes and bibliography
+metadata. Edit a briefing by hand or request a source-cited draft from the
+configured provider. Draft requests use up to 16 snapshots and only run on
+request. Export the packet to Markdown, escaped HTML, JSON or BibTeX. Revision
+checks protect against saving over a more recent briefing from another tab.
+
 Use **Quick open** (Ctrl/⌘K) to navigate by view or paper title. The reader shows
 the original PDF and indexed passages for the selected page. Its width slider
 adjusts the split on wider screens. Citation links open the reader at the source page.
@@ -187,4 +196,6 @@ command above, which also applies the migrations.
 .venv/bin/pytest -q
 .venv/bin/python -m compileall -q app scripts
 EVIDENCERAG_INTEGRATION=1 .venv/bin/pytest -q
+npm --prefix frontend test
+npm --prefix frontend run build
 ```

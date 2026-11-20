@@ -83,12 +83,20 @@
   handoff and draft retention. PostgreSQL verifies qualifying language,
   deduplication and workspace rejection. Full gate: 81 PostgreSQL-enabled tests
   and production build.
+- Research Directions pushed as `22fb392` and confirmed on `origin/main`.
+  Additive migration `005_evidence_packets` persists scoped saved-passage
+  snapshots, notes, bibliography fields and editable briefings with revision
+  checks. Browser verified scoped packet creation, a real local Ollama draft
+  using synthetic calibration evidence, saving, HTML export and reopening
+  after reload. The disposable packet, passage, document and workspace were
+  removed. Full gate: 82 PostgreSQL-enabled tests, 3 frontend export tests
+  and production build.
 
 ## Outstanding
 
-1. Build durable Evidence Packets from selected saved passages and notes.
-   Preserve source snapshots, add a researcher-authored briefing field,
-   scope packet access and export Markdown, HTML, JSON and bibliography.
+1. Complete the Library journey. Add multi-PDF imports with per-file progress
+   and clear retry behavior, then metadata editing with DOI, venue, authors,
+   year and version-safe updates. Verify with synthetic PDFs.
 2. Add contradiction candidates only for aligned study conditions and opposing
    claims with two citable sources. Add reproducibility disclosure validation,
    corpus-scoped gap exploration and evidence-grounded research briefings.

@@ -10,6 +10,7 @@ import { EvidenceAtlas } from "./EvidenceAtlas";
 import { ReproductionStudio } from "./ReproductionStudio";
 import { ResearchCoverage } from "./ResearchCoverage";
 import { ResearchDirectionStudio } from "./ResearchDirections";
+import { EvidencePackets } from "./EvidencePackets";
 import "./styles.css";
 
 const views = [
@@ -24,6 +25,7 @@ const views = [
   ["coverage", "Question coverage", "▦"],
   ["directions", "Research directions", "◇"],
   ["saved", "Saved evidence", "◇"],
+  ["packets", "Evidence packets", "▱"],
   ["workspaces", "Workspaces", "⊞"],
 ] as const;
 type View = typeof views[number][0];
@@ -63,7 +65,7 @@ function App() {
   function navigate(next: View) {
     setView(next);
     setNotice("");
-    if (next === "compare" || next === "reproduction" || next === "coverage" || next === "directions") {
+    if (next === "compare" || next === "reproduction" || next === "coverage" || next === "directions" || next === "packets") {
       setOpenedResearchViews(previous => previous.has(next) ? previous : new Set([...previous, next]));
     }
     if (next === "assistant") setFindingQuestion(undefined);
@@ -156,7 +158,7 @@ function App() {
     : <section className="panel empty"><h2>Select a paper to read</h2><button onClick={() => navigate("library")}>Open library</button></section>;
   else if (view === "assistant") content = <Conversations documents={documents} initial={findingQuestion} />;
   else if (view === "atlas") content = <EvidenceAtlas compare={() => navigate("compare")} ask={askFinding} />;
-  else if (view === "compare" || view === "reproduction" || view === "coverage" || view === "directions") content = null;
+  else if (view === "compare" || view === "reproduction" || view === "coverage" || view === "directions" || view === "packets") content = null;
   else if (view === "saved") content = <SavedEvidence />;
   else if (view === "research" || view === "workspaces") content = <WorkspaceArea key={view} documents={documents} manage={view === "workspaces"} />;
   else content = <section className="panel overview">
@@ -186,6 +188,7 @@ function App() {
       {openedResearchViews.has("reproduction") && <div hidden={view !== "reproduction"}><ReproductionStudio documents={documents} workspaces={workspaces} /></div>}
       {openedResearchViews.has("coverage") && <div hidden={view !== "coverage"}><ResearchCoverage workspaces={workspaces} ask={askFinding} /></div>}
       {openedResearchViews.has("directions") && <div hidden={view !== "directions"}><ResearchDirectionStudio workspaces={workspaces} ask={askFinding} /></div>}
+      {openedResearchViews.has("packets") && <div hidden={view !== "packets"}><EvidencePackets workspaces={workspaces} /></div>}
     </main>
     <dialog ref={palette} className="palette" aria-label="Quick open">
       <form onSubmit={e => {e.preventDefault(); if (commands[0]) {palette.current?.close();commands[0].run();}}}>

@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": ".test-build",
+    "rootDir": "src"
+  },
+  "include": ["src/vite-env.d.ts", "src/packetExport.ts"],
+  "references": []
+}

@@ -62,6 +62,11 @@ export type ResearchDirections = {
   directions: Array<{id: string; title: string; paper_count: number; verification: string; plan: InvestigationPlan;
     evidence: Array<Provenance & {title: string; excerpt: string; signal: string}>}>;
 };
+export type PacketSummary = {id: string; title: string; revision: number; updated_at: string; item_count: number};
+export type EvidencePacket = {
+  id: string; title: string; question: string; narrative: string; revision: number; workspace_id: number | null;
+  items: Array<Omit<SavedPassage, "source_exists"> & {authors: string[]; publication_year: number | null; saved_at: string}>;
+};
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, init);
@@ -114,6 +119,17 @@ export const api = {
   }),
   directions: (workspaceId: string, signal?: AbortSignal) => request<ResearchDirections>(
     workspaceId ? `/research/directions?workspace_id=${workspaceId}` : "/research/directions", {signal}),
+  packets: (workspaceId: string) => request<{packets: PacketSummary[]}>(
+    workspaceId ? `/evidence-packets?workspace_id=${workspaceId}` : "/evidence-packets"),
+  createPacket: (workspaceId: string, title: string, chunkIds: number[]) => request<EvidencePacket>("/evidence-packets", {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({workspace_id:workspaceId ? Number(workspaceId) : undefined, title, chunk_ids:chunkIds}),
+  }),
+  packet: (id: string) => request<EvidencePacket>(`/evidence-packets/${id}`),
+  editPacket: (id: string, fields: Pick<EvidencePacket, "title" | "question" | "narrative" | "revision">) => request<EvidencePacket>(
+    `/evidence-packets/${id}`, {method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify(fields)}),
+  draftPacket: (id: string) => request<{answer: string; abstained: boolean; reason: string | null}>(
+    `/evidence-packets/${id}/draft`, {method:"POST"}),
   upload: (file: File) => { const data = new FormData(); data.append("file", file); return request<{ document_id: number; status: string }>("/documents", { method: "POST", body: data }); },
   remove: (id: number) => request<void>(`/documents/${id}`, { method: "DELETE" }),
   search: (query: string, documentId?: number, workspaceId?: number) => request<{ evidence: Evidence[]; evidence_count: number }>(`/search?${new URLSearchParams({ query, ...(documentId ? { document_id: String(documentId) } : {}), ...(workspaceId ? {workspace_id: String(workspaceId)} : {}) })}`),
