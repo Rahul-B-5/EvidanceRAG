@@ -8,7 +8,7 @@ that follows records earlier checkpoints and their remaining work at the time.
 | Requirement | Current evidence | Remaining release work |
 | --- | --- | --- |
 | Existing research data | PostgreSQL 5433 retains 3 documents and 75 passages. Recovered the legacy original through byte-identical duplicate upload and verified unchanged document metadata and a digest of every chunk row, including embeddings. | Continue read-only integrity checks at release gates. |
-| Local launch | Supported launcher checks ports, PostgreSQL and additive migrations. Both loopback hostnames passed Chrome smoke tests. | Repeat the final smoke test against the release commit. |
+| Local launch | Supported launcher checks ports, PostgreSQL and additive migrations. Latest checkout loaded the existing 3-paper, 75-passage library in Chrome through both loopback hostnames. Shutdown released both service ports. | Repeat smoke testing when startup dependencies change. |
 | AI configuration | Encrypted web profiles cover five providers, answering/extraction routing, local discovery and live model switching. Native Ollama context configuration is browser-tested. | Authenticated cloud calls need configured credentials. |
 | Library and Reader | Durable imports, duplicate handling, restart recovery, indexed pages, bookmarks, annotations and exact passage navigation have integration and browser coverage. | Scanned PDFs require OCR outside the current text ingestion path. |
 | Research workflows | Browser journeys cover comparison, claims, Atlas, opposing findings, reproducibility, directions, coverage, evidence packets and exports. | Wider representative scientific evaluation and assistive-technology testing. |
@@ -488,6 +488,16 @@ launcher, wider browser review and release validation to the previous scope.
   requested metric and condition and preserve the two source citations.
 
 ## Continuation
+
+- Comparison scale checks now retain SI prefix case. They flag MW versus
+  mW, MB versus Mb, kJ versus J and ms versus s as different reported scales.
+  Word aliases such as percent/% and seconds/s still match. An extraction
+  regression checks the original reported power units survive into the
+  pairwise comparison. Passed 165 PostgreSQL tests, the Comparison Studio
+  browser workflow and all five scientific excerpt evaluation cases.
+  The supported launcher also passed a read-only live library smoke test
+  in Chrome through localhost and 127.0.0.1, then released both ports on
+  shutdown. The frontend production build passed.
 
 - Added provider-failure browser recovery. It checks the retained question,
   an empty persisted conversation after reload, a cited retry and removal of

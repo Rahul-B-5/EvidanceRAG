@@ -62,6 +62,44 @@ def test_malformed_provider_result_surfaces_error():
         extract_findings(provider, [])
 
 
+@pytest.mark.parametrize(("left_value", "right_value", "different"), [
+    ("10 MW", "10 mW", True),
+    ("10 MB", "10 Mb", True),
+    ("10 kJ", "10 J", True),
+    ("10 ms", "10 s", True),
+    ("10 percent", "10%", False),
+    ("10 seconds", "10 s", False),
+])
+def test_comparability_preserves_case_sensitive_unit_prefixes(left_value, right_value, different):
+    shared = {"metric": "resource use", "dataset": "Set A", "task": "classification",
+              "split": "held-out", "protocol": "five seeds", "baseline": "linear model"}
+    papers = [
+        {"document_id": 1, "findings": [{"outcome": {**shared, "value": left_value}}]},
+        {"document_id": 2, "findings": [{"outcome": {**shared, "value": right_value}}]},
+    ]
+    result = pairwise_checks(papers)[0]["outcomes"][0]
+    assert ("reported scale" in result["differences"]) == different
+    assert result["status"] == ("reported_difference" if different else "candidate_match")
+
+
+def test_extracted_power_measurements_keep_their_reported_prefixes():
+    papers = []
+    labels = {"metric": "power", "dataset": "Set A", "task": "classification",
+              "split": "held-out", "protocol": "five seeds", "baseline": "linear model"}
+    for document, value in enumerate(("10 MW", "10 mW"), start=1):
+        quote = f"For classification on Set A, power was {value} using held-out data, five seeds and a linear model."
+        provider = Mock()
+        provider.generate_json.return_value = json.dumps({"findings": [
+            {"topic": "results", "source": 1, **labels, "value": value},
+        ]})
+        findings, rejected = extract_findings(provider, [{
+            "text": quote, "document_id": document, "chunk_id": document, "page_start": 2, "page_end": 2,
+        }])
+        assert rejected == 0 and findings[0]["outcome"]["value"] == value
+        papers.append({"document_id": document, "findings": findings})
+    assert pairwise_checks(papers)[0]["outcomes"][0]["differences"] == ["reported scale"]
+
+
 def test_model_selects_indexed_window_without_retyping_it():
     prefix = "This experimental paper describes baseline details. " * 13
     text = prefix + "The final benchmark F1 score was 87%."

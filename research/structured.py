@@ -19,7 +19,7 @@ TOPICS = {
     "architecture": "architecture OR backbone OR layer OR encoder OR network",
     "protocol": "protocol OR split OR validation OR test OR cross-validation",
 }
-UNIT_SUFFIX = r"(?:%|percent\b|percentage points?\b|ms\b|s\b|seconds?\b|minutes?\b|hours?\b|Hz\b|kHz\b|MHz\b|GHz\b|bytes?\b|[KMG]i?B\b|J\b|W\b|flops\b|[kMGT]FLOPS\b)"
+UNIT_SUFFIX = r"(?:%|percent\b|percentage points?\b|ms\b|s\b|seconds?\b|minutes?\b|hours?\b|Hz\b|kHz\b|MHz\b|GHz\b|bytes?\b|[KMG]i?B\b|[kMGT]?J\b|[kMGT]?W\b|flops\b|[kMGT]FLOPS\b)"
 METRIC_VALUE = re.compile(
     r"\b(?P<metric>ROC[- ]AUC|AUROC|AUC|F1(?:[- ]score)?|accuracy|precision|recall|latency|"
     r"mean average precision|exact match|RMSE|MAE)\s+(?:score\s+)?"
@@ -193,8 +193,10 @@ def pairwise_checks(papers: list[dict]) -> list[dict]:
             def scale(outcome: dict) -> str:
                 value = outcome["value"]
                 match = re.search(r"\d\s*(" + UNIT_SUFFIX + r")", value, re.IGNORECASE)
-                unit = (match[1] if match else outcome.get("units", "")).casefold()
-                return "%" if unit == "percent" else unit
+                unit = match[1] if match else outcome.get("units", "")
+                aliases = {"percent": "%", "second": "s", "seconds": "s",
+                           "minute": "min", "minutes": "min", "hour": "h", "hours": "h"}
+                return aliases.get(unit.casefold(), unit)
             if scale(x) != scale(y):
                 differences.append("reported scale")
             if x.get("direction") and y.get("direction") and x["direction"].casefold() != y["direction"].casefold():
