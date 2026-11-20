@@ -56,3 +56,19 @@ def test_grouped_citations_are_normalized_and_every_id_is_checked(monkeypatch):
     provider.return_value = '{"answer":"The sources agree [E1, E99].","abstained":false,"reason":null}'
     with pytest.raises(RuntimeError, match="unknown evidence IDs"):
         generate_answer("Do the results agree?", "Calibration result.", passages)
+
+
+def test_table_evidence_is_sent_as_separate_cells_without_flattening(monkeypatch):
+    provider = Mock(return_value='{"answer":"Precision was 0.84 [E1].","abstained":false,"reason":null}')
+    monkeypatch.setattr("app.generation.answerer.get_generation_provider",
+                        lambda _: SimpleNamespace(generate_json=provider))
+    row = {"caption":"Table 2", "group":"Results", "cells":[
+        {"column":"Metric", "value":"Precision"}, {"column":"Score", "value":"0.84"},
+    ]}
+    evidence = [{"evidence_id":"E1", "chunk_id":9, "document_id":1, "title":"Study",
+                 "page_start":2, "page_end":2, "text":"Linearized text", "table_row":row}]
+    answer = generate_answer("What was the precision?", "Calibration results", evidence)
+    payload = json.loads(provider.call_args.kwargs["prompt"])
+    assert payload["evidence"][0]["table_row"] == row
+    assert "text" not in payload["evidence"][0]
+    assert answer["citations"][0]["page_start"] == 2

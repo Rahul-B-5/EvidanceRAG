@@ -380,6 +380,10 @@ answers for review.
 Assistant requests a constrained answer format from Ollama and Gemini and
 validates citations locally. OpenAI-compatible endpoints can use JSON object
 mode. Citation validation confirms the passage identifiers and their pages.
+Newly indexed PDFs with extractable tables also preserve the caption, row
+group and column-to-cell mapping on the physical page. Typed rows appear in
+Reader and in Assistant evidence. Earlier passages remain available in their
+original format.
 
 The whole-PDF benchmark uses the [public NREL solar cost report](https://www.osti.gov/servlets/purl/2005540).
 It imports the pinned PDF through the durable queue in a disposable schema,

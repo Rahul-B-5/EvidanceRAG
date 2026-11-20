@@ -34,6 +34,8 @@ def build_evidence_context(
         }
         if result.get("section_title"):
             item["section_title"] = result["section_title"]
+        if result.get("table_row"):
+            item["table_row"] = result["table_row"]
         evidence.append(item)
 
         page_start = item["page_start"]

@@ -15,7 +15,7 @@ delivery status live in [PROGRESS.md](PROGRESS.md).
 | Reproduction | Assess 24 components across 11 categories, cite access limitations and export a Markdown dossier | Verify artifact access and test experiments against documented instructions |
 | Research directions | Topic-focused workspace sampling separates stated limitations and reported evaluations, with editable plans and dual-source Markdown export | Cross-theme corpus analysis and wider literature verification |
 | Deliverables | Searchable notes, tags and Reader highlights scoped to workspace and collection, comparison briefings, durable evidence packets, cited drafts and Markdown/HTML/JSON/BibTeX exports | Citation managers and optional PDF export |
-| Reader | Selectable PDF text, local phrase search, zoom, page resume, bookmarks, revisioned highlights, PDF outline labels and cited passage focus | Exact PDF-coordinate annotations and OCR |
+| Reader | Selectable PDF text, local phrase search, zoom, page resume, bookmarks, revisioned highlights, PDF outline labels, cited passage focus and typed table cells for newly indexed PDFs | Exact PDF-coordinate annotations and OCR |
 | Everyday UX | Shared light and dark styles, keyboard palette, accessible mobile menu and six flagship screen screenshots with responsive checks | Wider assistive-technology testing and visual QA on secondary screens |
 | Operations | Verified local launcher, additive migrations, encrypted web provider profiles, live model switching, PostgreSQL and browser suites, safe source lifecycle and local API host/origin policy | Live cloud-provider checks, larger corpus tests and retention |
 

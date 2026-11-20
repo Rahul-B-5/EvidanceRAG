@@ -166,3 +166,12 @@ kbd {color: var(--muted); font-size: .76rem}
 .provider-settings [aria-pressed="true"] {
   background: var(--active); color: var(--accent);
 }
+
+.indexed-table-row { display: grid; gap: .35rem; margin-top: .6rem; }
+.indexed-table-row dl { display: grid; gap: .4rem; margin: .2rem 0; }
+.indexed-table-row dl > div {
+  display: grid; gap: .2rem; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  border-top: 1px solid var(--line); padding-top: .4rem; overflow-wrap: anywhere;
+}
+.indexed-table-row dd { margin: 0; }
+.indexed-table-row dt, .indexed-table-row summary { color: var(--muted); }

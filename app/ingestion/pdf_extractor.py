@@ -10,14 +10,25 @@ TABLE_CAPTION = re.compile(r"^[ \t]*Table[ \t]+(?:[A-Z][.-]?)?\d+\b", re.IGNOREC
 TABLE_LOCK = Lock()
 
 
+class TableCell(TypedDict):
+    column: str
+    value: str
+
+
+class TableRow(TypedDict):
+    caption: str
+    group: str
+    cells: list[TableCell]
+
+
 class ExtractedPage(TypedDict):
     page_number: int
     text: str
-    table_rows: NotRequired[list[str]]
+    table_rows: NotRequired[list[TableRow]]
     section_title: NotRequired[str]
 
 
-def captioned_rows(page: pymupdf.Page) -> list[str]:
+def captioned_rows(page: pymupdf.Page) -> list[TableRow]:
     """Attach a source column name and caption to each unambiguous ruled row."""
     captions = []
     for left, _, right, bottom, text, _, kind in page.get_text("blocks"):
@@ -49,8 +60,10 @@ def captioned_rows(page: pymupdf.Page) -> list[str]:
                     if box is not None and box[0] <= left + 2 and box[2] >= right - 2:
                         group = values[column]
                 elif len(present) == len(headers) and len(values) == len(headers):
-                    row = " | ".join(f"{head} = {value}" for head, value in zip(headers, values, strict=True))
-                    lines.append(" | ".join(part for part in (caption, group, row) if part))
+                    lines.append({
+                        "caption": caption, "group": group,
+                        "cells": [{"column": head, "value": value} for head, value in zip(headers, values, strict=True)],
+                    })
     return lines
 
 

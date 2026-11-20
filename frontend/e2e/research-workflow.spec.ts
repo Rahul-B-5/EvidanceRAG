@@ -29,6 +29,11 @@ async function capture(page: Page, name: string) {
       });
     })).toBe(true);
   }
+  if (name === "reader-table") {
+    await expect(page.getByRole("img", {name:"PDF page 2"})).toBeVisible();
+    if (folder) await page.locator(".indexed-table-row").first().screenshot({path:join(folder, "reader-table-cell-narrow.png"), animations:"disabled"});
+    await page.evaluate(() => window.scrollTo(0, 0));
+  }
   if (folder) await page.screenshot({path:join(folder, `${name}-narrow.png`), animations:"disabled"});
   await page.setViewportSize(original);
   await page.evaluate(top => window.scrollTo(0, top), scroll);
@@ -304,4 +309,21 @@ test("provider settings discover models and switch the running Assistant", async
   await page.reload();
   await page.getByRole("button", {name:"Settings", exact:true}).click();
   await expect(page.getByRole("region", {name:"AI Providers"}).getByText("Active model · fixture:two")).toBeVisible();
+});
+
+test("Reader preserves table cells and separates neighboring measurements", async ({page}) => {
+  await page.goto("/");
+  await page.getByRole("button", {name:"Library", exact:true}).click();
+  await page.locator("input[type=file]").setInputFiles(join(process.env.EVIDENCERAG_E2E_TEMP!, "browser-table.pdf"));
+  await page.getByRole("button", {name:"Calibration table fixture", exact:true}).click();
+  await page.getByRole("button", {name:"Next", exact:true}).click();
+  await expect(page.getByRole("img", {name:"PDF page 2"})).toBeVisible();
+  const rows = page.locator(".indexed-table-row");
+  await expect(rows).toHaveCount(2);
+  const precision = rows.filter({hasText:"Precision"});
+  await expect(precision).toContainText("0.84");
+  await expect(precision).not.toContainText("0.72");
+  await precision.getByText("Indexed text", {exact:true}).click();
+  await expect(precision.getByText(/Reconstructed table row/)).toBeVisible();
+  await capture(page, "reader-table");
 });

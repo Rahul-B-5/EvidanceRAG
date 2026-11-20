@@ -9,7 +9,8 @@ export type ReadingProgress = {reading_status: ReadingStatus; last_read_page: nu
 export type ReadingUpdate = {page: number} | {status: ReadingStatus};
 export type Document = DocumentMetadata & ReadingProgress & {id: number; filename: string; page_count: number | null;
   chunk_count: number; processing_status: string; has_stored_source: boolean; created_at: string};
-export type Passage = {chunk_id: number; page_start: number; page_end: number; text: string; section_title?: string};
+export type Passage = {chunk_id: number; page_start: number; page_end: number; text: string; section_title?: string;
+  table_row?: {caption: string; group: string; cells: {column: string; value: string}[]}};
 export type RelatedPaper = {document_id: number; title: string; claim_id: string; origin_claim_id: string;
   dataset: string; metric: string; source: Pick<Passage, "chunk_id" | "page_start" | "page_end">;
   origin_source: Pick<Passage, "chunk_id" | "page_start" | "page_end">};

@@ -48,7 +48,8 @@ def search_keyword(
             c.page_end,
             ts_rank_cd(c.search_vector, search_query.tsq)
                 AS keyword_score,
-            c.section_title
+            c.section_title,
+            c.table_row
         FROM chunks AS c
         JOIN documents AS d ON d.id = c.document_id
         CROSS JOIN search_query
@@ -101,6 +102,7 @@ def search_keyword(
             "page_end": row[7],
             "keyword_score": float(row[8]),
             "section_title": row[9],
+            "table_row": row[10],
         }
         for row in rows
     ]

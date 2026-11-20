@@ -340,6 +340,20 @@ launcher, wider browser review and release validation to the previous scope.
 - Provider gate passed 138 PostgreSQL tests, 10 frontend tests, four Chrome
   workflows and the production build.
 
+## Typed table evidence
+
+- Additive migration `019_table_row_evidence` stores captions, row
+  groups and column-to-cell mappings for new passages. Reader shows their
+  cells alongside the original PDF, and Assistant receives the typed evidence.
+- The live Gemma run passed three of four NREL cases, including abstention on
+  a missing installer quote. For the cross-section case, retrieval surfaced
+  the correct utility-scale row and Executive Summary passage. Generation
+  still selected the storage-inclusive value from the neighboring table row.
+  The next milestone is to enforce metric-and-condition matches before
+  accepting a numerical table claim.
+- Passed 139 PostgreSQL tests, 10 frontend tests, five Chrome workflows
+  and the production build.
+
 ## Continuation
 
 - Product decisions are in [PRODUCT_STRATEGY.md](PRODUCT_STRATEGY.md). The journey

@@ -50,18 +50,26 @@ export function AnnotatedPassage({passage, page, highlights, onHighlight, focuse
     }
   }
 
-  return <article className={focused ? "cited-passage" : undefined}>
-    {focused && <strong className="tag">Cited passage</strong>}
-    <small>{pageLabel(passage.page_start, passage.page_end)} · Passage {passage.chunk_id}</small>
-    {passage.section_title && <small>{passage.section_title}</small>}
-    <p tabIndex={0} onMouseUp={e => capture(e.currentTarget)} onKeyUp={e => capture(e.currentTarget)}
+  const passageText = <p tabIndex={0} onMouseUp={e => capture(e.currentTarget)} onKeyUp={e => capture(e.currentTarget)}
       onTouchEnd={e => capture(e.currentTarget)}>
       {intervals.map(({start, end}) => {
         const leading = characters.slice(offset, start).join("");
         offset = end;
         return <span key={start}>{leading}<mark>{characters.slice(start, end).join("")}</mark></span>;
       })}{characters.slice(offset).join("")}
-    </p>
+    </p>;
+  const row = passage.table_row;
+
+  return <article className={focused ? "cited-passage" : undefined}>
+    {focused && <strong className="tag">Cited passage</strong>}
+    <small>{pageLabel(passage.page_start, passage.page_end)} · Passage {passage.chunk_id}</small>
+    {passage.section_title && <small>{passage.section_title}</small>}
+    {row ? <div className="indexed-table-row">
+      <strong>{row.caption}</strong>
+      {row.group && <small>{row.group}</small>}
+      <dl>{row.cells.map(cell => <div key={cell.column}><dt>{cell.column}</dt><dd>{cell.value}</dd></div>)}</dl>
+      <details><summary>Indexed text</summary>{passageText}</details>
+    </div> : passageText}
     <div className="finding-actions">
       <SavePassage id={passage.chunk_id} />
       {selection && onHighlight && <button className="secondary" disabled={saving} onClick={save}>Highlight selection</button>}

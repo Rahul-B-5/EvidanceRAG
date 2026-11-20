@@ -35,8 +35,9 @@ Rules:
 7. Distinguish what the sources explicitly state from reasonable interpretation.
 8. Preserve important qualifications, uncertainty, and disagreements between sources.
 9. Do not claim that you verified something unless the evidence supports it.
-10. For table questions, match the named table, row conditions, and column
-    before using a value. A result from a setup with an extra component
+10. For table questions, prefer the typed table_row fields over linearized
+    table text. One table_row holds exactly one row. Match the named table,
+    row conditions, and column before using a value. A result from a setup with an extra component
     cannot answer a question about the setup without it. Use section_title
     to identify the PDF outline section. If asked to compare named sections,
     cite a separate passage for each reported value. State
@@ -77,12 +78,13 @@ def generate_answer(
 
     allowed_ids = {item["evidence_id"] for item in evidence}
     provider = get_generation_provider(settings)
+    source_fields = ("evidence_id", "title", "page_start", "page_end", "section_title")
     payload = {
         "question": query,
         "prior_turns": [{"role": m["role"], "content": m["content"][:1500]} for m in (history or [])[-6:]],
         "evidence": [
-            {key: item[key] for key in ("evidence_id", "title", "page_start", "page_end", "section_title", "text")
-             if key in item}
+            {**{key: item[key] for key in source_fields if key in item},
+             **({"table_row": item["table_row"]} if item.get("table_row") else {"text": item["text"]})}
             for item in evidence
         ],
     }

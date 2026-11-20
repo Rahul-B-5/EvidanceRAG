@@ -1,12 +1,12 @@
 from app.core.config import get_settings
-from app.ingestion.pdf_extractor import ExtractedPage
+from app.ingestion.pdf_extractor import ExtractedPage, TableRow
 
 
 def chunk_pages(
     pages: list[ExtractedPage],
     chunk_size: int | None = None,
     chunk_overlap: int | None = None,
-) -> list[dict[str, int | str]]:
+) -> list[dict[str, int | str | TableRow]]:
     """Split text into character windows anchored to a single physical PDF page."""
     settings = get_settings()
     size = chunk_size if chunk_size is not None else settings.chunk_size
@@ -53,11 +53,13 @@ def chunk_pages(
             start = next_start
 
         for row in page.get("table_rows", []):
-            row_text = "Reconstructed table row: " + row
+            cells = " | ".join(f"{cell['column']} = {cell['value']}" for cell in row["cells"])
+            row_text = "Reconstructed table row: " + " | ".join(part for part in (row["caption"], row["group"], cells) if part)
             if len(row_text) <= size:
                 chunks.append({
                     "chunk_index": len(chunks),
                     "text": row_text,
+                    "table_row": row,
                     **anchor,
                 })
 

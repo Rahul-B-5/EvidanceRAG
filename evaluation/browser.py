@@ -25,6 +25,25 @@ def fixture_pdf(path: Path, title: str = "EvidenceRAG browser fixture", sample_s
         document.save(path)
 
 
+def table_fixture_pdf(path: Path) -> None:
+    with pymupdf.open() as pdf:
+        pdf.set_metadata({"title": "Calibration table fixture"})
+        pdf.new_page().insert_text((54, 54), "The report contains a calibration table on the next page.")
+        page = pdf.new_page()
+        page.insert_text((54, 65), "Table 2. Calibration results")
+        for x in (54, 180, 305):
+            page.draw_line((x, 76), (x, 151))
+        for y in (76, 101, 126, 151):
+            page.draw_line((54, y), (305, y))
+        for y, metric, score in (
+            (92, "Metric", "Score"), (117, "Precision", "0.84"), (142, "Recall", "0.72"),
+        ):
+            page.insert_text((60, y), metric)
+            page.insert_text((186, y), score)
+        pdf.set_toc([[1, "Introduction", 1], [1, "Results", 2]])
+        pdf.save(path)
+
+
 def available_ports() -> tuple[int, int]:
     with socket.socket() as api, socket.socket() as web:
         for listener in (api, web):
@@ -37,6 +56,7 @@ def run_browser_tests(screenshots: Path | None = None) -> int:
         root = Path(workdir)
         fixture_pdf(root / "browser-fixture.pdf")
         fixture_pdf(root / "browser-second.pdf", "EvidenceRAG replication fixture", 42)
+        table_fixture_pdf(root / "browser-table.pdf")
         api_port, web_port = available_ports()
         env = {
             **os.environ,
