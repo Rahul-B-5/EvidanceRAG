@@ -5,6 +5,11 @@ export type DocumentMetadata = {title: string; authors: string[]; publication_ye
 export type Document = DocumentMetadata & {id: number; filename: string; page_count: number | null;
   chunk_count: number; processing_status: string; has_stored_source: boolean; created_at: string};
 export type Passage = {chunk_id: number; page_start: number; page_end: number; text: string};
+export type ReaderHighlight = {
+  id: string; chunk_id: number | null; page: number; start_offset: number; end_offset: number;
+  quote: string; note: string; revision: number;
+};
+export type HighlightSelection = Pick<ReaderHighlight, "page" | "start_offset" | "end_offset"> & {chunk_id: number};
 export type SavedPassage = {chunk_id: number; document_id: number; title: string; page_start: number; page_end: number; passage: string; note: string; source_exists: boolean};
 export type Evidence = { evidence_id: string; chunk_id: number; document_id: number; title: string; page_start: number; page_end: number; text: string };
 export type Workspace = { id: number; name: string; description: string | null; document_count: number };
@@ -119,6 +124,19 @@ export const api = {
     method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify(metadata),
   }),
   passages: (id: number, page: number, signal?: AbortSignal) => request<{passages: Passage[]}>(`/documents/${id}/passages?page=${page}`, {signal}),
+  readerAnnotations: (id: number, page: number, signal?: AbortSignal) => request<{bookmarks: number[]; highlights: ReaderHighlight[]}>(
+    `/documents/${id}/reader-annotations?page=${page}`, {signal}),
+  setBookmark: (id: number, page: number, saved: boolean) => request<void>(`/documents/${id}/reader-bookmarks/${page}`,
+    {method: saved ? "PUT" : "DELETE"}),
+  createHighlight: (id: number, selection: HighlightSelection) => request<ReaderHighlight>(`/documents/${id}/reader-highlights`, {
+    method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({...selection, note:""}),
+  }),
+  editHighlight: (id: number, highlight: ReaderHighlight, note: string) => request<ReaderHighlight>(
+    `/documents/${id}/reader-highlights/${highlight.id}`, {
+      method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({note, revision:highlight.revision}),
+    }),
+  deleteHighlight: (id: number, highlight: ReaderHighlight) => request<void>(
+    `/documents/${id}/reader-highlights/${highlight.id}?revision=${highlight.revision}`, {method:"DELETE"}),
   reproduction: (id: string, workspaceId: string, signal?: AbortSignal) => request<ReproductionDossier>(
     `/documents/${id}/reproducibility${workspaceId ? `?workspace_id=${workspaceId}` : ""}`, {signal}),
   coverage: (question: string, workspaceId: string, useProvider: boolean, signal?: AbortSignal) => request<CoverageMap>("/research/coverage", {

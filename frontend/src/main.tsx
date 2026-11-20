@@ -161,7 +161,7 @@ function App() {
   }
 
   async function remove(d: Document) {
-    if (!window.confirm(`Permanently delete “${d.title}” and its indexed passages?`)) return;
+    if (!window.confirm(`Permanently delete “${d.title}”, its indexed passages, and its Reader bookmarks and highlight notes?`)) return;
     setError("");
     try {
       await api.remove(d.id);

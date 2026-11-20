@@ -100,7 +100,7 @@
   state retention, non-destructive removal, and cleanup of the disposable
   empty collection. Full gate: 85 PostgreSQL-enabled tests, 3 frontend
   export tests and production build.
-- Research Directions pushed as `22fb392` and confirmed on `origin/main`.
+- Collections pushed as `18eece7` and confirmed on `origin/main`.
   Additive migration `005_evidence_packets` persists scoped saved-passage
   snapshots, notes, bibliography fields and editable briefings with revision
   checks. Browser verified scoped packet creation, a real local Ollama draft
@@ -108,12 +108,16 @@
   after reload. The disposable packet, passage, document and workspace were
   removed. Full gate: 82 PostgreSQL-enabled tests, 3 frontend export tests
   and production build.
+- Additive migration `008_reader_annotations` stores page bookmarks, exact
+  indexed quotes and revisioned notes. Browser verified creating a bookmark,
+  highlighting text, saving a note and reopening it via the bookmark. The
+  synthetic PDF and annotations were removed afterward. Full gate: 86
+  PostgreSQL-enabled tests, 3 frontend tests and production build.
 
 ## Outstanding
 
-1. Add persistent Reader bookmarks and exact indexed-text highlights with
-   editable notes. Validate the selected offsets against the indexed passage.
-   Follow with integrated PDF text search, zoom and richer page rendering.
+1. Add integrated PDF text search, zoom and richer page rendering. Refine
+   page attribution for chunks that span several pages.
 2. Add contradiction candidates only for aligned study conditions and opposing
    claims with two citable sources. Add reproducibility disclosure validation,
    corpus-scoped gap exploration and evidence-grounded research briefings.

@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from "react";
-import { api, type Document, type Passage } from "./api";
-import { SavePassage } from "./SavedEvidence";
+import { api, type Document, type HighlightSelection, type Passage, type ReaderHighlight } from "./api";
+import { AnnotatedPassage, HighlightCard } from "./ReaderAnnotations";
 import { MetadataEditor } from "./DocumentMetadata";
 
 export function Reader({document, initialPage = 1, remove, update}: {
@@ -9,18 +9,7 @@ export function Reader({document, initialPage = 1, remove, update}: {
   const [page, setPage] = useState(initialPage);
   const [draft, setDraft] = useState(String(initialPage));
   const [width, setWidth] = useState(68);
-  const [passages, setPassages] = useState<Passage[] | null>(null);
-  const [error, setError] = useState("");
   const maximum = document.page_count ?? 100000;
-  useEffect(() => {
-    const controller = new AbortController();
-    setPassages(null);
-    setError("");
-    api.passages(document.id, page, controller.signal)
-      .then(result => {if (!controller.signal.aborted) setPassages(result.passages);})
-      .catch(err => {if (!controller.signal.aborted) setError(err instanceof Error ? err.message : "Unable to load passages.");});
-    return () => controller.abort();
-  }, [document.id, page]);
 
   function go(next: number) {
     if (!Number.isInteger(next) || next < 1 || next > maximum) {
@@ -51,11 +40,80 @@ export function Reader({document, initialPage = 1, remove, update}: {
           ? <><a href={source} target="_blank" rel="noreferrer">Open original PDF</a><iframe key={source} title={`PDF: ${document.title}, page ${page}`} src={source} /></>
           : <p className="empty">The original PDF is missing. Import the identical PDF from Library to restore it.</p>}
       </div>
-      <section className="reader-evidence" aria-label="Indexed page passages">
-        <h3>Indexed passages · page {page}</h3>
-        {error ? <p role="alert">{error}</p> : !passages ? <p role="status">Loading passages…</p> : !passages.length ? <p>No indexed text for this page.</p>
-          : passages.map(p => <article key={p.chunk_id}><small>Pages {p.page_start}–{p.page_end} · Passage {p.chunk_id}</small><p>{p.text}</p><SavePassage id={p.chunk_id} /></article>)}
-      </section>
+      <ReaderEvidence key={page} documentId={document.id} page={page} go={go} />
     </div>
+  </section>;
+}
+
+function ReaderEvidence({documentId, page, go}: {documentId: number; page: number; go: (page: number) => void}) {
+  const [passages, setPassages] = useState<Passage[] | null>(null);
+  const [bookmarks, setBookmarks] = useState<number[] | null>(null);
+  const [highlights, setHighlights] = useState<ReaderHighlight[]>([]);
+  const [passageError, setPassageError] = useState("");
+  const [annotationError, setAnnotationError] = useState("");
+  const [bookmarkBusy, setBookmarkBusy] = useState(false);
+  const bookmarked = bookmarks?.includes(page) ?? false;
+
+  useEffect(() => {
+    const controller = new AbortController();
+    api.passages(documentId, page, controller.signal)
+      .then(result => {if (!controller.signal.aborted) setPassages(result.passages);})
+      .catch(err => {if (!controller.signal.aborted) setPassageError(err.message);});
+    api.readerAnnotations(documentId, page, controller.signal).then(result => {
+      if (controller.signal.aborted) return;
+      setBookmarks(result.bookmarks);
+      setHighlights(result.highlights);
+    }).catch(err => {if (!controller.signal.aborted) setAnnotationError(err.message);});
+    return () => controller.abort();
+  }, [documentId, page]);
+
+  async function toggleBookmark() {
+    setBookmarkBusy(true);
+    setAnnotationError("");
+    try {
+      await api.setBookmark(documentId, page, !bookmarked);
+      setBookmarks(current => bookmarked ? (current ?? []).filter(p => p !== page) : [...(current ?? []), page].sort((a, b) => a - b));
+    } catch (err) {
+      setAnnotationError(err instanceof Error ? err.message : "Unable to change bookmark.");
+    } finally { setBookmarkBusy(false); }
+  }
+
+  async function highlight(selection: HighlightSelection) {
+    setAnnotationError("");
+    try {
+      const saved = await api.createHighlight(documentId, selection);
+      setHighlights(current => [...current, saved]);
+      return true;
+    } catch (err) {
+      setAnnotationError(err instanceof Error ? err.message : "Unable to highlight selection.");
+      return false;
+    }
+  }
+
+  return <section className="reader-evidence" aria-label="Indexed page passages">
+    <div className="reader-bookmarks">
+      <button className="secondary" disabled={bookmarks === null || bookmarkBusy} onClick={toggleBookmark}>
+        {bookmarked ? "Remove page bookmark" : "Bookmark page"}
+      </button>
+      {!!bookmarks?.length && <label>Bookmarks
+        <select value="" onChange={e => go(Number(e.target.value))}>
+          <option value="" disabled>Jump to page</option>
+          {bookmarks.map(p => <option key={p} value={p}>Page {p}</option>)}
+        </select>
+      </label>}
+    </div>
+    <h3>Indexed passages · page {page}</h3>
+    {annotationError && <p role="alert">{annotationError}</p>}
+    {!!passages?.length && bookmarks !== null && <p className="reader-hint">Select text in a passage to highlight it.</p>}
+    {passageError ? <p role="alert">{passageError}</p> : !passages ? <p role="status">Loading passages…</p>
+      : !passages.length ? <p>No indexed text for this page.</p>
+      : passages.map(p => <AnnotatedPassage key={p.chunk_id} passage={p} page={page} highlights={highlights}
+        onHighlight={bookmarks === null ? undefined : highlight} />)}
+    {!!highlights.length && <section aria-label="Page highlights">
+      <h3>Page highlights</h3>
+      {highlights.map(h => <HighlightCard key={h.id} documentId={documentId} highlight={h}
+        update={updated => setHighlights(current => current.map(item => item.id === updated.id ? updated : item))}
+        remove={id => setHighlights(current => current.filter(item => item.id !== id))} />)}
+    </section>}
   </section>;
 }

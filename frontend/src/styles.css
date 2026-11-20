@@ -79,6 +79,12 @@ kbd {color: var(--muted); font-size: .76rem}
 .reader-evidence {max-height: calc(min(70vh, 760px) + 3.5rem); overflow: auto; padding: .85rem}
 .reader-evidence article {margin-top: .9rem; padding-top: .8rem; border-top: 1px solid var(--line)}
 .reader-evidence p {white-space: pre-wrap; overflow-wrap: anywhere}
+.reader-bookmarks {display: flex; flex-wrap: wrap; gap: .6rem; align-items: end; margin-bottom: 1rem}
+.reader-hint {color: var(--muted); font-size: .85rem}
+.reader-evidence mark {background: #f6d486; color: #292116; border-radius: .15em}
+.reader-highlight blockquote {margin: 0 0 .7rem; border-left: 3px solid var(--line); padding-left: .65rem; white-space: pre-wrap; overflow-wrap: anywhere}
+.reader-highlight textarea {width: 100%; resize: vertical}
+.reader-highlight .finding-actions {margin-top: .45rem}
 .save-passage {display: inline-flex; align-items: center; flex-wrap: wrap; gap: .5rem; margin-block: .4rem}
 .save-passage button {font-size: .85rem}
 .citation-row {display: flex; align-items: center; flex-wrap: wrap; gap: .6rem}

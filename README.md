@@ -46,6 +46,13 @@ The application is served at `http://127.0.0.1:5173` and uses the local API at
 - `POST /documents` — imports one PDF as multipart field `file`.
 - `GET /documents/{document_id}/source` — serves a persisted original PDF.
 - `GET /documents/{document_id}/passages?page=...` — lists indexed chunks intersecting the page.
+- `GET /documents/{document_id}/reader-annotations?page=...` — lists bookmarks
+  for the paper and highlights for the open page.
+- `PUT/DELETE /documents/{document_id}/reader-bookmarks/{page}` — saves or removes
+  a page bookmark.
+- `POST /documents/{document_id}/reader-highlights` and
+  `PATCH/DELETE /documents/{document_id}/reader-highlights/{highlight_id}` —
+  save indexed text by Unicode character offsets and manage revisioned notes.
 - `GET /documents/{document_id}/reproducibility` — scans ranked passages for
   11 reproducibility categories. An optional `workspace_id` limits the scope.
 - `POST /research/coverage` — builds a workspace-scoped question map. It
@@ -191,6 +198,14 @@ down. Set `OLLAMA_REASONING_EFFORT` to a level supported by your local model if
 the workflow benefits from more reasoning.
 Cloud providers receive the question, supporting excerpts and bounded chat context.
 Search, comparison passages, the reader and the notebook work without a provider.
+
+## Reader bookmarks and highlights
+
+Bookmark pages for quick return. Select text in an indexed passage and choose
+**Highlight selection**, then add a note under **Page highlights**. The API
+saves the exact selected text from the index. For chunks that span several
+pages, the highlight is attached to the open page and the passage header gives
+the full source range. Deleting a paper deletes its Reader bookmarks and notes.
 
 ## Embedding profiles
 
