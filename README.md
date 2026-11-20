@@ -281,6 +281,9 @@ Search, comparison passages, the reader and the notebook work without a provider
 New imports index each physical PDF page separately. Their search results and
 citations point to a single page, even when blank pages occur in the source.
 Existing passages retain their recorded page ranges and identifiers.
+New imports also index complete rows from captioned, ruled tables when their
+columns can be recovered. These passages include the original caption and
+column names and link to the physical PDF page.
 
 Reader remembers the last page of each paper. Open a paper from Library to
 resume there, or follow a citation to open its specific page. Library can
@@ -345,6 +348,16 @@ are attributed to their sources. The default uses fixed embeddings and model
 replies. Add `--live-embeddings` and `--live-provider` to evaluate the configured
 models on the selected fixture. The JSON report includes the evaluated model
 answers for review.
+
+The whole-PDF benchmark uses the [public NREL solar cost report](https://www.osti.gov/servlets/purl/2005540).
+It imports the pinned PDF through the durable queue in a disposable schema,
+checks a byte-identical source download, and measures retrieval and cited
+answers across prose and tables. Use `--retrieval-only` for the embedding and
+source checks without answer generation.
+
+```bash
+.venv/bin/python -m evaluation.pdf_benchmark /path/to/87303.pdf --retrieval-only
+```
 
 The browser suite runs the actual frontend and API in headless Chromium.
 It provisions an isolated PostgreSQL schema and temporary upload directory,

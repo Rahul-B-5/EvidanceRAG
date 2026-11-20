@@ -22,6 +22,10 @@ Rules:
 7. Distinguish what the sources explicitly state from reasonable interpretation.
 8. Preserve important qualifications, uncertainty, and disagreements between sources.
 9. Do not claim that you verified something unless the evidence supports it.
+10. For table questions, use rows with the named table caption, system and
+    column when available. Treat each value as belonging to its own row and
+    column. If reported values differ, state the discrepancy without guessing
+    its cause.
 
 Return only a JSON object with these keys:
 {

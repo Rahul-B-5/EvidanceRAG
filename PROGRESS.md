@@ -255,16 +255,23 @@
   original excerpt. Chrome verified filtered annotation search and opening
   the same source twice. Full gate: 129 PostgreSQL tests, 10 frontend
   tests, three browser tests and build.
-- Reader shows related papers with matching reported dataset and metric labels
+- Reader recommendations pushed as `0b6c2bb`. Reader shows related papers with matching reported dataset and metric labels
   in the current comparison scope. Both claims remain inspectable from the
   result. PostgreSQL verified source pages, workspace isolation and exclusion
   after detachment. Chrome verified the related paper and both claim links.
+- The pinned NREL whole-PDF benchmark imported 52 pages and 104 passages in
+  isolation and downloaded byte-identical source bytes. Retrieval found the
+  required pages and values in all three numeric cases. New imports index
+  captioned, ruled table rows individually with column names and page anchors.
+  Live Ollama answers remain a separate quality gap. Runs selected values
+  from the wrong row, confused sections, and sometimes returned invalid
+  response schemas. Existing indexed passages were preserved.
 
 ## Outstanding
 
-1. Add independent disciplines and whole-paper tests. Measure standalone
-   keyword recall on natural-language questions and track citation support
-   under repeated live runs.
+1. Improve live answer validation and table-row qualifier matching on the NREL
+   whole-PDF suite. Re-run citation support across more independent papers and
+   models.
 2. Test larger corpora and review legacy passages with several pages.
 
 ## Continuation

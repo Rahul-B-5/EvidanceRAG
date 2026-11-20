@@ -5,6 +5,7 @@ import pytest
 
 from app.db.connection import get_connection
 from evaluation.database import fresh_schema
+from evaluation.pdf_benchmark import check_answer as check_pdf_answer
 from evaluation.run import answer_checks, contains_answer_value, evaluate, retrieval_metrics
 
 
@@ -63,3 +64,15 @@ def test_public_paper_evaluation_exercises_research_workflows():
     assert report["passed"] == report["case_count"] == 5, [case for case in report["cases"] if not case["passed"]]
     assert len(report["research_checks"]) == 8
     assert all(report["research_checks"].values()), report["research_checks"]
+
+
+def test_whole_report_rubric_requires_the_two_correct_physical_pages():
+    summary = {"evidence_id": "E1", "document_id": 1, "chunk_id": 7, "page_start": 7, "page_end": 7}
+    table = {"evidence_id": "E2", "document_id": 1, "chunk_id": 45, "page_start": 45, "page_end": 45}
+    payload = {"abstained": False, "citations": [summary, table],
+               "evidence": [{**summary, "text": "The modeled price was 1.16."},
+                            {**table, "text": "Table 3 lists 1.17."}]}
+    facts = {"1.16": (7,), "1.17": (45,)}
+    assert all(check_pdf_answer({**payload, "answer": "Summary: 1.16 [E1]. Table 3: 1.17 [E2]."}, facts, (), 1).values())
+    swapped = check_pdf_answer({**payload, "answer": "Summary: 1.16 [E2]. Table 3: 1.17 [E1]."}, facts, (), 1)
+    assert swapped["source_anchors"] and not swapped["cited_facts"]

@@ -1,8 +1,9 @@
 from app.core.config import get_settings
+from app.ingestion.pdf_extractor import ExtractedPage
 
 
 def chunk_pages(
-    pages: list[dict[str, int | str]],
+    pages: list[ExtractedPage],
     chunk_size: int | None = None,
     chunk_overlap: int | None = None,
 ) -> list[dict[str, int | str]]:
@@ -48,5 +49,15 @@ def chunk_pages(
             while next_start < len(text) and text[next_start].isspace():
                 next_start += 1
             start = next_start
+
+        for row in page.get("table_rows", []):
+            row_text = "Reconstructed table row: " + row
+            if len(row_text) <= size:
+                chunks.append({
+                    "chunk_index": len(chunks),
+                    "text": row_text,
+                    "page_start": page_number,
+                    "page_end": page_number,
+                })
 
     return chunks
