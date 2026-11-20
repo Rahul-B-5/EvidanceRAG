@@ -23,6 +23,10 @@ def fixture_pdf(path: Path, title: str = "EvidenceRAG browser fixture", sample_s
         page.insert_text((54, 72), "StarlingNet F1 score was 87% on OrchardBench.")
         page.insert_text((54, 90), "The random seed was 42. We used a single A100 GPU.")
         page.insert_text((54, 108), "A limitation was that we only evaluated one site and lacked external validation.")
+        verb = "outperformed" if sample_size == 37 else "underperformed"
+        page.insert_textbox(pymupdf.Rect(54, 128, 550, 182),
+                            "For binary classification on OrchardBench using the fixed test split and 10-seed protocol, "
+                            f"StarlingNet {verb} CedarNet on F1.", fontsize=11)
         document.set_toc([[1, "Calibration results", 2]])
         document.save(path)
 

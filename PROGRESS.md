@@ -473,6 +473,14 @@ launcher, wider browser review and release validation to the previous scope.
 
 ## Continuation
 
+- Opposing findings now use Reader links with the exact indexed passage
+  and workspace. Browser PDF fixtures include opposite reported outcomes
+  under the same dataset, task, split and protocol. Chrome verified both
+  statements and opened the original quoted passage on page 2. Inspected
+  the rendered two-source panel and captured light, dark and narrow
+  comparison layouts. Passed 157 PostgreSQL tests, 10 frontend tests,
+  five deterministic Chrome workflows and the production build.
+
 - Expanded the scoped prose measurement check to common scientific units.
   A latency claim cannot replace milliseconds with seconds or omit the
   source unit. A later measurement for a different metric in the same

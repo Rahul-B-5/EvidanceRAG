@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Contradiction, OpposingStatement } from "./api";
 import type { FindingQuestion } from "./ComparisonStudio";
 import { SavePassage } from "./SavedEvidence";
+import { sourceLink } from "./sourceLink";
 
 export function OpposingFindings({pairs, ask, workspaceId, focus}: {
   pairs: Contradiction[]; ask: (question: FindingQuestion) => void; workspaceId?: number;
@@ -18,8 +19,8 @@ export function OpposingFindings({pairs, ask, workspaceId, focus}: {
         {["dataset", "task", "split", "protocol"].map(key => <div key={key}><dt>{key}</dt><dd>{conditions[key]}</dd></div>)}
       </dl>
       <div className="opposing-sources">
-        <StatementCard statement={left} baseline={conditions.baseline} focus={focus} />
-        <StatementCard statement={right} baseline={conditions.baseline} focus={focus} />
+        <StatementCard statement={left} baseline={conditions.baseline} focus={focus} workspaceId={workspaceId} />
+        <StatementCard statement={right} baseline={conditions.baseline} focus={focus} workspaceId={workspaceId} />
       </div>
       <button className="secondary" onClick={() => ask({
         documentIds:[left.source.document_id, right.source.document_id], workspaceId,
@@ -32,7 +33,9 @@ export function OpposingFindings({pairs, ask, workspaceId, focus}: {
   </section>;
 }
 
-function StatementCard({statement, baseline, focus}: {statement: OpposingStatement; baseline: string; focus?: (id: string) => void}) {
+function StatementCard({statement, baseline, focus, workspaceId}: {
+  statement: OpposingStatement; baseline: string; focus?: (id: string) => void; workspaceId?: number;
+}) {
   const {document_id, chunk_id, page_start, page_end} = statement.source;
   const id = statement.finding_id;
   return <section className="finding-card">
@@ -40,7 +43,7 @@ function StatementCard({statement, baseline, focus}: {statement: OpposingStateme
     <p className="muted">{statement.direction === "better" ? "Reports outperforming" : "Reports underperforming"} {baseline}</p>
     <blockquote>{statement.quote}</blockquote>
     <div className="finding-actions">
-      <a href={`#paper=${document_id}&page=${page_start}`}>Open source · {page_start === page_end ? `p. ${page_start}` : `pp. ${page_start}–${page_end}`}</a>
+      <a href={sourceLink(document_id, page_start, chunk_id, workspaceId)}>Open source · {page_start === page_end ? `p. ${page_start}` : `pp. ${page_start}–${page_end}`}</a>
       <SavePassage id={chunk_id} />
       {id && focus && <button className="secondary" onClick={() => focus(id)}>Show in graph</button>}
     </div>

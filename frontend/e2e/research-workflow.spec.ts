@@ -239,7 +239,21 @@ test("comparison claims stay searchable and assessments survive reopening", asyn
   await page.getByRole("checkbox", {name:"EvidenceRAG replication fixture",exact:true}).check();
   await page.getByRole("button", {name:"Run structured comparison"}).click();
   await expect(page.getByText("Comparison completed", {exact:true})).toBeVisible({timeout:15000});
+  const disagreements = page.locator(".opposing-findings");
+  await expect(disagreements.getByText("StarlingNet vs. CedarNet · F1", {exact:true})).toBeVisible();
+  await expect(disagreements.getByText("Reports outperforming CedarNet", {exact:true})).toBeVisible();
+  await expect(disagreements.getByText("Reports underperforming CedarNet", {exact:true})).toBeVisible();
+  await expect(disagreements.getByRole("link", {name:"Open source · p. 2"}).first()).toHaveAttribute("href", /page=2&chunk=\d+/);
   await capture(page, "comparison");
+  if (process.env.EVIDENCERAG_E2E_SCREENSHOTS) {
+    await disagreements.screenshot({
+      path:join(process.env.EVIDENCERAG_E2E_SCREENSHOTS, "opposing-findings.png"), animations:"disabled",
+    });
+  }
+  await disagreements.getByRole("link", {name:"Open source · p. 2"}).first().click();
+  await expect(page.getByRole("img", {name:"PDF page 2"})).toBeVisible();
+  await expect(page.locator(".cited-passage")).toContainText("StarlingNet outperformed CedarNet on F1.");
+  await page.getByRole("button", {name:"Comparison studio",exact:true}).click();
   await page.getByRole("link", {name:"Open claim",exact:true}).first().click();
   const detail = page.getByRole("region", {name:"Claim details"});
   await expect(detail.locator("blockquote").first()).toContainText("The held-out sample size was 37 observations.");
