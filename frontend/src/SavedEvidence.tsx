@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, type SavedPassage } from "./api";
+import { api, type Collection, type NotebookHighlight, type SavedPassage, type Workspace } from "./api";
 import { pageLabel } from "./pageLabel";
 
 export function SavePassage({id}: {id: number}) {
@@ -71,21 +71,91 @@ function TagEditor({item, onSave}: {item: SavedPassage; onSave: (tags: string[])
   </form>;
 }
 
-export function SavedEvidence() {
+function NotebookHighlights({scope, workspace}: {scope: string; workspace: string}) {
+  const [draft, setDraft] = useState("");
+  const [query, setQuery] = useState("");
+  const [offset, setOffset] = useState(0);
+  const [result, setResult] = useState<{items: NotebookHighlight[]; has_more: boolean}>();
+  const [error, setError] = useState("");
+  const [attempt, setAttempt] = useState(0);
+  const limit = 40;
+  useEffect(() => {
+    const controller = new AbortController();
+    const params = new URLSearchParams(scope);
+    params.set("query", query);
+    params.set("offset", String(offset));
+    params.set("limit", String(limit));
+    api.notebookHighlights(params, controller.signal).then(data => {
+      if (!controller.signal.aborted) setResult(data);
+    }).catch(err => {
+      if (!controller.signal.aborted) setError(err instanceof Error ? err.message : "Unable to load highlights.");
+    });
+    return () => controller.abort();
+  }, [scope, query, offset, attempt]);
+
+  return <>
+    <form className="panel notebook-search" onSubmit={event => {
+      event.preventDefault();
+      const next = draft.trim();
+      if (query !== next || offset !== 0 || error) {
+        setResult(undefined);setOffset(0);setQuery(next);setError("");
+        if (error) setAttempt(current => current + 1);
+      }
+    }}>
+      <label>Search highlights<input type="search" maxLength={180} value={draft} onChange={event => setDraft(event.target.value)} /></label>
+      <button>Search</button>
+    </form>
+    {error && <p role="alert" className="notice error">{error}</p>}
+    {!result && !error && <p role="status">Loading Reader highlights…</p>}
+    {result?.items.length === 0 && <p className="notice">No Reader highlights match this search and scope.</p>}
+    {result?.items.map(item => <article className="panel saved-item" key={item.id}>
+      <h2>{item.title}</h2>
+      <a href={`#paper=${item.document_id}&page=${item.page}${workspace ? `&workspace=${workspace}` : ""}`}>Open in Reader · Page {item.page}</a>
+      {!item.anchor_current && <p className="muted">Indexed passage unavailable.</p>}
+      <blockquote>{item.quote}</blockquote>
+      {item.note && <p className="atlas-note">{item.note}</p>}
+    </article>)}
+    {!!(offset || result?.has_more) && <div className="finding-actions">
+      <button className="secondary" disabled={!offset || !result} onClick={() => {setResult(undefined);setOffset(offset - limit);}}>Previous</button>
+      <button className="secondary" disabled={!result?.has_more || offset >= 10_000}
+        onClick={() => {setResult(undefined);setOffset(offset + limit);}}>Next</button>
+    </div>}
+  </>;
+}
+
+export function SavedEvidence({workspaces}: {workspaces: Workspace[]}) {
   const [items, setItems] = useState<SavedPassage[] | null>(null);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [tag, setTag] = useState("");
+  const [workspace, setWorkspace] = useState("");
+  const [collection, setCollection] = useState("");
+  const [collections, setCollections] = useState<Collection[]>();
+  const [collectionsError, setCollectionsError] = useState("");
+  const [view, setView] = useState<"saved" | "highlights">("saved");
+  const params = new URLSearchParams();
+  if (workspace) params.set("workspace_id", workspace);
+  if (collection) params.set("collection_id", collection);
+  const scope = params.toString();
+
   useEffect(() => {
     let active = true;
-    api.savedEvidence().then(result => {if (active) setItems(result.items);})
-      .catch(e => {if (active) setError(e instanceof Error ? e.message : "Unable to load saved evidence.");});
+    api.collections(workspace).then(result => {if (active) setCollections(result.collections);})
+      .catch(err => {if (active) setCollectionsError(err instanceof Error ? err.message : "Unable to load collections.");});
     return () => {active = false;};
-  }, []);
+  }, [workspace]);
+
+  useEffect(() => {
+    if (view !== "saved") return;
+    const controller = new AbortController();
+    api.savedEvidence(scope, controller.signal).then(result => {if (!controller.signal.aborted) setItems(result.items);})
+      .catch(e => {if (!controller.signal.aborted) setError(e instanceof Error ? e.message : "Unable to load saved evidence.");});
+    return () => controller.abort();
+  }, [scope, view]);
 
   async function exportNotes() {
     try {
-      const {items: latest} = await api.savedEvidence();
+      const {items: latest} = await api.savedEvidence(scope);
       const sections = latest.map(p => [
         "## " + p.title.replace(/\s+/g, " "),
         `${pageLabel(p.page_start, p.page_end)} · EvidenceRAG passage ${p.chunk_id}`,
@@ -115,8 +185,33 @@ export function SavedEvidence() {
     if (changes.tags && !changes.tags.includes(tag) &&
         !items?.some(item => item.chunk_id !== id && item.tags.includes(tag))) setTag("");
   }
+  function resetScope() {
+    setItems(null);setTag("");setError("");
+  }
 
   return <div className="research-tools">
+    <section className="panel notebook-scope" aria-label="Notebook scope">
+      <div className="research-controls">
+        <label>Workspace<select value={workspace} onChange={event => {
+          setWorkspace(event.target.value);setCollection("");setCollections(undefined);setCollectionsError("");resetScope();
+        }}>
+          <option value="">Entire library</option>
+          {workspaces.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+        </select></label>
+        <label>Collection<select value={collection} disabled={!collections} onChange={event => {
+          setCollection(event.target.value);resetScope();
+        }}>
+          <option value="">All papers in scope</option>
+          {collections?.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+        </select></label>
+      </div>
+      {collectionsError && <p className="notice error" role="alert">{collectionsError}</p>}
+      <div className="finding-actions" role="group" aria-label="Notebook contents">
+        <button className="secondary" aria-pressed={view === "saved"} onClick={() => setView("saved")}>Saved passages</button>
+        <button className="secondary" aria-pressed={view === "highlights"} onClick={() => setView("highlights")}>Reader highlights</button>
+      </div>
+    </section>
+    {view === "highlights" ? <NotebookHighlights key={scope} scope={scope} workspace={workspace} /> : <>
     {error && <p className="notice error" role="alert">{error}</p>}
     {!items && !error && <p role="status">Loading saved passages…</p>}
     {items?.length === 0 && <section className="panel empty">Save passages from Reader or Evidence & compare to build a research notebook.</section>}
@@ -134,7 +229,7 @@ export function SavedEvidence() {
     {!!items?.length && visible?.length === 0 && <p className="notice">No passages match these filters.</p>}
     {visible?.map(p => <article className="panel saved-item" key={p.chunk_id}>
       <h2>{p.title}</h2>
-      {p.source_exists ? <a href={`#paper=${p.document_id}&page=${p.page_start}`}>{pageLabel(p.page_start, p.page_end)}</a>
+      {p.source_exists ? <a href={`#paper=${p.document_id}&page=${p.page_start}${workspace ? `&workspace=${workspace}` : ""}`}>{pageLabel(p.page_start, p.page_end)}</a>
         : <p>{pageLabel(p.page_start, p.page_end)} · Source paper unavailable</p>}
       {!!p.tags.length && <ul className="assistant-source-tags" aria-label="Passage tags">
         {p.tags.map(item => <li className="tag" key={item}>{item}</li>)}
@@ -143,5 +238,6 @@ export function SavedEvidence() {
       <NoteEditor item={p} onSave={note => updateItem(p.chunk_id, {note})} />
       <TagEditor item={p} onSave={tags => updateItem(p.chunk_id, {tags})} />
     </article>)}
+    </>}
   </div>;
 }

@@ -93,6 +93,7 @@ function App() {
   }
 
   function navigate(next: View) {
+    if (location.hash) history.replaceState(history.state, "", location.pathname + location.search);
     setView(next);
     setMobileNavigation(false);
     if (keptViews.includes(next)) {
@@ -112,8 +113,8 @@ function App() {
   }
 
   function askFinding(question: FindingQuestion) {
+    navigate("assistant");
     setFindingQuestion(question);
-    setView("assistant");
   }
 
   const saveReading = useCallback((id: number, change: ReadingUpdate): Promise<void> => {
@@ -270,7 +271,7 @@ function App() {
   else if (view === "claims") content = <ClaimExplorer key={JSON.stringify(claimLocation)} initial={claimLocation}
     documents={documents} workspaces={workspaces} ask={askFinding} />;
   else if (keptViews.includes(view)) content = null;
-  else if (view === "saved") content = <SavedEvidence />;
+  else if (view === "saved") content = <SavedEvidence workspaces={workspaces} />;
   else if (view === "settings") content = <SettingsView />;
   else if (view === "research" || view === "workspaces") content = <WorkspaceArea key={view} documents={documents} manage={view === "workspaces"} />;
   else content = <section className="panel overview">

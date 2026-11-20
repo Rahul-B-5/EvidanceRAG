@@ -112,6 +112,10 @@ The application is served at `http://127.0.0.1:5173` and uses the local API at
   continue until the provider responds or times out.
 - `GET /saved-evidence` and `PUT/PATCH /saved-evidence/{chunk_id}` — list and save
   provenance snapshots, and edit passage notes. Saved evidence exports to Markdown.
+- `GET /saved-evidence/highlights` searches Reader highlights and their notes.
+  Saved passages and highlights both accept `workspace_id` and `collection_id`.
+  The notebook keeps scope on source links and flags highlights whose indexed
+  text has changed.
 - `PUT /saved-evidence/{chunk_id}/tags` replaces the passage's tags. The notebook
   filters by tag and searches titles, passages and notes. Markdown exports include
   saved tags and notes.

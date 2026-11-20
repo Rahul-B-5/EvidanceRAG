@@ -243,21 +243,26 @@
   finished-state retention and legacy source ranges. Chrome verified resume
   after reload and a citation that opened a different page. Full gate:
   127 PostgreSQL tests, 10 frontend tests, three browser tests and build.
-- Migration `016_import_stage_cleanup` lets the worker remove known staged
+- Staging recovery pushed as `4d9d14f`. Migration `016_import_stage_cleanup` lets the worker remove known staged
   files from terminal jobs after restart. A subprocess crashed after
   completion committed, and the next worker cleared the staged copy.
   The source PDF, indexed passage, retryable upload and unrelated file
   retained their original contents. Full gate: 128 PostgreSQL tests, 10
   frontend tests, three browser tests and the production build.
+- The notebook can now filter saved passages and Reader highlights by
+  workspace and paper collection. PostgreSQL tests verified detached papers
+  are inaccessible in their former scope and stale anchors retain the
+  original excerpt. Chrome verified filtered annotation search and opening
+  the same source twice. Full gate: 129 PostgreSQL tests, 10 frontend
+  tests, three browser tests and build.
 
 ## Outstanding
 
-1. Integrate annotation browsing and paper collections into the notebook.
-2. Add independent disciplines and whole-paper tests. Measure standalone
+1. Add independent disciplines and whole-paper tests. Measure standalone
    keyword recall on natural-language questions and track citation support
    under repeated live runs.
-3. Add related-paper recommendations grounded in local indexed claims.
-4. Test larger corpora and review legacy passages with several pages.
+2. Add related-paper recommendations grounded in local indexed claims.
+3. Test larger corpora and review legacy passages with several pages.
 
 ## Continuation
 

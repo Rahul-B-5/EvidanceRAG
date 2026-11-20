@@ -32,6 +32,7 @@ export type RuntimeSettings = {
   database_connected: boolean;
 };
 export type SavedPassage = {chunk_id: number; document_id: number; title: string; page_start: number; page_end: number; passage: string; note: string; tags: string[]; source_exists: boolean};
+export type NotebookHighlight = {id: string; document_id: number; title: string; page: number; quote: string; note: string; anchor_current: boolean};
 export type Evidence = { evidence_id: string; chunk_id: number; document_id: number; title: string; page_start: number; page_end: number; text: string };
 export type Workspace = { id: number; name: string; description: string | null; document_count: number };
 export type Collection = {id: number; name: string; workspace_id: number | null; document_count: number};
@@ -151,7 +152,10 @@ export const api = {
   testProvider: (signal?: AbortSignal) => request<{elapsed_ms: number}>("/settings/test-provider", {
     method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({synthetic:true}), signal,
   }),
-  savedEvidence: () => request<{items: SavedPassage[]}>("/saved-evidence"),
+  savedEvidence: (scope = "", signal?: AbortSignal) =>
+    request<{items: SavedPassage[]}>(`/saved-evidence${scope ? `?${scope}` : ""}`, {signal}),
+  notebookHighlights: (params: URLSearchParams, signal: AbortSignal) =>
+    request<{items: NotebookHighlight[]; has_more: boolean}>(`/saved-evidence/highlights?${params}`, {signal}),
   savePassage: (id: number) => request<{chunk_id: number}>(`/saved-evidence/${id}`, {method:"PUT"}),
   updateNote: (id: number, note: string) => request<{note: string}>(`/saved-evidence/${id}`, {
     method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({note}),
