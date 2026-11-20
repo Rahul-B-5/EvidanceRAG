@@ -72,6 +72,17 @@ def test_unknown_condition_and_multiple_plausible_rows_require_abstention(eviden
     assert not scope_table_answer(QUESTION, evidence).sources
 
 
+def test_matching_condition_does_not_substitute_a_different_model_variant(evidence):
+    evidence[2]["table_row"]["cells"][0]["value"] = "Reference model variant without augmentation"
+    assert not scope_table_answer(QUESTION, evidence).sources
+    qualified = QUESTION.replace("reference model ", "reference model variant ")
+    assert scope_table_answer(qualified, evidence).table_values == {"E3": ["22%"]}
+
+
+def test_questions_about_both_conditions_do_not_enter_the_exclusion_path(evidence):
+    assert scope_table_answer(QUESTION.replace("without", "with and without"), evidence) is None
+
+
 def test_ambiguous_abbreviation_does_not_establish_condition(evidence):
     attach_term_definitions([
         {"page_number": 1, "text": "Data augmentation (DA) and design analysis (DA)."},

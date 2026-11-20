@@ -53,6 +53,16 @@ def establishes_exclusion(label: str, siblings: list[tuple[str, dict]], conditio
     return False
 
 
+def identifies_row(query: list[str], label: str) -> bool:
+    tokens = words(label)
+    if "without" in tokens:
+        subject = tokens[:tokens.index("without")]
+        # Keep qualifiers such as a model variant or cohort name attached to
+        # the label. A shared two-word prefix cannot establish that identity.
+        return mentions(query, subject)
+    return any(mentions(query, tokens[i:i + 2]) for i in range(len(tokens) - 1))
+
+
 @dataclass
 class TableScope:
     sources: list[dict]
@@ -108,7 +118,7 @@ def scope_table_answer(question: str, evidence: list[dict]) -> TableScope | None
         return None
     query = words(question)
     condition = words(excludes[0][1])
-    if mentions(query, ["with", *condition]):
+    if mentions(query, ["with", *condition]) or re.search(r"\bwith\s*(?:[/&]|and|or)\s*without\b", question, re.I):
         return None
     name = next(iter(table_names))
     tables = []
@@ -151,7 +161,7 @@ def scope_table_answer(question: str, evidence: list[dict]) -> TableScope | None
                     for cell in neighbor["table_row"]["cells"] if not measurement(cell["value"])]
         if not any(
             establishes_exclusion(label, siblings, condition)
-            and any(mentions(query, words(label)[i:i + 2]) for i in range(len(words(label)) - 1))
+            and identifies_row(query, label)
             for label in labels
         ):
             continue

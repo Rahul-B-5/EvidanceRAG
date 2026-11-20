@@ -425,11 +425,18 @@ launcher, wider browser review and release validation to the previous scope.
 - A separate restart smoke test ran two backend process IDs against a
   disposable schema and upload directory. The completed import,
   byte-identical PDF, bookmark and cited conversation survived restart.
+- Named rows with an explicit exclusion must match the question's full
+  subject label. A variant sharing the reference model's name cannot
+  supply its metric. Questions asking for both conditions bypass the
+  exclusion-only check. Passed 151 PostgreSQL tests and the exact-row
+  Chrome workflow.
 - Next release gate is repeatable cross-section grounding across models.
   Replace general numeric occurrence checks on cited prose with a
   measurement tied to the requested metric, condition and original unit.
   Preserve a separate citation for each source. Authenticated cloud
   providers and concurrent whole-library import still need live checks.
+  The live settings database and server fallback currently have no
+  configured cloud credentials.
 
 ## Continuation
 
