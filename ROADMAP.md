@@ -16,7 +16,7 @@ delivery status live in [PROGRESS.md](PROGRESS.md).
 | Deliverables | Saved notes, comparison briefings, durable evidence packets, seven reusable outlines, cited drafts and Markdown/HTML/JSON/BibTeX exports | Integration with citation managers and optional PDF export |
 | Reader | Selectable PDF text, local phrase search, zoom, persistent bookmarks and indexed-text highlights with revisioned notes | Exact PDF-coordinate annotations, finer indexed page anchors and OCR |
 | Everyday UX | Themes, keyboard palette and table views | Flagship visual review at desktop and narrow widths, accessibility and browser interaction regressions |
-| Operations | Versioned additive migrations, local settings, PostgreSQL tests | Recovery and retention, safer ingestion lifecycle, model error/cancellation tests, quality and latency benchmarks |
+| Operations | Additive migrations, PostgreSQL tests and a versioned retrieval and answer benchmark with live model mode | Browser regressions, larger corpora, safe re-embedding, recovery and retention |
 
 ## Dependency order
 

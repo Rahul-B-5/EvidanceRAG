@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "workspaces": {
+    "calibration": ["initial", "replication", "distractor"],
+    "separate": ["unrelated-scope"],
+    "empty": []
+  },
+  "documents": [
+    {
+      "key": "initial",
+      "title": "StarlingNet initial calibration",
+      "chunks": [
+        {"page": 2, "text": "The StarlingNet initial calibration reports a held-out sample size of 37 validation observations. This calibration achieved an F1 score of 87% on OrchardBench.", "vector": [1, 0, 0, 0]},
+        {"page": 4, "text": "The inputs to StarlingNet were cropped to 224 x 224 pixels. Normalization was applied after cropping.", "vector": [0, 0, 0, 1]}
+      ]
+    },
+    {
+      "key": "replication",
+      "title": "StarlingNet external evaluation",
+      "chunks": [
+        {"page": 3, "text": "The StarlingNet external site evaluation reported balanced accuracy of 71%. This evaluation used an independent cohort at site R.", "vector": [0, 1, 0, 0]},
+        {"page": 5, "text": "The StarlingNet replication calibration achieved an F1 score of 83% on OrchardBench. The cohort was disjoint from the initial calibration set.", "vector": [0.8, 0.2, 0, 0]}
+      ]
+    },
+    {
+      "key": "distractor",
+      "title": "CedarNet compute measurements",
+      "chunks": [
+        {"page": 2, "text": "CedarNet inference latency was 12 ms. The authors report memory usage only for evaluation, without reporting training hardware.", "vector": [0, 0, 0, 1]}
+      ]
+    },
+    {
+      "key": "unrelated-scope",
+      "title": "Independent StarlingNet calibration workspace",
+      "chunks": [
+        {"page": 8, "text": "The StarlingNet initial calibration reports a held-out sample size of 99 observations in this separate demonstration. Its F1 score was 96%.", "vector": [1, 0, 0, 0]}
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "id": "initial-sample",
+      "query": "StarlingNet initial calibration held-out sample size",
+      "workspace": "calibration",
+      "vector": [1, 0, 0, 0],
+      "expected": ["initial:0"],
+      "answer_contains": ["37"],
+      "answer_excludes": ["99"],
+      "fixture_answer": "The held-out sample size was 37 observations [E1]."
+    },
+    {
+      "id": "external-metric",
+      "query": "StarlingNet external site evaluation balanced accuracy",
+      "workspace": "calibration",
+      "vector": [0, 1, 0, 0],
+      "expected": ["replication:0"],
+      "answer_contains": ["71%"],
+      "fixture_answer": "The external site evaluation reported balanced accuracy of 71% [E1]."
+    },
+    {
+      "id": "same-benchmark-two-papers",
+      "query": "StarlingNet calibration F1 OrchardBench",
+      "workspace": "calibration",
+      "vector": [1, 0, 0, 0],
+      "expected": ["initial:0", "replication:1"],
+      "answer_contains": ["87%", "83%"],
+      "answer_excludes": ["96%"],
+      "fixture_answer": "The initial calibration reported 87% [E1] and the replication reported 83% [E2]."
+    },
+    {
+      "id": "separate-workspace",
+      "query": "StarlingNet initial calibration held-out sample size",
+      "workspace": "separate",
+      "vector": [1, 0, 0, 0],
+      "expected": ["unrelated-scope:0"],
+      "answer_contains": ["99"],
+      "answer_excludes": ["37"],
+      "fixture_answer": "The held-out sample size was 99 observations [E1]."
+    },
+    {
+      "id": "unsupported-training-hardware",
+      "query": "What GPU model did StarlingNet use for training?",
+      "workspace": "calibration",
+      "vector": [0, 0, 0, 1],
+      "expected": [],
+      "answer_contains": [],
+      "fixture_answer": ""
+    },
+    {
+      "id": "empty-workspace",
+      "query": "StarlingNet initial calibration held-out sample size",
+      "workspace": "empty",
+      "vector": [1, 0, 0, 0],
+      "expected": [],
+      "answer_contains": [],
+      "fixture_answer": ""
+    }
+  ]
+}

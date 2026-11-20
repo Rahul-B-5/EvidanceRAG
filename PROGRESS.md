@@ -146,18 +146,22 @@
   focused two-paper gap, Markdown export and Assistant handoff with both
   sources selected. Disposable fixtures were removed. Full gate:
   100 PostgreSQL-enabled tests, 9 frontend tests and production build.
-- Migration `010_packet_templates` persists seven forms of briefing. The
+- Briefing templates pushed as `f12cf54`. Migration `010_packet_templates` persists seven forms of briefing. The
   editor inserts outlines and citations and catches IDs outside the packet.
   Browser verified a live Ollama abstention for missing methodology, a
   cited question-investigation draft, saving and reopening the template,
   and HTML export. Full gate: 101 PostgreSQL-enabled tests, 10 frontend
   tests and production build.
+- The versioned benchmark runs real PostgreSQL retrieval and the answer API
+  in a fresh rollback-only schema. Both deterministic and live local Ollama
+  modes passed six cases for ranking, workspace isolation, cited values,
+  page references and abstention. Live hybrid recall@4 was 1.0 and answer
+  p95 was about 3.4 seconds on this small corpus. Full gate:
+  104 PostgreSQL-enabled tests, 10 frontend tests and production build.
 
 ## Outstanding
 
-1. Add a repeatable retrieval and answer evaluation with a versioned
-   synthetic corpus, citation and abstention checks, and latency reporting.
-   Add automated browser regressions on isolated data.
+1. Add automated browser regressions on isolated data.
 2. Expand graph exploration across workspaces and notebook sources.
 3. Extend the notebook with tags, collections and integrated annotations.
    Refine page attribution for chunks that span several pages.

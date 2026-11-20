@@ -258,3 +258,22 @@ EVIDENCERAG_INTEGRATION=1 .venv/bin/pytest -q
 npm --prefix frontend test
 npm --prefix frontend run build
 ```
+
+Run the versioned [synthetic benchmark](evaluation/corpus.json) against your
+configured PostgreSQL server. It evaluates the actual keyword, vector and
+hybrid retrievers and the answer API. It reports retrieval precision,
+recall and reciprocal rank at four, required values, citation pages,
+workspace isolation, abstention, and p50 and p95 latency. The database role
+needs permission to create a schema. The benchmark creates an isolated
+schema in a transaction and rolls it back.
+
+```bash
+.venv/bin/python -m evaluation.run
+.venv/bin/python -m evaluation.run --json
+```
+
+The default uses fixed embeddings and model replies. Use
+`--live-embeddings` and `--live-provider` to exercise the configured models
+on synthetic text. Passing this corpus verifies the specified facts and
+references on these cases. Broader scientific grounding needs separate
+review and evaluation.
