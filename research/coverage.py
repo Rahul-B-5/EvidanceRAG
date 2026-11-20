@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, ValidationError
 
 from app.core.config import get_settings
 from app.db.connection import get_connection
-from app.generation.providers import get_generation_provider
+from app.generation.providers import get_extraction_provider as get_generation_provider
 from research.counterevidence import focus_terms
 from research.structured import normalize
 

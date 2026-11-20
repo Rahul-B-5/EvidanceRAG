@@ -144,6 +144,7 @@ def evaluate(live_provider: bool = False, live_embeddings: bool = False, corpus:
         client = TestClient(app, base_url="http://127.0.0.1")
         with ExitStack() as bound:
             bound.enter_context(patch("app.api.main.get_connection", request_connection))
+            bound.enter_context(patch("app.generation.profile_store.get_connection", request_connection))
             for retriever in (keyword, vector):
                 bound.enter_context(patch.object(retriever, "get_connection", lambda: nullcontext(conn)))
                 bound.enter_context(patch.object(retriever, "get_settings", lambda: settings))

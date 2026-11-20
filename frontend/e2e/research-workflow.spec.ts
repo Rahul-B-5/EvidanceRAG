@@ -270,3 +270,38 @@ test("comparison claims stay searchable and assessments survive reopening", asyn
   await page.getByRole("link", {name:"Open in Reader · Page 2",exact:true}).click();
   await expect(page.getByRole("img", {name:"PDF page 2"})).toBeVisible();
 });
+
+test("provider settings discover models and switch the running Assistant", async ({page}) => {
+  const localProvider = `http://127.0.0.1:${process.env.EVIDENCERAG_E2E_API_PORT}`;
+  const fixture = join(process.env.EVIDENCERAG_E2E_TEMP!, "browser-fixture.pdf");
+  await page.goto("/");
+  await page.getByRole("button", {name:"Library", exact:true}).click();
+  await page.locator("input[type=file]").setInputFiles(fixture);
+  await expect(page.getByRole("button", {name:title, exact:true})).toBeVisible();
+  for (const model of ["fixture:one", "fixture:two"]) {
+    await page.getByRole("button", {name:"Settings",exact:true}).click();
+    const settings = page.getByRole("region", {name:"AI Providers"});
+    await settings.getByText("Advanced connection").click();
+    await settings.getByRole("textbox", {name:"Ollama endpoint"}).fill(localProvider);
+    await expect(settings.getByText("Ollama connected · 2 installed models")).toBeVisible();
+    const field = settings.getByRole("combobox", {name:"Model identifier"});
+    await field.fill("fixture:missing");
+    await settings.getByRole("button", {name:"Test connection"}).click();
+    await expect(settings.getByRole("alert")).toContainText("model or API route was not found");
+    await field.fill(model);
+    await settings.getByRole("button", {name:"Test connection"}).click();
+    await expect(settings.getByText("Connection passed.")).toBeVisible();
+    await settings.getByRole("button", {name:"Save provider"}).click();
+    await expect(settings.getByText(`Active model · ${model}`)).toBeVisible();
+    await capture(page, "ai-providers");
+    await page.getByRole("button", {name:"Assistant",exact:true}).click();
+    await page.getByRole("combobox", {name:"Sources"}).selectOption("selected");
+    await page.getByRole("checkbox", {name:title}).check();
+    await page.getByRole("textbox", {name:"Question"}).fill("What calibration size was reported?");
+    await page.getByRole("button", {name:"Send question"}).click();
+    await expect(page.getByText(`Model ${model} reports 37 observations [E1].`, {exact:true})).toBeVisible();
+  }
+  await page.reload();
+  await page.getByRole("button", {name:"Settings", exact:true}).click();
+  await expect(page.getByRole("region", {name:"AI Providers"}).getByText("Active model · fixture:two")).toBeVisible();
+});

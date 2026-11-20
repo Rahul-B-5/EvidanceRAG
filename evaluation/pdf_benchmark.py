@@ -82,6 +82,7 @@ def evaluate_pdf(path: Path, *, retrieval_only: bool = False) -> dict:
         settings = get_settings().model_copy(update={"upload_dir": Path(uploads)})
         for module in (api, jobs, pipeline, keyword, vector):
             bound.enter_context(patch.object(module, "get_connection", lambda: psycopg.connect(dsn)))
+        bound.enter_context(patch("app.generation.profile_store.get_connection", lambda: psycopg.connect(dsn)))
         for module in (api, jobs, pipeline):
             bound.enter_context(patch.object(module, "get_settings", lambda: settings))
 

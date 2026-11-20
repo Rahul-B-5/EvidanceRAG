@@ -155,3 +155,14 @@ kbd {color: var(--muted); font-size: .76rem}
   .reader-toolbar form button {padding-inline: .5rem; font-size: .85rem}
   .reader-toolbar input[type="number"] {width: 3.6rem; padding-inline: .4rem}
 }
+
+.provider-settings form { display: grid; gap: .85rem; margin-top: 1rem; }
+.provider-settings > .finding-actions { margin-top: .8rem; }
+.provider-settings form > label, .provider-settings details label {
+  display: grid; gap: .35rem; max-width: 38rem;
+}
+.provider-settings details label { margin-top: .6rem; }
+.provider-settings summary { cursor: pointer; }
+.provider-settings [aria-pressed="true"] {
+  background: var(--active); color: var(--accent);
+}

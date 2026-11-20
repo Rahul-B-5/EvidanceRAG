@@ -79,3 +79,22 @@ def test_gemini_provider_reopens_transport_for_each_paper(monkeypatch):
     assert provider.generate_json(prompt="Paper one", system_instruction="Use evidence") == "0"
     assert provider.generate_json(prompt="Paper two", system_instruction="Use evidence") == "1"
     assert factory.call_count == 2
+
+
+def test_native_anthropic_request_uses_schema_and_redacts_errors():
+    from app.generation.providers import AnthropicProvider
+
+    def handler(request):
+        assert request.url == "https://api.anthropic.com/v1/messages"
+        assert request.headers["x-api-key"] == "fixture"
+        assert request.headers["anthropic-version"]
+        body = json.loads(request.content)
+        assert body["model"] == "claude-fixture"
+        assert body["output_config"]["format"]["type"] == "json_schema"
+        return httpx.Response(200, json={"content":[{"type":"text","text":"{}"}], "stop_reason":"end_turn"})
+
+    provider = AnthropicProvider(model="claude-fixture", api_key="fixture", timeout=1, transport=httpx.MockTransport(handler))
+    assert provider.generate_json(prompt="Question", system_instruction="Evidence", schema={"type":"object"}) == "{}"
+    provider.transport = httpx.MockTransport(lambda _: httpx.Response(401, text="private response"))
+    with pytest.raises(RuntimeError, match="Claude rejected the API key"):
+        provider.generate_json(prompt="Question", system_instruction="Evidence")

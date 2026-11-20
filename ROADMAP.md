@@ -17,7 +17,7 @@ delivery status live in [PROGRESS.md](PROGRESS.md).
 | Deliverables | Searchable notes, tags and Reader highlights scoped to workspace and collection, comparison briefings, durable evidence packets, cited drafts and Markdown/HTML/JSON/BibTeX exports | Citation managers and optional PDF export |
 | Reader | Selectable PDF text, local phrase search, zoom, page resume, bookmarks, revisioned highlights, PDF outline labels and cited passage focus | Exact PDF-coordinate annotations and OCR |
 | Everyday UX | Shared light and dark styles, keyboard palette, accessible mobile menu and six flagship screen screenshots with responsive checks | Wider assistive-technology testing and visual QA on secondary screens |
-| Operations | Verified local launcher, additive migrations, PostgreSQL tests, evaluation and browser suites, safe source lifecycle, provider diagnostics and local API host/origin policy | Encrypted web provider configuration and model switching, larger corpus tests and retention |
+| Operations | Verified local launcher, additive migrations, encrypted web provider profiles, live model switching, PostgreSQL and browser suites, safe source lifecycle and local API host/origin policy | Live cloud-provider checks, larger corpus tests and retention |
 
 ## Dependency order
 

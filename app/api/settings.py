@@ -16,7 +16,7 @@ from app.db.connection import get_connection
 from app.generation.providers import get_generation_provider
 
 router = APIRouter(prefix="/settings", tags=["settings"])
-SUPPORTED_PROVIDERS = {"gemini", "openai", "openai-compatible", "ollama"}
+SUPPORTED_PROVIDERS = {"gemini", "anthropic", "openai", "openai-compatible", "ollama"}
 LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
 _probe_slot = BoundedSemaphore(1)
 PROBE_PROMPT = 'Reply with the JSON object {"ready": true}.'
@@ -62,7 +62,7 @@ def describe_provider(settings: Settings) -> dict:
     if known:
         try:
             get_generation_provider(settings)
-            if kind == "gemini":
+            if kind in {"gemini", "anthropic"}:
                 transport = "remote"
             elif settings.generation_base_url:
                 transport = "local" if urlsplit(settings.generation_base_url).hostname in LOCAL_HOSTS else "remote"

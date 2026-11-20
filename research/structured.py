@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field, ValidationError
 from psycopg import Connection
 
 from app.core.config import get_settings
-from app.generation.providers import GenerationProvider, get_generation_provider
+from app.generation.providers import GenerationProvider, get_extraction_provider as get_generation_provider
 from app.retrieval.keyword import search_keyword
 from research.comparison import COMPARISON_FIELDS
 from research.contradictions import CONDITIONS, opposing_statements, recover_relative_statement, relative_statement

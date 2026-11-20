@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { api, type RuntimeSettings } from "./api";
+import { ProviderSettings } from "./ProviderSettings";
 
 const labels: Record<string, string> = {
-  gemini:"Google Gemini", openai:"OpenAI", "openai-compatible":"OpenAI-compatible", ollama:"Ollama",
+  gemini:"Google Gemini", anthropic:"Anthropic Claude", openai:"OpenAI", "openai-compatible":"OpenAI-compatible", ollama:"Ollama",
 };
 
 export function SettingsView() {
@@ -42,12 +43,13 @@ export function SettingsView() {
   }
 
   return <div className="research-tools">
+    <ProviderSettings refresh={() => setRevision(value => value + 1)} />
     <div className="finding-actions"><button className="secondary" onClick={() => setRevision(value => value + 1)}>Refresh diagnostics</button></div>
     {loadError && <p role="alert" className="notice error">{loadError}</p>}
     {!data && !loadError && <p role="status">Loading diagnostics…</p>}
     {data && <div className="settings-grid">
       <section className="panel">
-        <div className="comparison-heading"><h2>Generation</h2><span className="tag">{data.generation.configured ? "Configured" : "Needs configuration"}</span></div>
+        <div className="comparison-heading"><h2>Server fallback</h2><span className="tag">{data.generation.configured ? "Configured" : "Needs configuration"}</span></div>
         <dl>
           <div><dt>Provider</dt><dd>{data.generation.provider ? labels[data.generation.provider] : "Unrecognized"}</dd></div>
           <div><dt>Model</dt><dd>{data.generation.model ?? "Unspecified"}</dd></div>

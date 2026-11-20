@@ -308,12 +308,12 @@ launcher, wider browser review and release validation to the previous scope.
    numeric finding. Preserve both source anchors for a section comparison.
    Re-run the comparison and missing-quote cases with live models.
 2. Test larger corpora and review legacy passages with several pages.
-3. Add encrypted provider profiles, live answer/extraction model switching,
-   Ollama model discovery, native Anthropic support and the Settings interface.
+3. Verify authenticated cloud providers against real accounts when credentials
+   are available. Expand end-to-end testing for extraction profile selection.
 
 ## Local launch verification
 
-- Vite previously listened on IPv6 loopback only. The npm development command
+- Launcher pushed as `5c6b70a`. Vite previously listened on IPv6 loopback only. The npm development command
   now binds to IPv4 loopback explicitly. The launcher checks dependencies,
   ports, PostgreSQL and migrations before reporting readiness. Chrome loaded
   the application and its library through both `localhost` and `127.0.0.1`.
@@ -322,6 +322,22 @@ launcher, wider browser review and release validation to the previous scope.
   and 75 passages at startup. The launcher used the existing database and the
   browser smoke test only read those records.
 - Launcher gate passed 136 PostgreSQL tests, 10 frontend tests, three Chrome
+  workflows and the production build.
+
+## AI provider configuration
+
+- Migration `018_generation_profiles` adds encrypted provider profiles for
+  answering and extraction. Settings discovers local Ollama models, accepts
+  custom connection information and tests with synthetic prompts. The
+  answering profile also applies to packet drafts. Comparison and coverage
+  use the extraction profile and fall back to the answering profile when unset.
+- PostgreSQL tests verified ciphertext storage, local access limits, revisions
+  and live task selection. Chrome used two different Assistant models without
+  restarting and verified the selection after reload. Desktop, dark and
+  narrow Settings screenshots were inspected. Local Ollama passed live
+  synthetic probes for Gemma and Qwen. Native Claude was tested with mocked
+  requests and error responses. Authenticated cloud calls remain unverified.
+- Provider gate passed 138 PostgreSQL tests, 10 frontend tests, four Chrome
   workflows and the production build.
 
 ## Continuation

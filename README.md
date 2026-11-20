@@ -268,15 +268,26 @@ GENERATION_TIMEOUT_SECONDS=90
 OLLAMA_REASONING_EFFORT=none
 ```
 
-Open **Settings** to see the active model and whether generation is local or
-remote. Use **Test provider** to exercise the configured model. Update
-server-side environment variables and restart to change the configuration.
+Open **Settings → AI Providers** to configure answering and structured
+extraction independently. Select Ollama to discover installed models. Use
+**Advanced connection** to enter a different loopback endpoint. For OpenAI,
+Anthropic Claude, Gemini or an OpenAI-compatible service, enter the model
+identifier and API key as needed. **Test connection** sends synthetic input
+only. **Save provider** takes effect on the next request. Extraction uses the
+answering profile until a separate extraction profile is saved.
+
+Saved profiles override the environment defaults without changing `.env`.
+Keys are encrypted in PostgreSQL using a key kept separately in
+`.evidencerag/provider.key` with owner-only permissions. Keep that file private
+and include it separately when backing up provider settings. The web interface
+can replace a key and only receives an indication that one is stored.
 
 OpenAI uses `GENERATION_PROVIDER=openai`, `GENERATION_MODEL` and
 `GENERATION_API_KEY`. For a compatible server, select
 `GENERATION_PROVIDER=openai-compatible` and set `GENERATION_BASE_URL` to
 its API root, such as `http://127.0.0.1:11434/v1`. Use a model and server that
-support Chat Completions JSON mode. Restart the API after configuration changes.
+support Chat Completions JSON mode. For Claude's environment fallback, use
+`GENERATION_PROVIDER=anthropic`, `GENERATION_MODEL` and `GENERATION_API_KEY`.
 Ollama uses its `none` reasoning setting by default to keep extraction latency
 down. Set `OLLAMA_REASONING_EFFORT` to a level supported by your local model if
 the workflow benefits from more reasoning.

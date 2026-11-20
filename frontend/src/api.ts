@@ -139,6 +139,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  providerProfiles: () => request<ProviderProfiles>("/settings/providers"),
+  saveProviderProfile: (purpose: ProviderPurpose, profile: ProviderDraft) => request<ProviderProfile>(`/settings/providers/${purpose}`, {
+    method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(profile),
+  }),
+  testProviderProfile: (purpose: ProviderPurpose, profile: ProviderDraft) => request<{ready: boolean}>(`/settings/providers/${purpose}/test`, {
+    method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(profile),
+  }),
+  ollamaModels: (endpoint: string, signal?: AbortSignal) => request<{models: string[]}>("/settings/providers/ollama/models", {
+    method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({endpoint}), signal,
+  }),
   relatedPapers: (id: number, workspace: string, signal: AbortSignal) =>
     request<{papers: RelatedPaper[]}>(`/documents/${id}/related-papers${workspace ? `?workspace_id=${workspace}` : ""}`, {signal}),
   claims: (params: URLSearchParams, signal?: AbortSignal) =>
@@ -285,3 +295,9 @@ export const api = {
   createWorkspace: (name: string, description: string) => request<Workspace>("/workspaces", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, description }) }),
   sourceUrl: (id: number) => `${API_BASE}/documents/${id}/source`,
 };
+
+export type ProviderKind = "ollama" | "openai" | "anthropic" | "gemini" | "openai-compatible";
+export type ProviderPurpose = "answer" | "extraction";
+export type ProviderDraft = {provider: ProviderKind; model: string; endpoint: string; revision: number; api_key?: string};
+export type ProviderProfile = Omit<ProviderDraft, "api_key"> & {has_key: boolean};
+export type ProviderProfiles = Record<ProviderPurpose, ProviderProfile | null>;

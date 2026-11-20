@@ -21,6 +21,7 @@ from app.api.related_papers import router as related_papers_router
 from app.api.answer_stream import stream_answer
 from app.api.embedding_rebuilds import router as embedding_rebuilds_router
 from app.api.settings import router as settings_router
+from app.api.provider_profiles import router as provider_profiles_router
 from app.api.browser_guard import BrowserGuard
 from app.api.claims import router as claims_router
 from app.api.import_jobs import lifespan, router as import_jobs_router
@@ -75,6 +76,7 @@ app.include_router(reading_router)
 app.include_router(related_papers_router)
 app.include_router(embedding_rebuilds_router)
 app.include_router(settings_router)
+app.include_router(provider_profiles_router)
 app.include_router(claims_router)
 app.include_router(import_jobs_router)
 configured_origins = [origin.strip() for origin in get_settings().cors_origins.split(",") if origin.strip()]

@@ -3,7 +3,7 @@ import json
 import re
 
 from app.core.config import get_settings
-from app.generation.providers import get_generation_provider
+from app.generation.providers import get_answer_provider as get_generation_provider
 
 ANSWER_SCHEMA = {
     "type": "object",

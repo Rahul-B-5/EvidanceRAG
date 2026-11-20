@@ -8,6 +8,7 @@ from google import genai
 from google.genai import errors, types
 
 from app.core.config import Settings
+from app.generation import profile_store
 
 
 class GenerationProvider(Protocol):
@@ -43,6 +44,51 @@ class GeminiProvider:
         if not response.text:
             raise RuntimeError("Gemini returned an empty response.")
         return response.text
+
+
+class AnthropicProvider:
+    def __init__(self, *, model: str, api_key: str, timeout: float, transport: httpx.BaseTransport | None = None):
+        self.model = model
+        self._api_key = api_key
+        self.timeout = timeout
+        self.transport = transport
+
+    def generate_json(self, *, prompt: str, system_instruction: str, schema: dict | None = None) -> str:
+        payload = {
+            "model": self.model, "max_tokens": 4096,
+            "system": system_instruction + "\nOutput a JSON object without Markdown fences.",
+            "messages": [{"role": "user", "content": prompt}],
+        }
+        if schema is not None:
+            payload["output_config"] = {"format": {"type": "json_schema", "schema": schema}}
+        try:
+            with httpx.Client(timeout=self.timeout, transport=self.transport, trust_env=False,
+                              follow_redirects=False) as client:
+                response = client.post("https://api.anthropic.com/v1/messages", json=payload, headers={
+                    "x-api-key": self._api_key, "anthropic-version": "2023-06-01",
+                })
+                response.raise_for_status()
+                data = response.json()
+                if data["stop_reason"] in {"max_tokens", "refusal"}:
+                    raise RuntimeError("Claude did not finish a usable JSON response.")
+                answer = "".join(block["text"] for block in data["content"] if block["type"] == "text")
+        except httpx.HTTPStatusError as error:
+            status = error.response.status_code
+            message = {
+                400: "Claude rejected the request. Check whether the model supports the requested JSON format.",
+                401: "Claude rejected the API key.",
+                403: "The Claude API key cannot access this model.",
+                404: "The Claude model was not found.",
+                429: "Claude rate limit reached. Try again later.",
+            }.get(status, "Claude did not complete the request. Try again later.")
+            raise RuntimeError(message) from None
+        except httpx.HTTPError:
+            raise RuntimeError("Cannot reach Claude. Check connectivity and try again.") from None
+        except (TypeError, ValueError, KeyError):
+            raise RuntimeError("Claude returned an invalid response.") from None
+        if not answer.strip():
+            raise RuntimeError("Claude returned an empty response.")
+        return answer
 
 
 class ChatCompletionsProvider:
@@ -93,6 +139,15 @@ class ChatCompletionsProvider:
                 content = response.json()["choices"][0]["message"]["content"]
         except httpx.TimeoutException:
             raise RuntimeError("Generation provider timed out.") from None
+        except httpx.HTTPStatusError as error:
+            detail = {
+                400: "Check whether the server and model support JSON output.",
+                401: "The API key was rejected.",
+                403: "The API key cannot access this model.",
+                404: "The model or API route was not found.",
+                429: "The provider rate limit was reached.",
+            }.get(error.response.status_code, "Check the server, model and credentials.")
+            raise RuntimeError(f"Generation provider request failed. {detail}") from None
         except httpx.HTTPError:
             raise RuntimeError("Generation provider request failed. Check the server, model and credentials.") from None
         except (KeyError, IndexError, TypeError, ValueError):
@@ -105,6 +160,12 @@ class ChatCompletionsProvider:
 def get_generation_provider(settings: Settings) -> GenerationProvider:
     """Build the configured provider without exposing credentials in errors."""
     provider = settings.generation_provider.strip().lower()
+    if provider == "anthropic":
+        if not settings.generation_model.strip() or not settings.generation_api_key.strip():
+            raise RuntimeError("Configure a Claude model and API key.")
+        return AnthropicProvider(model=settings.generation_model.strip(),
+                                 api_key=settings.generation_api_key.strip(),
+                                 timeout=settings.generation_timeout_seconds)
     if provider in {"ollama", "openai-compatible", "openai"}:
         if not settings.generation_model.strip():
             raise RuntimeError("Set GENERATION_MODEL to a model supported by your provider.")
@@ -128,3 +189,11 @@ def get_generation_provider(settings: Settings) -> GenerationProvider:
         api_key=settings.gemini_api_key, model=settings.gemini_model,
         timeout=settings.generation_timeout_seconds,
     )
+
+
+def get_answer_provider(defaults: Settings) -> GenerationProvider:
+    return get_generation_provider(profile_store.active_settings(defaults, "answer"))
+
+
+def get_extraction_provider(defaults: Settings) -> GenerationProvider:
+    return get_generation_provider(profile_store.active_settings(defaults, "extraction"))
