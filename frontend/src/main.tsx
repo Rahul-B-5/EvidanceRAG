@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
-import { api, type Document, type Workspace } from "./api";
+import { api, type Document, type ImportJobRecord, type Workspace } from "./api";
 import { WorkspaceArea } from "./WorkspaceArea";
 import { Conversations } from "./Conversations";
 import { Reader } from "./Reader";
@@ -41,8 +41,12 @@ const navGroups: Array<[string, View[]]> = [
   ["Write", ["saved", "packets"]],
   ["Preferences", ["settings"]],
 ];
-type ImportJob = {id: string; name: string; file?: File; state: "queued" | "indexing" | "imported" | "duplicate" | "failed";
-  error?: string; documentId?: number};
+type ImportJob = {id: string; name: string; file?: File; state: ImportJobRecord["state"];
+  error?: string; documentId?: number; retryable?: boolean};
+const importDisplay = (job: ImportJobRecord): ImportJob => ({
+  id:job.id, name:job.filename, state:job.state, documentId:job.document_id ?? undefined,
+  error:job.error ?? undefined, retryable:job.retryable,
+});
 const importLabels = {queued:"Queued", indexing:"Indexing", imported:"Imported", duplicate:"Already in library", failed:"Failed"};
 
 function App() {
@@ -63,6 +67,9 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [imports, setImports] = useState<ImportJob[]>([]);
+  const [serverImports, setServerImports] = useState<ImportJob[]>([]);
+  const [importError, setImportError] = useState("");
+  const observedImports = useRef(new Set<string>());
   const importLock = useRef(false);
   const [command, setCommand] = useState("");
   const palette = useRef<HTMLDialogElement>(null);
@@ -105,6 +112,30 @@ function App() {
   }
 
   useEffect(() => { void refresh(); }, []);
+  useEffect(() => {
+    if (view !== "library") return;
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout>;
+    async function poll() {
+      let delay = 1300;
+      try {
+        const result = await api.imports(controller.signal);
+        if (controller.signal.aborted) return;
+        setServerImports(result.jobs.map(importDisplay));
+        setImportError("");
+        const completed = result.jobs.filter(job => job.document_id && !observedImports.current.has(job.id));
+        completed.forEach(job => observedImports.current.add(job.id));
+        if (completed.length) void refresh();
+        if (result.jobs.some(job => job.state === "queued" || job.state === "indexing")) delay = 500;
+      } catch {
+        if (!controller.signal.aborted) setImportError("Unable to refresh import jobs.");
+      } finally {
+        if (!controller.signal.aborted) timer = setTimeout(poll, delay);
+      }
+    }
+    void poll();
+    return () => {controller.abort(); clearTimeout(timer);};
+  }, [view]);
   useEffect(() => {
     const followCitation = () => {
       const match = /^#paper=(\d+)&page=(\d+)(?:&workspace=(\d+))?$/.exec(location.hash);
@@ -167,17 +198,30 @@ function App() {
         setImports(previous => previous.map(j => j.id === job.id ? {...j, state:"indexing"} : j));
         try {
           const result = await api.upload(job.file);
-          setImports(previous => previous.map(j => j.id === job.id
-            ? {...j, file:undefined, documentId:result.document_id, state:result.status === "already_exists" ? "duplicate" : "imported"} : j));
+          setImports(previous => previous.filter(j => j.id !== job.id));
+          setServerImports(previous => [importDisplay(result), ...previous.filter(j => j.id !== result.id)]);
         } catch (e) {
           setImports(previous => previous.map(j => j.id === job.id
             ? {...j, state:"failed", error:e instanceof Error ? e.message : "Import failed."} : j));
         }
       }
-      await refresh();
     } finally {
       importLock.current = false;
       setUploading(false);
+    }
+  }
+
+  async function retryImport(job: ImportJob) {
+    if (job.file) {
+      await runImports([{...job,state:"queued",error:undefined}]);
+      return;
+    }
+    try {
+      const retried = await api.retryImport(job.id);
+      setServerImports(previous => previous.map(item => item.id === job.id ? importDisplay(retried) : item));
+      setError("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unable to retry import.");
     }
   }
 
@@ -237,9 +281,9 @@ function App() {
       {error && <p className="notice error" role="alert">{error}</p>}
       {content}
       {openedResearchViews.has("library") && <div hidden={view !== "library"}>
-        <Library documents={documents} workspaces={workspaces} active={view === "library"} loading={loading} uploading={uploading} imports={imports}
+        <Library documents={documents} workspaces={workspaces} active={view === "library"} loading={loading} uploading={uploading} imports={[...imports,...serverImports]} importError={importError}
           queue={files => void runImports(files.map(file => ({id:crypto.randomUUID(), name:file.name, file, state:"queued"})))}
-          retry={job => void runImports([{...job, state:"queued", error:undefined}])} openPaper={openPaper} />
+          retry={job => void retryImport(job)} openPaper={openPaper} />
       </div>}
       {openedResearchViews.has("compare") && <div hidden={view !== "compare"}><WorkspaceArea documents={documents} compare={askFinding} /></div>}
       {openedResearchViews.has("reproduction") && <div hidden={view !== "reproduction"}><ReproductionStudio documents={documents} workspaces={workspaces} /></div>}
@@ -272,8 +316,9 @@ function PaperRows({documents, openPaper}: {documents: Document[]; openPaper: (i
   </table></div>;
 }
 
-function Library({documents, workspaces, active, loading, uploading, imports, queue, retry, openPaper}: {
+function Library({documents, workspaces, active, loading, uploading, imports, importError, queue, retry, openPaper}: {
   documents: Document[]; workspaces: Workspace[]; active: boolean; loading: boolean; uploading: boolean; imports: ImportJob[];
+  importError: string;
   queue: (files: File[]) => void; retry: (job: ImportJob) => void; openPaper: (id: number) => void;
 }) {
   const [query, setQuery] = useState("");
@@ -296,11 +341,12 @@ function Library({documents, workspaces, active, loading, uploading, imports, qu
       }} />
       <button disabled={uploading} onClick={() => input.current?.click()}>{uploading ? "Import in progress…" : "Import PDFs"}</button>
     </div>
+    {importError && <p role="alert">{importError}</p>}
     {!!imports.length && <section className="import-queue" aria-label="PDF import queue">
       <h2>Import queue</h2>
       <ul>{imports.map(job => <li key={job.id}>
         <span>{job.name}</span><span role="status">{importLabels[job.state]}{job.error ? ` · ${job.error}` : ""}</span>
-        {job.state === "failed" && job.file && <button className="secondary" disabled={uploading} onClick={() => retry(job)}>Retry</button>}
+        {job.state === "failed" && (job.file || job.retryable) && <button className="secondary" disabled={uploading} onClick={() => retry(job)}>Retry</button>}
         {job.documentId && <button className="secondary" disabled={uploading} onClick={() => openPaper(job.documentId!)}>Open paper</button>}
       </li>)}</ul>
     </section>}

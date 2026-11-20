@@ -120,7 +120,8 @@ def evaluate(live_provider: bool = False, live_embeddings: bool = False) -> dict
             with conn.transaction():
                 yield conn
 
-        with ExitStack() as bound, TestClient(app, base_url="http://127.0.0.1") as client:
+        client = TestClient(app, base_url="http://127.0.0.1")
+        with ExitStack() as bound:
             bound.enter_context(patch("app.api.main.get_connection", request_connection))
             for retriever in (keyword, vector):
                 bound.enter_context(patch.object(retriever, "get_connection", lambda: nullcontext(conn)))

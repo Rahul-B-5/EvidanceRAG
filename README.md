@@ -60,6 +60,11 @@ The application is served at `http://127.0.0.1:5173` and uses the local API at
   `PUT/DELETE /collections/{id}/documents/{document_id}` — manage collections
   and paper membership within a library scope.
 - `POST /documents` — imports one PDF as multipart field `file`.
+- `POST /import-jobs` queues the same multipart PDF for durable background
+  indexing. `GET /import-jobs` shows the queue and recent outcomes.
+  `POST /import-jobs/{id}/retry` retries recoverable failures from retained
+  bytes. Library uses the durable queue. Queued or interrupted work resumes
+  on startup, and replay uses the existing content-hash duplicate check.
 - `GET /documents/{document_id}/source` — serves a persisted original PDF.
 - `GET /documents/{document_id}/passages?page=...` — lists indexed chunks intersecting the page.
 - `GET /documents/{document_id}/embeddings` — reports the active profile,

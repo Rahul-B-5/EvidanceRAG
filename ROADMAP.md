@@ -6,7 +6,7 @@ delivery status live in [PROGRESS.md](PROGRESS.md).
 
 | Journey | Working path | Remaining verification or implementation |
 | --- | --- | --- |
-| Library | Multi-file queue, metadata editing, workspace collections, source recovery and atomic embedding rebuilds | Persistent import jobs, reading history, related-paper recommendations |
+| Library | Durable multi-file imports with restart recovery, metadata, workspace collections, source recovery and atomic embedding rebuilds | Reading history and related-paper recommendations |
 | Investigation | Hybrid search, fixed multi-paper scopes, page citations, streamed progress and cancel-before-commit | Broader browser coverage and evaluation of contextual follow-ups |
 | Comparison | Matrix, source preview, evidence saving, durable partial results and condition checks | More experimental fields, confidence and support checks, representative corpus evaluation |
 | Claim Explorer | Persistent workspace-scoped excerpts, indexed search, revisioned human assessments, shared-label links, counterevidence, and Reader and Atlas navigation | More precise claim spans and a representative support evaluation |

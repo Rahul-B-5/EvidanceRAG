@@ -20,6 +20,11 @@ test("import, inspect, save, answer and export a real PDF", async ({page, reques
   await files.setInputFiles({name:"corrupt.pdf", mimeType:"application/pdf", buffer:Buffer.from("%PDF-1.7\ninvalid")});
   await expect(queue.getByText(/^Failed · /)).toBeVisible();
   await expect(page.getByRole("table").getByRole("row")).toHaveCount(2);
+  await page.reload();
+  await page.getByRole("button", {name:"Library", exact:true}).click();
+  await expect(queue.getByText("Imported", {exact:true})).toBeVisible();
+  await expect(queue.getByText("Already in library", {exact:true})).toBeVisible();
+  await expect(queue.getByText(/^Failed · /)).toBeVisible();
 
   await page.getByRole("button", {name:title, exact:true}).click();
   await expect(page.getByRole("img", {name:"PDF page 1"})).toBeVisible();

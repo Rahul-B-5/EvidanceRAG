@@ -19,6 +19,10 @@ export type EmbeddingRebuild = {
 export type EmbeddingStatus = {
   model: string; dimensions: number; total_chunks: number; active_chunks: number; job: EmbeddingRebuild | null;
 };
+export type ImportJobRecord = {
+  id: string; filename: string; state: "queued" | "indexing" | "imported" | "duplicate" | "failed";
+  document_id: number | null; error: string | null; retryable: boolean;
+};
 export type RuntimeSettings = {
   generation: {provider: string | null; model: string | null; transport: "local" | "remote" | null; configured: boolean; timeout_seconds: number};
   index: {model: string; dimensions: number; papers: number | null; passages: number | null; compatible_vectors: number | null};
@@ -229,7 +233,12 @@ export const api = {
     `/evidence-packets/${id}`, {method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify(fields)}),
   draftPacket: (id: string) => request<{answer: string; abstained: boolean; reason: string | null}>(
     `/evidence-packets/${id}/draft`, {method:"POST"}),
-  upload: (file: File) => { const data = new FormData(); data.append("file", file); return request<{ document_id: number; status: string }>("/documents", { method: "POST", body: data }); },
+  upload: (file: File) => {
+    const data = new FormData(); data.append("file", file);
+    return request<ImportJobRecord>("/import-jobs", {method:"POST",body:data});
+  },
+  imports: (signal?: AbortSignal) => request<{jobs: ImportJobRecord[]}>("/import-jobs", {signal}),
+  retryImport: (id: string) => request<ImportJobRecord>(`/import-jobs/${id}/retry`, {method:"POST"}),
   remove: (id: number) => request<void>(`/documents/${id}`, { method: "DELETE" }),
   search: (query: string, documentId?: number, workspaceId?: number) => request<{ evidence: Evidence[]; evidence_count: number }>(`/search?${new URLSearchParams({ query, ...(documentId ? { document_id: String(documentId) } : {}), ...(workspaceId ? {workspace_id: String(workspaceId)} : {}) })}`),
   answer: (query: string, documentId?: number) => request<{ answer: string; abstained: boolean; reason: string | null; citations: Evidence[]; evidence: Evidence[] }>("/answers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query, document_id: documentId }) }),

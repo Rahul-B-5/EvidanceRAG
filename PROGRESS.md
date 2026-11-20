@@ -196,15 +196,21 @@
   assessments separate from source selection. Browser-tested comparison to
   assessment to Atlas to Reader. Full gate: 115 PostgreSQL tests, 10 frontend
   tests, three browser tests and the production build.
-- Atlas now builds from persisted claims and includes source-matched notebook
+- Atlas expansion pushed as `f35d06d`. Atlas builds from persisted claims and includes source-matched notebook
   entries, indexed highlights and literal method names. Cross-paper shared
   dataset-and-metric edges cite both passages. The browser test verified graph
   filters, connection to Claim Explorer and both kinds of research artifact.
   Full gate: 116 PostgreSQL tests, 10 frontend tests, three browser tests and build.
+- Migration `013_import_jobs` adds durable PDF staging, queue state and
+  recoverable retries. A subprocess exited after the paper committed but before
+  the job recorded success. A fresh worker replayed it and retained the same
+  document and chunk. Browser verified queue history after reload. Full gate:
+  118 PostgreSQL tests, 10 frontend tests, three browser tests and build.
 
 ## Outstanding
 
-1. Persist import jobs and recover queued or abandoned work after restart.
+1. Refine new-ingestion page attribution and preserve or explicitly restore
+   the source scope of legacy conversations.
 2. Improve graph navigation and evaluate representative research material.
 3. Extend the notebook with tags, collections and integrated annotations.
    Refine page attribution for chunks that span several pages.

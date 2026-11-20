@@ -21,6 +21,7 @@ from app.api.embedding_rebuilds import router as embedding_rebuilds_router
 from app.api.settings import router as settings_router
 from app.api.browser_guard import BrowserGuard
 from app.api.claims import router as claims_router
+from app.api.import_jobs import lifespan, router as import_jobs_router
 
 from app.core.config import get_settings
 from app.db.connection import get_connection
@@ -61,6 +62,7 @@ from typing import Annotated, Literal
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
+    lifespan=lifespan,
     title="EvidenceRAG",
     version="0.1.0",
     description="A local-first, evidence-grounded research library API.",
@@ -70,6 +72,7 @@ app.include_router(reader_annotations_router)
 app.include_router(embedding_rebuilds_router)
 app.include_router(settings_router)
 app.include_router(claims_router)
+app.include_router(import_jobs_router)
 configured_origins = [origin.strip() for origin in get_settings().cors_origins.split(",") if origin.strip()]
 app.add_middleware(
     CORSMiddleware,
