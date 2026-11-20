@@ -65,6 +65,8 @@ The application is served at `http://127.0.0.1:5173` and uses the local API at
   `POST /import-jobs/{id}/retry` retries recoverable failures from retained
   bytes. Library uses the durable queue. Queued or interrupted work resumes
   on startup, and replay uses the existing content-hash duplicate check.
+  A restarted worker also removes known staged copies from completed jobs.
+  Retryable uploads keep their staged input.
 - `GET /documents/{document_id}/source` — serves a persisted original PDF.
 - `GET /documents/{document_id}/passages?page=...` — lists indexed chunks intersecting the page.
 - `GET /documents/{document_id}/embeddings` — reports the active profile,

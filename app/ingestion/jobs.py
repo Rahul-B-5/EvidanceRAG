@@ -2,10 +2,11 @@
 
 import logging
 import os
+from errno import ENOTEMPTY
 from pathlib import Path
 from uuid import UUID, uuid4
 
-from psycopg import Error
+from psycopg import Connection, Error
 from psycopg.rows import dict_row
 
 from app.core.config import get_settings
@@ -71,12 +72,44 @@ def enqueue(file: UploadFile) -> dict:
             remove_stage(path)
 
 
-def remove_stage(path: Path) -> None:
+def remove_stage(path: Path) -> bool:
     try:
         path.unlink(missing_ok=True)
-        path.parent.rmdir()
     except OSError:
         logger.warning("Unable to remove a staged import file.")
+        return False
+    try:
+        path.parent.rmdir()
+    except FileNotFoundError:
+        pass
+    except OSError as exc:
+        if exc.errno != ENOTEMPTY:
+            logger.warning("Unable to remove a staging directory.")
+    return True
+
+
+def release_stage(conn: Connection, job_id: UUID, filename: str) -> None:
+    try:
+        removed = remove_stage(stage_path(job_id, filename))
+    except ValueError:
+        logger.warning("A terminal import has an invalid staged file location.")
+        removed = False
+    with conn.transaction():
+        conn.execute("""
+            UPDATE import_jobs SET next_stage_cleanup_at=CASE WHEN %s THEN NULL ELSE NOW() + INTERVAL '1 minute' END
+            WHERE id=%s
+        """, (removed, job_id))
+
+
+def release_terminal_stages(conn: Connection) -> None:
+    with conn.transaction():
+        terminal_jobs = conn.execute("""
+            SELECT id, filename FROM import_jobs
+            WHERE state IN ('imported','duplicate','failed') AND NOT retryable AND next_stage_cleanup_at <= NOW()
+            ORDER BY next_stage_cleanup_at,id LIMIT 20
+        """).fetchall()
+    for job_id, filename in terminal_jobs:
+        release_stage(conn, job_id, filename)
 
 
 def list_jobs() -> list[dict]:
@@ -112,6 +145,7 @@ def process_next_job() -> bool:
         if not conn.execute("SELECT pg_try_advisory_lock(%s,hashtext(current_schema()))", (QUEUE_LOCK,)).fetchone()[0]:
             return False
         conn.commit()
+        release_terminal_stages(conn)
         with conn.transaction(), conn.cursor(row_factory=dict_row) as cursor:
             conn.execute("""
                 UPDATE import_jobs SET interruptions=interruptions+1,
@@ -128,7 +162,6 @@ def process_next_job() -> bool:
             """).fetchone()
         if not job:
             return False
-        path = None
         try:
             path = stage_path(job["id"],job["filename"])
             result = ingest_pdf(path)
@@ -146,6 +179,6 @@ def process_next_job() -> bool:
                 UPDATE import_jobs SET state=%s,document_id=%s,error=%s,retryable=%s,updated_at=NOW()
                 WHERE id=%s AND state='indexing' AND attempts=%s
             """, (*values,job["id"],job["attempts"])).rowcount
-        if updated and path and not values[3]:
-            remove_stage(path)
+        if updated and not values[3]:
+            release_stage(conn, job["id"], job["filename"])
         return True

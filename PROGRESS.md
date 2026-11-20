@@ -237,23 +237,27 @@
   from cited replies. Full gate: 126 PostgreSQL tests, 10 frontend tests,
   three browser tests with layout assertions across all six screens, and the
   production build.
-- Migration `015_document_reading` adds per-paper reading status and page
+- Reading progress pushed as `9545eff`. Migration `015_document_reading` adds per-paper reading status and page
   resume. Library filters and sorts by progress, and explicit citations
   still open on their recorded page. PostgreSQL verified invalid pages,
   finished-state retention and legacy source ranges. Chrome verified resume
   after reload and a citation that opened a different page. Full gate:
   127 PostgreSQL tests, 10 frontend tests, three browser tests and build.
+- Migration `016_import_stage_cleanup` lets the worker remove known staged
+  files from terminal jobs after restart. A subprocess crashed after
+  completion committed, and the next worker cleared the staged copy.
+  The source PDF, indexed passage, retryable upload and unrelated file
+  retained their original contents. Full gate: 128 PostgreSQL tests, 10
+  frontend tests, three browser tests and the production build.
 
 ## Outstanding
 
-1. Reconcile staged copies when an import worker exits after committing job
-   completion but before removing the temporary file.
+1. Integrate annotation browsing and paper collections into the notebook.
 2. Add independent disciplines and whole-paper tests. Measure standalone
    keyword recall on natural-language questions and track citation support
    under repeated live runs.
-3. Integrate annotation browsing and paper collections into the notebook.
-4. Improve graph navigation and test larger corpora. Retain exact stored ranges
-   for legacy passages with several pages.
+3. Add related-paper recommendations grounded in local indexed claims.
+4. Test larger corpora and review legacy passages with several pages.
 
 ## Continuation
 

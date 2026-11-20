@@ -118,3 +118,41 @@ def test_import_persists_individual_physical_pages(import_fixture, monkeypatch):
             ("The first page defines the model.", 1, 1),
             ("The third page reports the results.", 3, 3),
         ]
+
+
+def test_restart_releases_only_staged_files_from_completed_jobs(import_fixture):
+    fixture, storage, connect, dsn = import_fixture
+    client = TestClient(app)
+    job = upload(client, fixture).json()
+    staged = storage / ".imports" / job["id"] / fixture.name
+    sibling = staged.with_name("preserved.txt")
+    sibling.write_text("Synthetic unrelated file.")
+    env = {**os.environ, "DATABASE_URL": dsn, "UPLOAD_DIR": str(storage), "EMBEDDING_DIMENSIONS": "3"}
+    crashed = subprocess.run([sys.executable, "-c", """
+import os
+from app.ingestion import jobs, pipeline
+pipeline.embed_documents = lambda texts: [[1., 0., 0.] for _ in texts]
+jobs.release_stage = lambda *_: os._exit(23)
+jobs.process_next_job()
+"""], env=env, capture_output=True, timeout=25, check=False)
+    assert crashed.returncode == 23
+    with connect() as conn:
+        document, state, cleanup = conn.execute(
+            "SELECT document_id,state,next_stage_cleanup_at FROM import_jobs WHERE id=%s", (job["id"],),
+        ).fetchone()
+        assert state == "imported" and cleanup is not None
+        original = conn.execute("SELECT stored_path FROM documents WHERE id=%s", (document,)).fetchone()[0]
+    assert staged.is_file()
+    retry = upload(client, fixture).json()
+    with connect() as conn:
+        conn.execute("UPDATE import_jobs SET state='failed', retryable=TRUE WHERE id=%s", (retry["id"],))
+
+    assert jobs.process_next_job() is False
+    assert not staged.exists() and sibling.read_text() == "Synthetic unrelated file."
+    assert (storage / ".imports" / retry["id"] / fixture.name).is_file()
+    with connect() as conn:
+        assert conn.execute(
+            "SELECT document_id,state,next_stage_cleanup_at FROM import_jobs WHERE id=%s", (job["id"],),
+        ).fetchone() == (document, "imported", None)
+        assert conn.execute("SELECT count(*) FROM chunks WHERE document_id=%s", (document,)).fetchone() == (1,)
+    assert (storage / original).read_bytes() == fixture.read_bytes()
