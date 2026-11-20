@@ -77,6 +77,8 @@ The application is served at `http://127.0.0.1:5173` and uses the local API at
   previously saved findings.
 - `GET /evidence-atlas` — reconstructs a graph from recent comparisons in
   the selected scope. Each relationship includes the source passage and page.
+- `GET /evidence-atlas/{finding_id}/counterevidence` — resolves a finding within
+  scope and retrieves candidate passages from other papers in that scope.
 
 Use **Evidence explorer** in the frontend for search and side-by-side comparisons
 without a generation API key. Source links open at the cited PDF page when the
@@ -108,6 +110,9 @@ excerpts for up to 30 papers from 50 recent runs in the selected scope.
 Select **Library comparisons** for runs made outside a named workspace.
 Dataset and metric edges reflect labels found in the excerpt. Topic labels
 come from extraction and deserve review in the source.
+**Find counterevidence** ranks cross-paper passages with shared terms and
+nearby qualifying phrases. Overlapping condition labels are shown separately
+so the researcher can check whether the studies asked the same question.
 
 Use **Quick open** (Ctrl/⌘K) to navigate by view or paper title. The reader shows
 the original PDF and indexed passages for the selected page. Its width slider

@@ -5,6 +5,7 @@ from contextlib import suppress
 from pathlib import Path
 
 from fastapi import BackgroundTasks, FastAPI, File, HTTPException, Query, UploadFile, status
+from fastapi import Path as ApiPath
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
@@ -32,6 +33,7 @@ from research.comparison import compare_documents
 from research.comparison_runs import cancel_run, create_run, execute_run, list_runs, run_details
 from research.structured import structured_comparison
 from research.atlas import atlas_for_workspace
+from research.counterevidence import find_passages
 from typing import Annotated
 
 
@@ -466,6 +468,19 @@ def stop_comparison(run_id: uuid.UUID) -> None:
 def evidence_atlas(workspace_id: int | None = Query(default=None, gt=0, le=9223372036854775807)) -> dict:
     validate_workspace_scope(workspace_id, [])
     return atlas_for_workspace(workspace_id)
+
+
+@app.get("/evidence-atlas/{finding_id}/counterevidence")
+def finding_counterevidence(
+    finding_id: Annotated[str, ApiPath(pattern=r"^finding:[0-9a-f]{24}$")],
+    workspace_id: int | None = Query(default=None, gt=0, le=9223372036854775807),
+) -> dict:
+    validate_workspace_scope(workspace_id, [])
+    finding = next((node for node in atlas_for_workspace(workspace_id)["nodes"]
+                    if node["kind"] == "finding" and node["id"] == finding_id), None)
+    if finding is None:
+        raise HTTPException(status_code=404, detail="Finding not found in this scope.")
+    return {"finding": finding, "passages": find_passages(finding, workspace_id)}
 
 
 @app.delete("/workspaces/{workspace_id}/documents/{document_id}", status_code=204)

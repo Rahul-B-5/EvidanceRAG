@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api, type Atlas, type AtlasNode, type Workspace } from "./api";
 import type { FindingQuestion } from "./ComparisonStudio";
 import { SavePassage } from "./SavedEvidence";
+import { CounterevidencePanel } from "./CounterevidencePanel";
 import "./atlas.css";
 
 const typeNames: Record<string, string> = {
@@ -149,6 +150,7 @@ export function EvidenceAtlas({compare, ask}: {compare: () => void; ask: (q: Fin
             <a href={`#paper=${edge.provenance.document_id}&page=${edge.provenance.page_start}`}>Passage {edge.provenance.chunk_id} · p. {edge.provenance.page_start}</a>
           </li>)}</ul>
           <p>Relationships describe the selected indexed text and its extracted labels. Assess scientific support in the original source.</p>
+          {center.kind === "finding" && <CounterevidencePanel key={center.id} finding={center} workspace={workspace} />}
         </section>}
       </div>
     </div>}

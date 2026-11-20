@@ -50,12 +50,19 @@
   turns each edge into a source reference. Browser tested populated desktop
   and 390-pixel views, node-type filtering, keyboard zoom and Reader handoff.
   Full test gate: 72 PostgreSQL-enabled tests, production build and diff check.
+- Atlas committed as `dffb2f7` and confirmed on `origin/main`.
+  Counterevidence search resolves the source finding in scope and retrieves
+  other indexed papers with quoted context, qualifying language, and matching
+  reported condition labels. Browser tested real results and Reader handoff.
+  PostgreSQL tests reject out-of-scope findings and verify self exclusion and
+  ranking. Full gate: 74 PostgreSQL-enabled tests and production build.
 
 ## Outstanding
 
-1. Add claim-level review and candidate counterevidence retrieval across other
-   papers in the same scope. Resolve the original finding from the Atlas before
-   retrieval, preserve both source references and record unresolved alignment.
+1. Persist claim-level review against immutable excerpt identifiers. Add a
+   comparison of two cited passages that records shared conditions and
+   reviewer-assigned support, qualification, or challenge with uncertainty.
+   Keep model classifications distinct from reviewer-confirmed assessments.
 2. Add contradiction candidates only for aligned study conditions and opposing
    claims with two citable sources. Add reproducibility disclosure validation,
    corpus-scoped gap exploration and evidence-grounded research briefings.

@@ -17,4 +17,6 @@
 .atlas-edge {position:absolute;left:0;top:0;height:1px;background:var(--line);transform-origin:0 50%;pointer-events:none}
 .atlas-detail li {display:flex;align-items:center;flex-wrap:wrap;gap:.6rem;margin:.5rem 0;font-size:.9rem}
 .atlas-detail p {overflow-wrap:anywhere}
+.counterevidence {border-top:1px solid var(--line);margin-top:1rem;padding-top:.8rem}
+.counterevidence h3 {margin:.85rem 0 .4rem}
 @media(max-width:900px) {.atlas-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}.atlas-layout{grid-template-columns:minmax(0,1fr)}.atlas-index ul{max-height:11rem}}

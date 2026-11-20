@@ -36,6 +36,7 @@ def test_atlas_rebuilds_current_workspace_graph_from_persisted_results(monkeypat
     with get_connection() as conn, conn.transaction(force_rollback=True):
         monkeypatch.setattr("app.api.main.get_connection", lambda: nullcontext(conn))
         monkeypatch.setattr("research.atlas.get_connection", lambda: nullcontext(conn))
+        monkeypatch.setattr("research.counterevidence.get_connection", lambda: nullcontext(conn))
         workspace = conn.execute("INSERT INTO workspaces(name) VALUES ('Atlas fixture') RETURNING id").fetchone()[0]
         papers = []
         for title in ("Atlas fixture A", "Atlas fixture B"):
@@ -54,9 +55,17 @@ def test_atlas_rebuilds_current_workspace_graph_from_persisted_results(monkeypat
             VALUES (%s,%s,%s,%s,%s,'completed',NOW())
         """, (uuid4(), workspace, ids, [p["title"] for p in papers], Jsonb(papers)))
         client = TestClient(app)
-        assert client.get("/evidence-atlas", params={"workspace_id": workspace}).json() == build_atlas(sorted(papers, key=lambda p: -p["document_id"]))
+        initial = client.get("/evidence-atlas", params={"workspace_id": workspace}).json()
+        assert initial == build_atlas(sorted(papers, key=lambda p: -p["document_id"]))
+        finding_id = next(n["id"] for n in initial["nodes"] if n["kind"] == "finding" and n["provenance"]["document_id"] == ids[0])
+        counter_url = f"/evidence-atlas/{finding_id}/counterevidence"
+        assert client.get(counter_url).status_code == 404
+        found = client.get(counter_url, params={"workspace_id": workspace}).json()
+        assert [r["document_id"] for r in found["passages"]] == [ids[1]]
+        assert found["passages"][0]["condition_labels"]["dataset"] == "Orchard"
         conn.execute("DELETE FROM workspace_documents WHERE workspace_id=%s AND document_id=%s", (workspace, ids[0]))
         graph = client.get("/evidence-atlas", params={"workspace_id": workspace}).json()
         assert graph == build_atlas(papers[1:])
+        assert client.get(counter_url, params={"workspace_id": workspace}).status_code == 404
         global_graph = client.get("/evidence-atlas").json()
         assert all(e["provenance"]["document_id"] not in ids for e in global_graph["edges"])
