@@ -34,7 +34,8 @@ from research.comparison_runs import cancel_run, create_run, execute_run, list_r
 from research.structured import structured_comparison
 from research.atlas import atlas_for_workspace
 from research.counterevidence import find_passages
-from typing import Annotated
+from research.claim_reviews import read_reviews, write_review
+from typing import Annotated, Literal
 
 
 app = FastAPI(
@@ -80,6 +81,12 @@ class ComparisonRequest(BaseModel):
 class StructuredComparisonRequest(BaseModel):
     document_ids: list[Annotated[int, Field(gt=0, le=9223372036854775807)]] = Field(min_length=2, max_length=6)
     workspace_id: int | None = Field(default=None, gt=0, le=9223372036854775807)
+
+
+class ClaimReviewRequest(BaseModel):
+    relation: Literal["supports", "qualifies", "challenges", "uncertain"]
+    alignment: Literal["aligned", "different", "unknown"]
+    note: str = Field(default="", max_length=4000)
 
 
 def validate_workspace_scope(workspace_id: int | None, document_ids: list[int]) -> None:
@@ -475,12 +482,40 @@ def finding_counterevidence(
     finding_id: Annotated[str, ApiPath(pattern=r"^finding:[0-9a-f]{24}$")],
     workspace_id: int | None = Query(default=None, gt=0, le=9223372036854775807),
 ) -> dict:
+    finding = resolve_finding(finding_id, workspace_id)
+    return {"finding": finding, "passages": find_passages(finding, workspace_id),
+            "reviews": read_reviews(finding_id, workspace_id)}
+
+
+def resolve_finding(finding_id: str, workspace_id: int | None) -> dict:
     validate_workspace_scope(workspace_id, [])
     finding = next((node for node in atlas_for_workspace(workspace_id)["nodes"]
                     if node["kind"] == "finding" and node["id"] == finding_id), None)
     if finding is None:
         raise HTTPException(status_code=404, detail="Finding not found in this scope.")
-    return {"finding": finding, "passages": find_passages(finding, workspace_id)}
+    return finding
+
+
+@app.put("/evidence-atlas/{finding_id}/reviews/{chunk_id}")
+def save_claim_review(
+    finding_id: Annotated[str, ApiPath(pattern=r"^finding:[0-9a-f]{24}$")],
+    chunk_id: Annotated[int, ApiPath(gt=0, le=9223372036854775807)],
+    request: ClaimReviewRequest,
+    workspace_id: int | None = Query(default=None, gt=0, le=9223372036854775807),
+) -> dict:
+    finding = resolve_finding(finding_id, workspace_id)
+    matches = find_passages(finding, workspace_id)
+    candidate = next((p for p in matches if p["chunk_id"] == chunk_id), None)
+    if candidate is None:
+        saved = next((item for item in read_reviews(finding_id, workspace_id)
+                      if item["candidate_chunk_id"] == chunk_id), None)
+        if saved is None:
+            raise HTTPException(status_code=404, detail="Candidate passage not found in this scope.")
+        candidate = saved["candidate_snapshot"]
+    review = write_review(finding, candidate, workspace_id, request.relation, request.alignment, request.note)
+    if review is None:
+        raise HTTPException(status_code=409, detail="Workspace membership changed. Reload before reviewing.")
+    return review
 
 
 @app.delete("/workspaces/{workspace_id}/documents/{document_id}", status_code=204)

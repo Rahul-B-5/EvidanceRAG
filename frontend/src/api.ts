@@ -32,9 +32,18 @@ export type ComparisonRun = {
 export type Provenance = Finding["source"];
 export type AtlasNode = {id: string; kind: string; label: string; document_id?: number; provenance?: Provenance};
 export type Atlas = {nodes: AtlasNode[]; edges: Array<{source: string; target: string; relation: string; provenance: Provenance}>};
+export type CandidatePassage = Provenance & {title: string; excerpt: string; signal: string | null; matched_terms: string[]; condition_labels: Record<string,string>};
+export type ClaimReview = {
+  candidate_chunk_id: number;
+  candidate_snapshot: CandidatePassage;
+  relation: "supports" | "qualifies" | "challenges" | "uncertain";
+  alignment: "aligned" | "different" | "unknown";
+  note: string;
+};
 export type Counterevidence = {
   finding: AtlasNode;
-  passages: Array<Provenance & {title: string; excerpt: string; signal: string | null; matched_terms: string[]; condition_labels: Record<string,string>}>;
+  passages: CandidatePassage[];
+  reviews: ClaimReview[];
 };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -73,6 +82,10 @@ export const api = {
   atlas: (workspaceId: string, signal?: AbortSignal) => request<Atlas>(workspaceId ? `/evidence-atlas?workspace_id=${workspaceId}` : "/evidence-atlas", {signal}),
   counterevidence: (id: string, workspaceId: string, signal?: AbortSignal) => request<Counterevidence>(
     `/evidence-atlas/${encodeURIComponent(id)}/counterevidence${workspaceId ? `?workspace_id=${workspaceId}` : ""}`, {signal}),
+  saveClaimReview: (id: string, chunk: number, workspaceId: string, review: Pick<ClaimReview, "relation" | "alignment" | "note">) => request<ClaimReview>(
+    `/evidence-atlas/${encodeURIComponent(id)}/reviews/${chunk}${workspaceId ? `?workspace_id=${workspaceId}` : ""}`, {
+      method: "PUT", headers: {"Content-Type": "application/json"}, body: JSON.stringify(review),
+    }),
   documents: () => request<{ documents: Document[] }>("/documents"),
   document: (id: number) => request<Document>(`/documents/${id}`),
   passages: (id: number, page: number, signal?: AbortSignal) => request<{passages: Passage[]}>(`/documents/${id}/passages?page=${page}`, {signal}),

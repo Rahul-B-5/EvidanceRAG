@@ -56,13 +56,18 @@
   reported condition labels. Browser tested real results and Reader handoff.
   PostgreSQL tests reject out-of-scope findings and verify self exclusion and
   ranking. Full gate: 74 PostgreSQL-enabled tests and production build.
+- Counterevidence committed as `5470e35` and verified on `origin/main`.
+  Additive migration `004_claim_reviews` persists reviewer-assigned support,
+  qualification, challenge or uncertainty alongside an independent assessment
+  of experiment alignment, a note, and source snapshots. Browser verified form
+  controls. PostgreSQL verified save, edit, canonical snapshots and scope
+  revocation. Full suite still passes (74).
 
 ## Outstanding
 
-1. Persist claim-level review against immutable excerpt identifiers. Add a
-   comparison of two cited passages that records shared conditions and
-   reviewer-assigned support, qualification, or challenge with uncertainty.
-   Keep model classifications distinct from reviewer-confirmed assessments.
+1. Expand reproducibility analysis to distinguish explicit reported details
+   from keyword mentions. Produce a provenance-linked Reproduction Dossier
+   with missing details and manual verification steps.
 2. Add contradiction candidates only for aligned study conditions and opposing
    claims with two citable sources. Add reproducibility disclosure validation,
    corpus-scoped gap exploration and evidence-grounded research briefings.

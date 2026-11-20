@@ -79,6 +79,9 @@ The application is served at `http://127.0.0.1:5173` and uses the local API at
   the selected scope. Each relationship includes the source passage and page.
 - `GET /evidence-atlas/{finding_id}/counterevidence` — resolves a finding within
   scope and retrieves candidate passages from other papers in that scope.
+- `PUT /evidence-atlas/{finding_id}/reviews/{chunk_id}` — saves a researcher’s
+  relationship assessment, experiment alignment judgment and note with both
+  source snapshots.
 
 Use **Evidence explorer** in the frontend for search and side-by-side comparisons
 without a generation API key. Source links open at the cited PDF page when the
@@ -113,6 +116,9 @@ come from extraction and deserve review in the source.
 **Find counterevidence** ranks cross-paper passages with shared terms and
 nearby qualifying phrases. Overlapping condition labels are shown separately
 so the researcher can check whether the studies asked the same question.
+Use **Assess passage** to record your conclusion separately from the candidate
+ranking. The review stays in the comparison workspace and can be edited when
+you revisit that finding.
 
 Use **Quick open** (Ctrl/⌘K) to navigate by view or paper title. The reader shows
 the original PDF and indexed passages for the selected page. Its width slider

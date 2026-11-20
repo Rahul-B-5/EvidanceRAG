@@ -19,4 +19,6 @@
 .atlas-detail p {overflow-wrap:anywhere}
 .counterevidence {border-top:1px solid var(--line);margin-top:1rem;padding-top:.8rem}
 .counterevidence h3 {margin:.85rem 0 .4rem}
+.claim-review {display:grid;gap:.6rem;border-top:1px solid var(--line);margin-top:.6rem;padding-top:.6rem}
+.claim-review textarea {display:block;width:100%;margin-top:.3rem}
 @media(max-width:900px) {.atlas-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}.atlas-layout{grid-template-columns:minmax(0,1fr)}.atlas-index ul{max-height:11rem}}

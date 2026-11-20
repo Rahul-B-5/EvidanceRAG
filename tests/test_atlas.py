@@ -37,6 +37,7 @@ def test_atlas_rebuilds_current_workspace_graph_from_persisted_results(monkeypat
         monkeypatch.setattr("app.api.main.get_connection", lambda: nullcontext(conn))
         monkeypatch.setattr("research.atlas.get_connection", lambda: nullcontext(conn))
         monkeypatch.setattr("research.counterevidence.get_connection", lambda: nullcontext(conn))
+        monkeypatch.setattr("research.claim_reviews.get_connection", lambda: nullcontext(conn))
         workspace = conn.execute("INSERT INTO workspaces(name) VALUES ('Atlas fixture') RETURNING id").fetchone()[0]
         papers = []
         for title in ("Atlas fixture A", "Atlas fixture B"):
@@ -63,6 +64,23 @@ def test_atlas_rebuilds_current_workspace_graph_from_persisted_results(monkeypat
         found = client.get(counter_url, params={"workspace_id": workspace}).json()
         assert [r["document_id"] for r in found["passages"]] == [ids[1]]
         assert found["passages"][0]["condition_labels"]["dataset"] == "Orchard"
+        candidate_chunk = found["passages"][0]["chunk_id"]
+        review_url = f"/evidence-atlas/{finding_id}/reviews/{candidate_chunk}"
+        review = {"relation": "qualifies", "alignment": "different", "note": "Different split."}
+        assert client.put(review_url, json=review).status_code == 404
+        response = client.put(review_url, params={"workspace_id": workspace}, json=review)
+        assert response.status_code == 200
+        assert response.json()["candidate_snapshot"] == found["passages"][0]
+        assert client.put(review_url, params={"workspace_id": workspace}, json={
+            **review, "relation": "supports", "note": "Matched protocol on further review."
+        }).status_code == 200
+        stored = client.get(counter_url, params={"workspace_id": workspace}).json()["reviews"]
+        assert len(stored) == 1 and stored[0]["relation"] == "supports"
+        conn.execute("DELETE FROM workspace_documents WHERE workspace_id=%s AND document_id=%s", (workspace, ids[1]))
+        restricted = client.get(counter_url, params={"workspace_id": workspace}).json()
+        assert restricted["passages"] == restricted["reviews"] == []
+        assert client.put(review_url, params={"workspace_id": workspace}, json=review).status_code == 404
+        conn.execute("INSERT INTO workspace_documents(workspace_id, document_id) VALUES (%s,%s)", (workspace, ids[1]))
         conn.execute("DELETE FROM workspace_documents WHERE workspace_id=%s AND document_id=%s", (workspace, ids[0]))
         graph = client.get("/evidence-atlas", params={"workspace_id": workspace}).json()
         assert graph == build_atlas(papers[1:])
