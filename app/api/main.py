@@ -17,6 +17,7 @@ from psycopg.errors import ForeignKeyViolation, LockNotAvailable, UniqueViolatio
 from app.api.saved_evidence import router as saved_evidence_router
 from app.api.reader_annotations import router as reader_annotations_router
 from app.api.answer_stream import stream_answer
+from app.api.embedding_rebuilds import router as embedding_rebuilds_router
 
 from app.core.config import get_settings
 from app.db.connection import get_connection
@@ -63,6 +64,7 @@ app = FastAPI(
 )
 app.include_router(saved_evidence_router)
 app.include_router(reader_annotations_router)
+app.include_router(embedding_rebuilds_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[origin.strip() for origin in get_settings().cors_origins.split(",") if origin.strip()],

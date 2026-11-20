@@ -16,7 +16,7 @@ from app.db.migrations import apply_migrations_in_transaction
 BASE_SCHEMA = Path(__file__).resolve().parents[1] / "app" / "db" / "schema.sql"
 TEST_TABLES = ("documents", "chunks", "workspaces", "workspace_documents", "conversations", "messages", "conversation_scopes")
 BROWSER_TABLES = ("evidencerag_migrations", "saved_evidence", "reader_bookmarks",
-                  "evidence_packets", "collections", "collection_documents")
+                  "evidence_packets", "collections", "collection_documents", "embedding_rebuilds")
 
 
 def fresh_schema() -> str:

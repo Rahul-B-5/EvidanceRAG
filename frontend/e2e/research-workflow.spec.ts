@@ -36,6 +36,10 @@ test("import, inspect, save, answer and export a real PDF", async ({page, reques
   const pdf = await request.get(source!.split("#")[0], {headers:{Range:"bytes=0-7"}});
   expect(pdf.status()).toBe(206);
   expect(await pdf.body()).toEqual((await readFile(fixture)).subarray(0, 8));
+  await page.getByText("Search embeddings", {exact:true}).click();
+  await page.getByRole("button", {name:"Rebuild embeddings", exact:true}).click();
+  await expect(page.getByText("Embedding rebuild complete.", {exact:true})).toBeVisible();
+  await expect(page.getByText("1 of 1 passages match the active embedding profile.", {exact:true})).toBeVisible();
 
   await page.getByRole("button", {name:"Saved evidence", exact:true}).click();
   await page.getByRole("textbox", {name:"Research note"}).fill("Verify the held-out sample counts.");

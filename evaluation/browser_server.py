@@ -22,6 +22,7 @@ def main() -> None:
         return [[1.0, 0.0, 0.0] if "37 observations" in text else [0.0, 1.0, 0.0] for text in texts]
     with (
         patch("app.ingestion.pipeline.embed_documents", embeddings),
+        patch("app.retrieval.reembedding.embed_documents", embeddings),
         patch("app.retrieval.vector.embed_query", return_value=[1.0, 0.0, 0.0]),
         patch("app.generation.answerer.get_generation_provider", return_value=provider),
     ):

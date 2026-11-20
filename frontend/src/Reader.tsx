@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState, type CSSProperties } from "react";
 import { api, type Document, type HighlightSelection, type Passage, type ReaderHighlight } from "./api";
 import { AnnotatedPassage, HighlightCard } from "./ReaderAnnotations";
 import { MetadataEditor } from "./DocumentMetadata";
+import { EmbeddingPanel } from "./EmbeddingPanel";
 
 const PdfViewer = lazy(() => import("./PdfViewer"));
 
@@ -28,6 +29,7 @@ export function Reader({document, initialPage = 1, remove, update}: {
     <div className="reader-heading"><div><h2>{document.title}</h2><p>{[document.venue, document.publication_year, document.doi].filter(Boolean).join(" · ") || document.filename}</p></div>
       <div className="finding-actions"><MetadataEditor paper={document} update={update} /><button className="secondary danger" onClick={remove}>Delete paper</button></div>
     </div>
+    <EmbeddingPanel documentId={document.id} />
     <div className="reader-toolbar">
       <form onSubmit={e => {e.preventDefault(); go(Number(draft));}}>
         <button type="button" className="secondary" disabled={page <= 1} onClick={() => go(page - 1)}>Previous</button>

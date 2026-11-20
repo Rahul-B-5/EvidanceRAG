@@ -164,25 +164,31 @@
   bookmarks, range download, notebook notes, scoped Assistant citation to page
   2 and linked HTML export. A separate 390px test covered keyboard navigation
   and theme switching. The fixture schema and files were removed.
-- Source publication, byte-identical recovery and deletion share a
+- Source lifecycle hardening pushed as `cd38fe4`. Publication, byte-identical recovery and deletion share a
   PostgreSQL advisory lock per content hash. Two concurrent connections
   verified that a re-import waits until deletion finishes and retains a
   byte-identical source. A rolled-back import removes only its own
   unreferenced copy. Database error responses omit driver details.
   Full gate: 107 PostgreSQL-enabled tests, 10 frontend tests, two browser
   regressions and production build.
+- Migration `011_embedding_rebuilds` adds durable rebuild status, cancellation
+  and stale-worker detection. Browser tested Reader controls and retention
+  of page citations. A real local model rebuilt a synthetic vector while
+  keeping passage ID and pages. PostgreSQL tests verified atomic replacement
+  and retention after failure, cancellation or interruption. Full gate:
+  109 PostgreSQL-enabled tests, 10 frontend tests, two browser tests and build.
 
 ## Outstanding
 
-1. Implement safe re-embedding using an existing paper’s indexed text
-   without changing its source or chunk IDs.
+1. Add clear model and index diagnostics in Settings, with a synthetic
+   provider check that sends no library content.
 2. Expand graph exploration across workspaces and notebook sources.
 3. Extend the notebook with tags, collections and integrated annotations.
    Refine page attribution for chunks that span several pages.
 4. Evaluate disagreement, gap and disclosure detection on representative
    corpora. A valid citation can still lack factual support.
-5. Harden ingestion lifecycle, source cleanup races, legacy conversation scope
-   backfill and re-embedding.
+5. Persist import jobs and address restart recovery. Improve legacy
+   conversations whose original scope was lost before scope records existed.
 
 ## Continuation
 

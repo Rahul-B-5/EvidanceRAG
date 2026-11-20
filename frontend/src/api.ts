@@ -12,6 +12,13 @@ export type ReaderHighlight = {
   quote: string; note: string; revision: number;
 };
 export type HighlightSelection = Pick<ReaderHighlight, "page" | "start_offset" | "end_offset"> & {chunk_id: number};
+export type EmbeddingRebuild = {
+  id: string; model: string; dimensions: number; total_chunks: number; prepared_chunks: number;
+  status: "queued" | "running" | "completed" | "failed" | "interrupted" | "cancelled"; error: string | null;
+};
+export type EmbeddingStatus = {
+  model: string; dimensions: number; total_chunks: number; active_chunks: number; job: EmbeddingRebuild | null;
+};
 export type SavedPassage = {chunk_id: number; document_id: number; title: string; page_start: number; page_end: number; passage: string; note: string; source_exists: boolean};
 export type Evidence = { evidence_id: string; chunk_id: number; document_id: number; title: string; page_start: number; page_end: number; text: string };
 export type Workspace = { id: number; name: string; description: string | null; document_count: number };
@@ -164,6 +171,9 @@ export const api = {
     }),
   deleteHighlight: (id: number, highlight: ReaderHighlight) => request<void>(
     `/documents/${id}/reader-highlights/${highlight.id}?revision=${highlight.revision}`, {method:"DELETE"}),
+  embeddingStatus: (id: number, signal?: AbortSignal) => request<EmbeddingStatus>(`/documents/${id}/embeddings`, {signal}),
+  rebuildEmbeddings: (id: number) => request<EmbeddingRebuild>(`/documents/${id}/embeddings/rebuild`, {method:"POST"}),
+  cancelRebuild: (id: number, job: string) => request<void>(`/documents/${id}/embeddings/rebuild/${job}/cancel`, {method:"POST"}),
   reproduction: (id: string, workspaceId: string, signal?: AbortSignal) => request<ReproductionDossier>(
     `/documents/${id}/reproducibility${workspaceId ? `?workspace_id=${workspaceId}` : ""}`, {signal}),
   coverage: (question: string, workspaceId: string, useProvider: boolean, signal?: AbortSignal) => request<CoverageMap>("/research/coverage", {

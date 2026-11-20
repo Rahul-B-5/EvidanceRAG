@@ -46,6 +46,11 @@ The application is served at `http://127.0.0.1:5173` and uses the local API at
 - `POST /documents` — imports one PDF as multipart field `file`.
 - `GET /documents/{document_id}/source` — serves a persisted original PDF.
 - `GET /documents/{document_id}/passages?page=...` — lists indexed chunks intersecting the page.
+- `GET /documents/{document_id}/embeddings` — reports the active profile,
+  compatible passage count, and most recent rebuild state.
+- `POST /documents/{document_id}/embeddings/rebuild` — queues an atomic rebuild
+  from existing indexed text. Cancel through
+  `POST /documents/{document_id}/embeddings/rebuild/{job_id}/cancel`.
 - `GET /documents/{document_id}/reader-annotations?page=...` — lists bookmarks
   for the paper and highlights for the open page.
 - `PUT/DELETE /documents/{document_id}/reader-bookmarks/{page}` — saves or removes
@@ -244,9 +249,12 @@ the full source range. Deleting a paper deletes its Reader bookmarks and notes.
 ## Embedding profiles
 
 Each chunk records the embedding model and vector dimension used to create it.
-Vector retrieval only compares chunks from the active configured profile, so a
-model change cannot silently compare incompatible embedding spaces. Reprocess
-documents after changing `EMBEDDING_MODEL` or `EMBEDDING_DIMENSIONS`.
+Vector retrieval compares chunks from the active configured profile. After
+changing `EMBEDDING_MODEL` or `EMBEDDING_DIMENSIONS`, open **Search embeddings**
+in Reader to see coverage and rebuild a paper. The rebuild uses existing
+indexed text and retains the paper, source, passage IDs, and references. It
+publishes replacement vectors together. You can cancel an active rebuild or
+retry an interrupted one.
 
 Apply new versioned migrations to an initialized database with
 `.venv/bin/python -m app.db.migrations`. New installations use the bootstrap
