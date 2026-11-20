@@ -4,7 +4,7 @@ import uuid
 from contextlib import suppress
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, Query, UploadFile, status
+from fastapi import BackgroundTasks, FastAPI, File, HTTPException, Query, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
@@ -29,6 +29,7 @@ from app.generation.answerer import generate_answer
 from app.ingestion.pipeline import ingest_pdf
 from app.retrieval.service import retrieve_evidence
 from research.comparison import compare_documents
+from research.comparison_runs import cancel_run, create_run, execute_run, list_runs, run_details
 from research.structured import structured_comparison
 from typing import Annotated
 
@@ -426,6 +427,38 @@ def compare_structured(request: StructuredComparisonRequest) -> dict:
         return structured_comparison(titles, request.workspace_id)
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@app.post("/comparison-runs", status_code=202)
+def start_comparison(request: StructuredComparisonRequest, tasks: BackgroundTasks) -> dict:
+    titles = comparison_titles(request.document_ids, request.workspace_id)
+    run = create_run(titles, request.workspace_id)
+    if run is None:
+        raise HTTPException(status_code=409, detail="A comparison is already running. Open it in run history or wait for it to finish.")
+    tasks.add_task(execute_run, run["id"], titles, request.workspace_id)
+    return run
+
+
+@app.get("/comparison-runs")
+def comparison_history(workspace_id: int | None = Query(default=None, gt=0)) -> dict:
+    validate_workspace_scope(workspace_id, [])
+    return {"runs": list_runs(workspace_id)}
+
+
+@app.get("/comparison-runs/{run_id}")
+def comparison_run(run_id: uuid.UUID) -> dict:
+    run = run_details(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Comparison run not found.")
+    validate_workspace_scope(run["workspace_id"], run["document_ids"])
+    return run
+
+
+@app.post("/comparison-runs/{run_id}/cancel", status_code=204)
+def stop_comparison(run_id: uuid.UUID) -> None:
+    comparison_run(run_id)
+    if not cancel_run(run_id):
+        raise HTTPException(status_code=409, detail="Comparison is no longer active.")
 
 
 @app.delete("/workspaces/{workspace_id}/documents/{document_id}", status_code=204)

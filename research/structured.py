@@ -186,19 +186,25 @@ def reproducibility_mentions(document_id: int, workspace_id: int | None) -> list
 
 
 def structured_comparison(titles: dict[int, str], workspace_id: int | None) -> dict:
-    papers = []
-    provider = None
-    for document_id, title in titles.items():
-        candidates = {}
-        for query in TOPICS.values():
-            for passage in search_keyword(query, top_k=2, document_id=document_id, workspace_id=workspace_id):
-                if passage["document_id"] != document_id:
-                    continue
-                candidates.setdefault(passage["chunk_id"], {**passage, "text": passage["text"][:2000]})
-        if candidates and provider is None:
-            provider = get_generation_provider(get_settings())
-        findings, rejected = extract_findings(provider, list(candidates.values())) if provider and candidates else ([], 0)
-        papers.append({"document_id": document_id, "title": title, "findings": findings,
-                       "reviewed_passages": len(candidates), "rejected_findings": rejected,
-                       "reproducibility": reproducibility_mentions(document_id, workspace_id)})
+    papers = [extract_paper(id_, title, workspace_id) for id_, title in titles.items()]
+    return comparison_result(papers)
+
+
+def extract_paper(document_id: int, title: str, workspace_id: int | None) -> dict:
+    candidates = {}
+    for query in TOPICS.values():
+        for passage in search_keyword(query, top_k=2, document_id=document_id, workspace_id=workspace_id):
+            if passage["document_id"] != document_id:
+                continue
+            candidates.setdefault(passage["chunk_id"], {**passage, "text": passage["text"][:2000]})
+    findings, rejected = [], 0
+    if candidates:
+        provider = get_generation_provider(get_settings())
+        findings, rejected = extract_findings(provider, list(candidates.values()))
+    return {"document_id": document_id, "title": title, "findings": findings,
+            "reviewed_passages": len(candidates), "rejected_findings": rejected,
+            "reproducibility": reproducibility_mentions(document_id, workspace_id)}
+
+
+def comparison_result(papers: list[dict]) -> dict:
     return {"topics": list(TOPICS), "papers": papers, "checks": pairwise_checks(papers)}

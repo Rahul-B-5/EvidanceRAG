@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { api, type Document, type Finding, type StructuredComparison } from "./api";
+import { useEffect, useState } from "react";
+import { api, type ComparisonRun, type Document, type Finding, type StructuredComparison } from "./api";
 import { SavePassage } from "./SavedEvidence";
 import { EvidenceGraph } from "./EvidenceGraph";
 import { comparisonBrief, followUpExcerpts } from "./comparisonBrief";
@@ -11,6 +11,7 @@ const labels: Record<string, string> = {
   reported_difference: "Reported conditions differ", insufficient_context: "Insufficient context", candidate_match: "Candidate match · review conditions",
 };
 const findingKey = (f: Finding) => `${f.source.chunk_id}:${f.topic}:${f.quote}`;
+const active = (run: ComparisonRun | null) => run?.status === "queued" || run?.status === "running";
 
 function FindingCard({finding, ask}: {finding: Finding; ask: () => void}) {
   const {source, outcome, quote} = finding;
@@ -32,24 +33,95 @@ export function ComparisonStudio({documents, workspaceId, ask}: {
   const [selected, setSelected] = useState<number[]>([]);
   const [result, setResult] = useState<StructuredComparison | null>(null);
   const [busy, setBusy] = useState(false);
+  const [history, setHistory] = useState<ComparisonRun[]>([]);
+  const [run, setRun] = useState<ComparisonRun | null>(null);
+  const [pollError, setPollError] = useState("");
   const [error, setError] = useState("");
   const [topicFilter, setTopicFilter] = useState("");
   const [layout, setLayout] = useState<"matrix" | "claims" | "graph">("matrix");
   const [paperFilter, setPaperFilter] = useState("");
   const titles = new Map(result?.papers.map(p => [p.document_id, p.title]));
   const selection = selected.filter(id => documents.some(d => d.id === id));
+  const running = active(run);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.comparisonRuns(workspaceId).then(({runs}) => {
+      if (!cancelled) setHistory(previous => [
+        ...previous.filter(p => !runs.some(r => r.id === p.id)), ...runs,
+      ]);
+    }).catch(e => {if (!cancelled) setError(e instanceof Error ? e.message : "Unable to load run history.");});
+    return () => {cancelled = true;};
+  }, [workspaceId]);
+
+  useEffect(() => {
+    if (!run || !running) return;
+    const controller = new AbortController();
+    let timeout: ReturnType<typeof setTimeout>;
+    const id = run.id;
+    async function poll() {
+      try {
+        const current = await api.comparisonRun(id, controller.signal);
+        if (controller.signal.aborted) return;
+        setRun(current);
+        setPollError("");
+        setResult(current.result.papers.length ? current.result : null);
+        setHistory(runs => runs.map(r => r.id === id ? current : r));
+        if (!active(current)) return;
+      } catch {
+        if (controller.signal.aborted) return;
+        setPollError("Unable to refresh progress. Retrying…");
+      }
+      timeout = setTimeout(poll, 1500);
+    }
+    void poll();
+    return () => {controller.abort();clearTimeout(timeout);};
+  }, [run?.id, running]);
 
   async function compare() {
     setBusy(true);
     setError("");
     try {
-      setResult(await api.compareStructured(selection, workspaceId));
+      const started = await api.startComparison(selection, workspaceId);
+      setHistory(items => [started, ...items]);
+      setRun(started);
+      setResult(null);
+      setPollError("");
       setTopicFilter("");
       setPaperFilter("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Comparison failed.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function openRun(id: string) {
+    if (!id) return;
+    setBusy(true);
+    setError("");
+    try {
+      const item = await api.comparisonRun(id);
+      setTopicFilter("");
+      setPaperFilter("");
+      setRun(item);
+      setResult(item.result.papers.length ? item.result : null);
+      setHistory(items => items.map(r => r.id === id ? item : r));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unable to open comparison.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function stop() {
+    if (!run) return;
+    setError("");
+    try {
+      await api.cancelComparison(run.id);
+      await openRun(run.id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unable to cancel this comparison.");
     }
   }
 
@@ -74,14 +146,26 @@ export function ComparisonStudio({documents, workspaceId, ask}: {
     <section className="panel comparison-setup">
       <div><h2>Select papers</h2><p>Compare two to six papers using the configured generation provider.</p></div>
       {documents.length < 2 && <p className="muted">Add at least two papers to this scope.</p>}
-      <fieldset aria-label="Papers to compare" disabled={busy}>
+      <fieldset aria-label="Papers to compare" disabled={busy || running}>
         {documents.map(d => <label key={d.id}><input type="checkbox" checked={selection.includes(d.id)}
           disabled={selection.length >= 6 && !selection.includes(d.id)}
           onChange={e => setSelected(e.target.checked ? [...selection, d.id] : selection.filter(id => id !== d.id))} /> {d.title}</label>)}
       </fieldset>
-      <div className="finding-actions"><button disabled={busy || selection.length < 2} onClick={() => void compare()}>{busy ? "Extracting evidence…" : "Run structured comparison"}</button><span>{selection.length} selected</span></div>
+      <div className="finding-actions"><button disabled={busy || running || selection.length < 2} onClick={() => void compare()}>Run structured comparison</button><span>{selection.length} selected</span></div>
+      {!!history.length && <label>Run history <select value={run?.id ?? ""} disabled={busy} onChange={e => void openRun(e.target.value)}>
+        <option value="">Select a run</option>
+        {history.map(item => <option key={item.id} value={item.id}>
+          {new Date(item.created_at).toLocaleString()} · {item.titles.join(" / ")} · {item.status}
+        </option>)}
+      </select></label>}
     </section>
-    {busy && <p role="status">Reviewing indexed passages for each selected paper.</p>}
+    {running && run && <div className="panel finding-actions">
+      <p role="status">{result?.papers.length ?? 0} of {run.document_ids.length} papers reviewed</p>
+      <progress max={run.document_ids.length} value={result?.papers.length ?? 0} aria-label="Comparison progress" />
+      <button className="secondary" disabled={busy} onClick={() => void stop()}>Cancel after current request</button>
+    </div>}
+    {pollError && running && <p role="status">{pollError}</p>}
+    {run && !running && <p role="status">Comparison {run.status}{run.error ? `. ${run.error}` : ""}</p>}
     {error && <p role="alert" className="notice error">{error}</p>}
     {result && <>
       <section className="panel">

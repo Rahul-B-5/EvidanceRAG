@@ -70,6 +70,11 @@ The application is served at `http://127.0.0.1:5173` and uses the local API at
   evaluation protocols. The model selects numeric IDs for server-generated
   windows. The server resolves the original excerpt and checks that reported
   values, signs, units and context labels occur in that window.
+- `POST /comparison-runs` — starts a durable comparison and returns its ID.
+  `GET /comparison-runs/{id}` returns status and the papers reviewed so far.
+  `GET /comparison-runs` lists workspace-scoped history, and
+  `POST /comparison-runs/{id}/cancel` stops further extraction and preserves
+  previously saved findings.
 
 Use **Evidence explorer** in the frontend for search and side-by-side comparisons
 without a generation API key. Source links open at the cited PDF page when the
@@ -87,6 +92,12 @@ to indexed mentions of splits, seeds, optimization, compute and code availabilit
 The engine reviews a bounded keyword-selected sample from each paper.
 **Export briefing** writes an extractive Markdown report with page and passage
 provenance and the author-stated follow-up excerpts found in the sample.
+
+The studio saves each paper as it completes. Run history can reopen partial or
+completed results after a reload. The local service runs one comparison at a
+time. If it stops during a run, the run becomes interrupted when its lease
+expires, and completed papers remain available. Cancellation stops future work
+and discards any in-flight result. The model request itself may finish locally.
 
 Use **Quick open** (Ctrl/⌘K) to navigate by view or paper title. The reader shows
 the original PDF and indexed passages for the selected page. Its width slider

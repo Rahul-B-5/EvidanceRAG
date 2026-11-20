@@ -24,6 +24,11 @@ export type StructuredComparison = {
     differences: string[]; missing: string[];
   }> }>;
 };
+export type ComparisonRun = {
+  id: string; workspace_id: number | null; document_ids: number[]; titles: string[];
+  created_at: string; status: "queued" | "running" | "completed" | "failed" | "cancelled" | "interrupted";
+  error: string | null;
+};
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, init);
@@ -51,6 +56,13 @@ export const api = {
     method: "POST", headers: {"Content-Type": "application/json"},
     body: JSON.stringify({document_ids: documentIds, workspace_id: workspaceId}),
   }),
+  comparisonRuns: (workspaceId?: number) => request<{runs: ComparisonRun[]}>(workspaceId ? `/comparison-runs?workspace_id=${workspaceId}` : "/comparison-runs"),
+  startComparison: (documentIds: number[], workspaceId?: number) => request<ComparisonRun>("/comparison-runs", {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({document_ids: documentIds, workspace_id: workspaceId}),
+  }),
+  comparisonRun: (id: string, signal?: AbortSignal) => request<ComparisonRun & {result: StructuredComparison}>(`/comparison-runs/${id}`, {signal}),
+  cancelComparison: (id: string) => request<void>(`/comparison-runs/${id}/cancel`, {method:"POST"}),
   documents: () => request<{ documents: Document[] }>("/documents"),
   document: (id: number) => request<Document>(`/documents/${id}`),
   passages: (id: number, page: number, signal?: AbortSignal) => request<{passages: Passage[]}>(`/documents/${id}/passages?page=${page}`, {signal}),

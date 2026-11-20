@@ -29,19 +29,34 @@
   The final numeric-ID contract has automated integrity coverage and a live
   Ollama synthetic smoke test recovered the expected 87% result with its
   exact indexed quote and zero rejected items.
+- Recovered structured comparison pushed as `9d95e3d` and confirmed on
+  `origin/main`. Versioned migration `003_comparison_runs` adds run history,
+  per-paper progress, partial results, cancellation and a worker lease.
+  Applying the migration twice succeeded. PostgreSQL-enabled tests passed
+  (67 total), covering progress persistence, failure, stale lease recovery,
+  cancellation, and workspace access after a paper leaves the scope.
+- Browser verified that a real two-paper run starts with a progress indicator,
+  persists to history, completes, and reopens after a full browser reload.
+  That run returned 24 rejected selection records and no accepted findings.
+  A local-provider shape diagnostic is in progress. This is an extraction
+  quality bug, separate from the successful persistence workflow.
 
 ## Outstanding
 
-1. Add durable workspace-scoped comparison runs. Use a new additive migration,
-   persist each paper's extraction and status as it finishes, expose polling and
-   a history list, then load those runs in the Studio and Evidence Atlas.
-2. Add contradiction candidates only for aligned study conditions and opposing
+1. Diagnose the local model's rejected selection records on a real paper and
+   tighten its output contract. Retain exact evidence checks and verify using
+   both a synthetic source and the local browser workflow.
+2. Build a workspace Evidence Atlas from the latest persisted findings per paper.
+   Derive paper, excerpt, topic, dataset and metric nodes with typed edges.
+   Verify workspace membership, open citations in Reader and test the graph
+   at desktop and narrow layouts.
+3. Add contradiction candidates only for aligned study conditions and opposing
    claims with two citable sources. Add reproducibility disclosure validation,
    corpus-scoped gap exploration and evidence-grounded research briefings.
-3. Expand graph exploration across workspaces and notebook sources.
-4. Extend the notebook with tags, collections, annotations and bibliography export. Add browser coverage for save, edit, reopen and export. Add source view smoke coverage using a synthetic PDF.
-5. Add retrieval and answer evaluation fixtures, quality/latency reporting and automated browser regressions. Identifier validation does not establish factual entailment.
-6. Harden ingestion lifecycle, source cleanup races, legacy conversation scope backfill and re-embedding. Upgrade the local Node runtime from Node 20 to a supported release when convenient.
+4. Expand graph exploration across workspaces and notebook sources.
+5. Extend the notebook with tags, collections, annotations and bibliography export. Add browser coverage for save, edit, reopen and export. Add source view smoke coverage using a synthetic PDF.
+6. Add retrieval and answer evaluation fixtures, quality/latency reporting and automated browser regressions. Identifier validation does not establish factual entailment.
+7. Harden ingestion lifecycle, source cleanup races, legacy conversation scope backfill and re-embedding. Upgrade the local Node runtime from Node 20 to a supported release when convenient.
 
 ## Continuation
 
