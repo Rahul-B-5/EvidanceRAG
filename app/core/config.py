@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     generation_base_url: str = Field(default="", alias="GENERATION_BASE_URL")
     generation_api_key: str = Field(default="", alias="GENERATION_API_KEY", repr=False)
     generation_timeout_seconds: float = Field(default=90, gt=0, le=300, alias="GENERATION_TIMEOUT_SECONDS")
+    ollama_reasoning_effort: str = Field(default="none", alias="OLLAMA_REASONING_EFFORT")
     upload_dir: Path = Field(
         default=PROJECT_ROOT / "data" / "uploads",
         alias="UPLOAD_DIR",

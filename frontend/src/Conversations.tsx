@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
 import { api, type Conversation, type Document, type Workspace } from "./api";
 import { SavePassage } from "./SavedEvidence";
+import type { FindingQuestion } from "./ComparisonStudio";
 
-export function Conversations({documents}: {documents: Document[]}) {
+export function Conversations({documents, initial}: {documents: Document[]; initial?: FindingQuestion}) {
   const [list, setList] = useState<Array<{id: number; title: string}>>([]);
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
-  const [workspace, setWorkspace] = useState("");
-  const [source, setSource] = useState("");
-  const [query, setQuery] = useState("");
+  const [workspace, setWorkspace] = useState(initial?.workspaceId ? String(initial.workspaceId) : "");
+  const [source, setSource] = useState(initial ? String(initial.documentId) : "");
+  const [query, setQuery] = useState(initial?.question ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => {let cancelled = false;

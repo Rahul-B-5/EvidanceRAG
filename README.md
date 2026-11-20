@@ -64,12 +64,29 @@ The application is served at `http://127.0.0.1:5173` and uses the local API at
 - `POST /comparisons` — accepts 2–12 distinct existing `document_ids` and
   retrieves passages for six research topics. This is passage comparison, not
   structured finding extraction or an assessment of experimental comparability.
+- `POST /comparisons/structured` — accepts 2–6 papers and optional
+  `workspace_id`. It uses the configured generation provider to extract exact
+  excerpts for eight topics, including architecture, numerical outcomes and
+  evaluation protocols. The model selects numeric IDs for server-generated
+  windows. The server resolves the original excerpt and checks that reported
+  values, signs, units and context labels occur in that window.
 
 Use **Evidence explorer** in the frontend for search and side-by-side comparisons
 without a generation API key. Source links open at the cited PDF page when the
 original is stored. Re-uploading an identical legacy PDF restores its source link
 and page count without replacing embeddings. Missing matches do not prove that a
 paper omits information.
+
+Use **Comparison studio** to compare findings in a matrix, filter individual
+claims, or navigate their paper, topic and passage relationships. Each excerpt
+can open the source page, save its indexed passage or start an Assistant
+question scoped to that paper. The studio keeps its results while you switch
+views. Comparability checks flag conflicting or missing reported conditions.
+Matching labels are candidates for review. The reproducibility checklist links
+to indexed mentions of splits, seeds, optimization, compute and code availability.
+The engine reviews a bounded keyword-selected sample from each paper.
+**Export briefing** writes an extractive Markdown report with page and passage
+provenance and the author-stated follow-up excerpts found in the sample.
 
 Use **Quick open** (Ctrl/⌘K) to navigate by view or paper title. The reader shows
 the original PDF and indexed passages for the selected page. Its width slider
@@ -84,6 +101,7 @@ For a downloaded model on a local Ollama server, use:
 GENERATION_PROVIDER=ollama
 GENERATION_MODEL=qwen3:8b
 GENERATION_TIMEOUT_SECONDS=90
+OLLAMA_REASONING_EFFORT=none
 ```
 
 OpenAI uses `GENERATION_PROVIDER=openai`, `GENERATION_MODEL` and
@@ -91,6 +109,9 @@ OpenAI uses `GENERATION_PROVIDER=openai`, `GENERATION_MODEL` and
 `GENERATION_PROVIDER=openai-compatible` and set `GENERATION_BASE_URL` to
 its API root, such as `http://127.0.0.1:11434/v1`. Use a model and server that
 support Chat Completions JSON mode. Restart the API after configuration changes.
+Ollama uses its `none` reasoning setting by default to keep extraction latency
+down. Set `OLLAMA_REASONING_EFFORT` to a level supported by your local model if
+the workflow benefits from more reasoning.
 Cloud providers receive the question, supporting excerpts and bounded chat context.
 Search, comparison passages, the reader and the notebook work without a provider.
 

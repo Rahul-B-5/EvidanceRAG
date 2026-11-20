@@ -19,14 +19,15 @@ class GenerationProvider(Protocol):
 
 class GeminiProvider:
     def __init__(self, *, api_key: str, model: str, timeout: float) -> None:
-        self._client = genai.Client(api_key=api_key, http_options=types.HttpOptions(
+        self._api_key = api_key
+        self._http_options = types.HttpOptions(
             timeout=int(timeout * 1000), retry_options=types.HttpRetryOptions(attempts=1),
-        ))
+        )
         self._model = model
 
     def generate_json(self, *, prompt: str, system_instruction: str) -> str:
         try:
-            with self._client as client:
+            with genai.Client(api_key=self._api_key, http_options=self._http_options) as client:
                 response = client.models.generate_content(
                     model=self._model,
                     contents=prompt,
@@ -47,6 +48,7 @@ class ChatCompletionsProvider:
     def __init__(
         self, *, base_url: str, model: str, api_key: str, timeout: float,
         transport: httpx.BaseTransport | None = None,
+        reasoning_effort: str = "",
     ) -> None:
         try:
             url = urlsplit(base_url)
@@ -61,6 +63,7 @@ class ChatCompletionsProvider:
         self.headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
         self.timeout = timeout
         self.transport = transport
+        self.reasoning_effort = reasoning_effort
 
     def generate_json(self, *, prompt: str, system_instruction: str) -> str:
         try:
@@ -75,6 +78,7 @@ class ChatCompletionsProvider:
                         {"role": "user", "content": prompt},
                     ],
                     "response_format": {"type": "json_object"},
+                    **({"reasoning_effort": self.reasoning_effort} if self.reasoning_effort else {}),
                 })
                 response.raise_for_status()
                 content = response.json()["choices"][0]["message"]["content"]
@@ -102,6 +106,7 @@ def get_generation_provider(settings: Settings) -> GenerationProvider:
             base_url=settings.generation_base_url or default_urls.get(provider, ""),
             model=settings.generation_model.strip(), api_key=settings.generation_api_key.strip(),
             timeout=settings.generation_timeout_seconds,
+            reasoning_effort=settings.ollama_reasoning_effort if provider == "ollama" else "",
         )
     if provider != "gemini":
         raise RuntimeError("Unsupported generation provider.")

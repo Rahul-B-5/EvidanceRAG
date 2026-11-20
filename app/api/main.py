@@ -29,6 +29,7 @@ from app.generation.answerer import generate_answer
 from app.ingestion.pipeline import ingest_pdf
 from app.retrieval.service import retrieve_evidence
 from research.comparison import compare_documents
+from research.structured import structured_comparison
 from typing import Annotated
 
 
@@ -70,6 +71,11 @@ class ComparisonRequest(BaseModel):
     document_ids: list[Annotated[int, Field(gt=0)]] = Field(min_length=2, max_length=12)
     passages_per_field: int = Field(default=2, ge=1, le=5)
     workspace_id: int | None = Field(default=None, gt=0)
+
+
+class StructuredComparisonRequest(BaseModel):
+    document_ids: list[Annotated[int, Field(gt=0, le=9223372036854775807)]] = Field(min_length=2, max_length=6)
+    workspace_id: int | None = Field(default=None, gt=0, le=9223372036854775807)
 
 
 def validate_workspace_scope(workspace_id: int | None, document_ids: list[int]) -> None:
@@ -385,17 +391,7 @@ def attach_document_to_workspace(workspace_id: int, document_id: int) -> dict:
 
 @app.post("/comparisons")
 def comparison(request: ComparisonRequest) -> dict:
-    validate_workspace_scope(request.workspace_id, request.document_ids)
-    if len(set(request.document_ids)) != len(request.document_ids):
-        raise HTTPException(status_code=422, detail="Select distinct documents.")
-    with get_connection() as conn:
-        rows = conn.execute(
-            "SELECT id, title FROM documents WHERE id = ANY(%s)",
-            (request.document_ids,),
-        ).fetchall()
-    titles = dict(rows)
-    if set(request.document_ids) - titles.keys():
-        raise HTTPException(status_code=404, detail="One or more documents were not found.")
+    titles = comparison_titles(request.document_ids, request.workspace_id)
     try:
         result = compare_documents(
             request.document_ids, passages_per_field=request.passages_per_field,
@@ -406,6 +402,30 @@ def comparison(request: ComparisonRequest) -> dict:
         return result
     except ValueError as exc:
         raise _bad_request(exc) from exc
+
+
+def comparison_titles(document_ids: list[int], workspace_id: int | None) -> dict[int, str]:
+    validate_workspace_scope(workspace_id, document_ids)
+    if len(set(document_ids)) != len(document_ids):
+        raise HTTPException(status_code=422, detail="Select distinct documents.")
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT id, title FROM documents WHERE id = ANY(%s)",
+            (document_ids,),
+        ).fetchall()
+    titles = dict(rows)
+    if set(document_ids) - titles.keys():
+        raise HTTPException(status_code=404, detail="One or more documents were not found.")
+    return {id_: titles[id_] for id_ in document_ids}
+
+
+@app.post("/comparisons/structured")
+def compare_structured(request: StructuredComparisonRequest) -> dict:
+    titles = comparison_titles(request.document_ids, request.workspace_id)
+    try:
+        return structured_comparison(titles, request.workspace_id)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @app.delete("/workspaces/{workspace_id}/documents/{document_id}", status_code=204)

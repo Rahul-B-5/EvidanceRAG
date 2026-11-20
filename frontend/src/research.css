@@ -13,3 +13,30 @@
 .comparison-scroll th,.comparison-scroll td {border:1px solid var(--line);padding:1rem;vertical-align:top;min-width:230px}
 .comparison-scroll th[scope=row] {min-width:120px;text-transform:capitalize}
 @media(max-width:850px){.research-controls{grid-template-columns:1fr}}
+.comparison-setup {display:grid;gap:.9rem}
+.comparison-setup fieldset {display:grid;gap:.35rem;max-height:16rem;overflow:auto;border:1px solid var(--line);border-radius:.45rem;padding:.7rem}
+.comparison-setup label {display:flex;gap:.55rem;align-items:baseline}
+.comparison-heading,.comparison-filters,.finding-actions {display:flex;flex-wrap:wrap;gap:.65rem;align-items:center}
+.comparison-heading {justify-content:space-between}
+.comparison-filters {margin:1rem 0}
+.comparison-matrix thead small {display:block;font-weight:400;margin-top:.3rem}
+.comparison-matrix td {min-width:17rem}
+.comparison-matrix th[scope=row] {min-width:9rem;background:var(--bg)}
+.finding-card {padding:.65rem 0;overflow-wrap:anywhere}
+.finding-card + .finding-card {border-top:1px solid var(--line)}
+.finding-card blockquote {border-left:2px solid var(--line);margin:.45rem 0;padding-left:.7rem;line-height:1.5}
+.finding-card dl {margin:.45rem 0;color:var(--muted);font-size:.9rem}
+.finding-card dl div {display:flex;gap:.45rem}
+.finding-card dt {text-transform:capitalize;font-weight:650}
+.finding-card dd {margin:0}
+.finding-actions button,.finding-actions a {font-size:.86rem}
+.claim-group {border-top:1px solid var(--line);padding-top:.85rem;margin-top:.85rem}
+.claim-group h3 {margin-bottom:.55rem}
+.check-row {border-left:2px solid var(--line);margin-top:.65rem;padding-left:.7rem}
+.comparison-heading button[aria-pressed=true] {background:var(--active);color:var(--accent)}
+.evidence-graph {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}
+.evidence-graph > div {display:flex;flex-direction:column;gap:.5rem;padding:.75rem;border-left:2px solid var(--line);min-width:0}
+.evidence-graph button,.evidence-graph a {text-align:left;overflow-wrap:anywhere}
+.evidence-graph button[aria-pressed=true] {background:var(--active);color:var(--accent);border-color:var(--accent)}
+.evidence-graph small {float:right}
+@media(max-width:760px){.evidence-graph{grid-template-columns:1fr}}

@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import { api, type Document, type Workspace } from "./api";
 import { ResearchTools } from "./ResearchTools";
+import { ComparisonStudio, type FindingQuestion } from "./ComparisonStudio";
 
-export function WorkspaceArea({documents, manage = false}: {documents: Document[]; manage?: boolean}) {
+export function WorkspaceArea({documents, manage = false, compare}: {
+  documents: Document[]; manage?: boolean; compare?: (question: FindingQuestion) => void;
+}) {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [selected, setSelected] = useState("");
   const [members, setMembers] = useState<number[]>([]);
@@ -33,6 +36,8 @@ export function WorkspaceArea({documents, manage = false}: {documents: Document[
     catch(e) {setError(e instanceof Error ? e.message : "Workspace creation failed.");}
     finally {setSaving(false);}
   }
+  const scoped = selected ? documents.filter(d => members.includes(d.id)) : documents;
+  const workspaceId = selected ? Number(selected) : undefined;
   return <div className="research-tools">
     <section className="panel research-controls">
       <label>Workspace<select value={selected} disabled={saving} onChange={e => {setSelected(e.target.value); setLoading(true);}}>
@@ -51,7 +56,9 @@ export function WorkspaceArea({documents, manage = false}: {documents: Document[
           <input type="checkbox" checked={members.includes(d.id)} onChange={e => void membership(d.id, e.target.checked)} /> {d.title}
         </label>)}</fieldset>}
       </section>}
-      <ResearchTools key={`${selected}-${revision}`} workspaceId={selected ? Number(selected) : undefined} documents={selected ? documents.filter(d => members.includes(d.id)) : documents} />
+      {compare
+        ? <ComparisonStudio key={selected} documents={scoped} workspaceId={workspaceId} ask={compare} />
+        : <ResearchTools key={`${selected}-${revision}`} workspaceId={workspaceId} documents={scoped} />}
     </>}
   </div>;
 }

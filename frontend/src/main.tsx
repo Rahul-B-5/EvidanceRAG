@@ -5,6 +5,7 @@ import { WorkspaceArea } from "./WorkspaceArea";
 import { Conversations } from "./Conversations";
 import { Reader } from "./Reader";
 import { SavedEvidence } from "./SavedEvidence";
+import type { FindingQuestion } from "./ComparisonStudio";
 import "./styles.css";
 
 const views = [
@@ -13,6 +14,7 @@ const views = [
   ["reader", "Reader", "▣"],
   ["assistant", "Assistant", "✧"],
   ["research", "Evidence & compare", "⌕"],
+  ["compare", "Comparison studio", "▥"],
   ["saved", "Saved evidence", "◇"],
   ["workspaces", "Workspaces", "⊞"],
 ] as const;
@@ -27,6 +29,8 @@ function App() {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [readerPage, setReaderPage] = useState(1);
+  const [findingQuestion, setFindingQuestion] = useState<FindingQuestion>();
+  const [studioOpened, setStudioOpened] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -51,6 +55,8 @@ function App() {
   function navigate(next: View) {
     setView(next);
     setNotice("");
+    if (next === "compare") setStudioOpened(true);
+    if (next === "assistant") setFindingQuestion(undefined);
     if (next === "dashboard") void refresh();
   }
 
@@ -133,7 +139,8 @@ function App() {
     ? <Reader key={`${selected.id}-${readerPage}`} document={selected} initialPage={readerPage} remove={() => void remove(selected)} />
     : loading ? <p role="status">Loading paper…</p>
     : <section className="panel empty"><h2>Select a paper to read</h2><button onClick={() => navigate("library")}>Open library</button></section>;
-  else if (view === "assistant") content = <Conversations documents={documents} />;
+  else if (view === "assistant") content = <Conversations documents={documents} initial={findingQuestion} />;
+  else if (view === "compare") content = null;
   else if (view === "saved") content = <SavedEvidence />;
   else if (view === "research" || view === "workspaces") content = <WorkspaceArea key={view} documents={documents} manage={view === "workspaces"} />;
   else content = <section className="panel overview">
@@ -159,6 +166,10 @@ function App() {
       {error && <p className="notice error" role="alert">{error}</p>}
       {notice && <p className="notice" role="status">{notice}</p>}
       {content}
+      {studioOpened && <div hidden={view !== "compare"}><WorkspaceArea documents={documents} compare={question => {
+        setFindingQuestion(question);
+        setView("assistant");
+      }} /></div>}
     </main>
     <dialog ref={palette} className="palette" aria-label="Quick open">
       <form onSubmit={e => {e.preventDefault(); if (commands[0]) {palette.current?.close();commands[0].run();}}}>
