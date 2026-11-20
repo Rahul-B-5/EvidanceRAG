@@ -12,7 +12,7 @@ delivery status live in [PROGRESS.md](PROGRESS.md).
 | Evidence Atlas | Persisted workspace graphs with paper, excerpt, topic, metric and dataset edges, plus two-source disagreement edges | Integrate notebook evidence, alternate layouts and larger-library testing |
 | Disagreement | Scope candidates to matching reported setups and explicitly opposing statements, and persist separate human judgments | Evaluate false positives and expand coverage to other types of disagreement |
 | Reproduction | Assess 24 components across 11 categories, cite access limitations and export a Markdown dossier | Verify artifact access and test experiments against documented instructions |
-| Research directions | Scope-bounded limitation themes, evidence coverage, editable hypothesis and experiment plan, Markdown export | Cross-theme corpus analysis and wider literature verification |
+| Research directions | Topic-focused workspace sampling separates stated limitations and reported evaluations, with editable plans and dual-source Markdown export | Cross-theme corpus analysis and wider literature verification |
 | Deliverables | Saved notes, extractive comparison briefing, durable evidence packets, cited editable drafts, Markdown/HTML/JSON/BibTeX export | More briefing templates, integration with broader citation workflows and optional PDF export |
 | Reader | Selectable PDF text, local phrase search, zoom, persistent bookmarks and indexed-text highlights with revisioned notes | Exact PDF-coordinate annotations, finer indexed page anchors and OCR |
 | Everyday UX | Themes, keyboard palette and table views | Flagship visual review at desktop and narrow widths, accessibility and browser interaction regressions |

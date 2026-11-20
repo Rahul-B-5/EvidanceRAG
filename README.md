@@ -60,8 +60,11 @@ The application is served at `http://127.0.0.1:5173` and uses the local API at
 - `POST /research/coverage` — builds a workspace-scoped question map. It
   requires both question terms and facet terms in each passage and shows at
   most one result per paper per facet.
-- `GET /research/directions` — finds indexed limitation language across a
-  scope and returns draft experiment steps with source references.
+- `GET /research/directions` — finds indexed limitations and separate
+  reported evaluations across a workspace, with a draft experiment plan and
+  page references. An optional `focus` matches a method or dataset within
+  the supporting statement. The scan samples up to three passages per
+  paper and up to 96 per theme.
 - `GET/POST /evidence-packets`, `GET/PATCH /evidence-packets/{id}`, and
   `POST /evidence-packets/{id}/draft` — assemble, reopen, edit and draft
   research briefings using immutable saved-passage snapshots.

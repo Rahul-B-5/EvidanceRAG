@@ -77,10 +77,12 @@ export type CoverageMap = {
     passages: Array<Provenance & {title: string; excerpt: string}>}>;
 };
 export type InvestigationPlan = {question: string; hypothesis: string; baseline: string; metrics: string; validation: string};
+export type DirectionSource = Provenance & {title: string; excerpt: string; signal: string};
 export type ResearchDirections = {
   reviewed_paper_count: number;
+  coverage_only: Array<{id: string; title: string; paper_count: number; evidence: DirectionSource[]}>;
   directions: Array<{id: string; title: string; paper_count: number; verification: string; plan: InvestigationPlan;
-    evidence: Array<Provenance & {title: string; excerpt: string; signal: string}>}>;
+    reviewed_paper_count: number; coverage_paper_count: number; evidence: DirectionSource[]; coverage: DirectionSource[]}>;
 };
 export type PacketSummary = {id: string; title: string; revision: number; updated_at: string; item_count: number};
 export type EvidencePacket = {
@@ -167,8 +169,12 @@ export const api = {
     method:"POST", headers:{"Content-Type":"application/json"},
     body:JSON.stringify({question, workspace_id:workspaceId ? Number(workspaceId) : undefined, use_provider:useProvider}), signal,
   }),
-  directions: (workspaceId: string, signal?: AbortSignal) => request<ResearchDirections>(
-    workspaceId ? `/research/directions?workspace_id=${workspaceId}` : "/research/directions", {signal}),
+  directions: (workspaceId: string, focus: string, signal?: AbortSignal) => {
+    const params = new URLSearchParams();
+    if (workspaceId) params.set("workspace_id", workspaceId);
+    if (focus) params.set("focus", focus);
+    return request<ResearchDirections>(`/research/directions?${params}`, {signal});
+  },
   packets: (workspaceId: string) => request<{packets: PacketSummary[]}>(
     workspaceId ? `/evidence-packets?workspace_id=${workspaceId}` : "/evidence-packets"),
   createPacket: (workspaceId: string, title: string, chunkIds: number[]) => request<EvidencePacket>("/evidence-packets", {

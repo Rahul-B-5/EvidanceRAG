@@ -698,9 +698,12 @@ def map_coverage(request: CoverageRequest) -> dict:
 
 
 @app.get("/research/directions")
-def explore_directions(workspace_id: int | None = Query(default=None, gt=0, le=9223372036854775807)) -> dict:
+def explore_directions(
+    workspace_id: int | None = Query(default=None, gt=0, le=9223372036854775807),
+    focus: str = Query(default="", max_length=180),
+) -> dict:
     validate_workspace_scope(workspace_id, [])
-    return research_directions(workspace_id)
+    return research_directions(workspace_id, focus.strip())
 
 
 @app.post("/evidence-packets", status_code=201)

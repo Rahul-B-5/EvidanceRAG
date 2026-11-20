@@ -135,16 +135,22 @@
   Atlas edge with two source references, a saved assessment and a two-paper
   Assistant handoff. A fallback fills literal labels for explicit source
   clauses. Full gate: 97 PostgreSQL-enabled tests, 8 frontend tests and build.
-- Reproducibility dossiers now evaluate 24 components across 11 categories.
+- Reproducibility disclosures pushed as `7ee9957`. Dossiers evaluate
+  24 components across 11 categories.
   Browser verified numeric disclosures, stated data and code limitations,
   original PDF navigation and Markdown export with researcher notes on a
   synthetic paper. Full gate: 98 PostgreSQL-enabled tests, 9 frontend tests
   and production build.
+- Research Directions samples distinct papers within each theme and separates
+  author-stated limitations from reported evaluations. Browser verified a
+  focused two-paper gap, Markdown export and Assistant handoff with both
+  sources selected. Disposable fixtures were removed. Full gate:
+  100 PostgreSQL-enabled tests, 9 frontend tests and production build.
 
 ## Outstanding
 
-1. Improve gap coverage and evidence-grounded briefing templates. Evaluate
-   disagreement and disclosure detection on representative corpora.
+1. Add reusable, evidence-grounded briefing templates. Evaluate disagreement,
+   gap and disclosure detection on representative corpora.
 2. Expand graph exploration across workspaces and notebook sources.
 3. Extend the notebook with tags, collections and integrated annotations.
    Refine page attribution for chunks that span several pages.
