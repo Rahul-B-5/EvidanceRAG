@@ -358,6 +358,32 @@ test("provider settings discover models and switch the running Assistant", async
   await expect(settings.getByText("Active model · fixture:two")).toBeVisible();
   await settings.getByText("Advanced connection").click();
   await expect(settings.getByRole("spinbutton", {name:"Context size in tokens"})).toHaveValue("8192");
+  await settings.getByRole("button", {name:"Structured extraction",exact:true}).click();
+  await settings.getByText("Advanced connection").click();
+  await settings.getByRole("textbox", {name:"Ollama endpoint"}).fill(localProvider);
+  await settings.getByRole("combobox", {name:"Model identifier"}).fill("fixture:one");
+  await settings.getByRole("button", {name:"Save provider"}).click();
+  await expect(settings.getByText("Active model · fixture:one")).toBeVisible();
+  await page.getByRole("button", {name:"Library",exact:true}).click();
+  await page.locator("input[type=file]").setInputFiles(join(process.env.EVIDENCERAG_E2E_TEMP!, "browser-second.pdf"));
+  await expect(page.getByRole("button", {name:"EvidenceRAG replication fixture",exact:true})).toBeVisible();
+  await page.getByRole("button", {name:"Comparison studio",exact:true}).click();
+  await page.getByRole("checkbox", {name:title,exact:true}).check();
+  await page.getByRole("checkbox", {name:"EvidenceRAG replication fixture",exact:true}).check();
+  await page.getByRole("button", {name:"Run structured comparison"}).click();
+  await expect(page.getByText("Comparison completed", {exact:true})).toBeVisible({timeout:15000});
+  await page.getByRole("link", {name:"Open claim",exact:true}).first().click();
+  const detail = page.getByRole("region", {name:"Claim details"});
+  const save = detail.getByRole("button", {name:/^(Save passage|Saved)$/});
+  await expect(save).toBeVisible();
+  if (await save.textContent() === "Save passage") await save.click();
+  await expect(detail.getByRole("button", {name:"Saved",exact:true})).toBeVisible();
+  await page.getByRole("button", {name:"Evidence packets",exact:true}).click();
+  await page.getByRole("textbox", {name:"Packet title"}).fill("Provider routing briefing");
+  await page.getByRole("checkbox", {name:/EvidenceRAG browser fixture/}).check();
+  await page.getByRole("button", {name:"Create evidence packet"}).click();
+  await page.getByRole("button", {name:"Draft with provider"}).click();
+  await expect(page.getByRole("textbox", {name:"Briefing text"})).toHaveValue("Model fixture:two reports 37 observations [E1].");
 });
 
 test("Reader preserves table cells and separates neighboring measurements", async ({page}) => {

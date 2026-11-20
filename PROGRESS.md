@@ -473,6 +473,15 @@ launcher, wider browser review and release validation to the previous scope.
 
 ## Continuation
 
+- Provider verification now covers the complete comparison-to-briefing
+  browser journey. The fixture server resolves saved extraction profiles
+  through the real provider factory. Its endpoint rejects structured
+  extraction sent to the answering model. Chrome configured different
+  answering and extraction models, ran a comparison, saved its evidence
+  and generated a briefing using the answering model without restarting.
+  All five deterministic browser workflows and the frontend build passed.
+  The optional live Ollama workflow remains separately available.
+
 - Gemma's comparison joined two measurements in one sentence with separate
   citations. The grounding check now separates a cited numeric clause joined
   by “and”, “while” or “whereas” before checking each source. Regression

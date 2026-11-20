@@ -28,6 +28,18 @@ def fixture_answer(prompt: str, model: str | None = None) -> dict:
     return {"answer": answer, "abstained": False, "reason": None}
 
 
+def fixture_response(payload: dict) -> dict:
+    instruction = payload["messages"][0]["content"]
+    if "synthetic connectivity check" in instruction:
+        return {"ready": True}
+    if instruction.startswith("Select findings about the paper itself"):
+        if payload["model"] != "fixture:one":
+            raise HTTPException(400, "The comparison must use the configured extraction model.")
+        return {"findings": [{"topic": "results", "source": 1, "method": "StarlingNet",
+                              "metric": "F1 score", "value": "87%", "dataset": "OrchardBench"}]}
+    return fixture_answer(payload["messages"][-1]["content"], payload["model"])
+
+
 def main() -> None:
     schema = os.environ["EVIDENCERAG_E2E_SCHEMA"]
     with get_connection() as conn:
@@ -52,8 +64,7 @@ def main() -> None:
         model = payload["model"]
         if model not in installed:
             raise HTTPException(404, "Model not installed.")
-        output = ({"ready": True} if "synthetic connectivity check" in payload["messages"][0]["content"] else
-                  fixture_answer(payload["messages"][-1]["content"], model))
+        output = fixture_response(payload)
         return {"choices":[{"message":{"content":json.dumps(output)}}]}
 
     @app.post("/api/chat")
@@ -64,13 +75,21 @@ def main() -> None:
             raise HTTPException(404, "Model not installed.")
         if payload["options"]["num_ctx"] != 8192:
             raise HTTPException(400, "Expected the configured context size.")
-        output = ({"ready": True} if "synthetic connectivity check" in payload["messages"][0]["content"] else
-                  fixture_answer(payload["messages"][-1]["content"], model))
+        output = fixture_response(payload)
         return {"message":{"content":json.dumps(output)}, "done": True}
 
     def answer_provider(settings):
         active = active_settings(settings, "answer")
         return provider if active is settings else get_generation_provider(active)
+
+    def extraction_provider(settings):
+        active = active_settings(settings, "extraction")
+        if active is settings:
+            return SimpleNamespace(generate_json=lambda **_: json.dumps({"findings": [{
+                "topic": "results", "source": 1, "method": "StarlingNet",
+                "metric": "F1 score", "value": "87%", "dataset": "OrchardBench",
+            }]}))
+        return get_generation_provider(active)
 
     def embeddings(texts: list[str]) -> list[list[float]]:
         return [[1.0, 0.0, 0.0] if "37 observations" in text else [0.0, 1.0, 0.0] for text in texts]
@@ -79,11 +98,7 @@ def main() -> None:
         patch("app.retrieval.reembedding.embed_documents", embeddings),
         patch("app.retrieval.vector.embed_query", return_value=[1.0, 0.0, 0.0]),
         patch("app.generation.answerer.get_generation_provider", side_effect=answer_provider),
-        patch("research.structured.get_generation_provider",
-              return_value=SimpleNamespace(generate_json=lambda **_: (
-                  '{"findings":[{"topic":"results","source":1,"method":"StarlingNet",'
-                  '"metric":"F1 score","value":"87%","dataset":"OrchardBench"}]}'
-              ))),
+        patch("research.structured.get_generation_provider", side_effect=extraction_provider),
         patch("app.api.settings.get_generation_provider",
               return_value=SimpleNamespace(generate_json=lambda **_: '{"ready":true}')),
     ):
