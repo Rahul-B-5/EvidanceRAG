@@ -473,6 +473,13 @@ launcher, wider browser review and release validation to the previous scope.
 
 ## Continuation
 
+- Browser verification now covers local Question Coverage, exact source
+  navigation and subquestion planning through the saved extraction profile.
+  The fixture rejects planning requests sent to the answering model.
+  Reviewed desktop, dark and narrow screenshots and fixed the mobile
+  question form so its input spans the available width. Both affected
+  browser workflows, all 10 frontend tests and the build passed.
+
 - Opposing findings now use Reader links with the exact indexed passage
   and workspace. Browser PDF fixtures include opposite reported outcomes
   under the same dataset, task, split and protocol. Chrome verified both

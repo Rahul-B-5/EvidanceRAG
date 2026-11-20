@@ -69,6 +69,8 @@
 .comparison-setup {display:grid;grid-template-columns:minmax(0,1fr);gap:.75rem}
 .comparison-setup fieldset {display:grid;gap:.35rem;min-width:0;max-height:16rem;overflow:auto;border:1px solid var(--line);border-radius:var(--control-radius);padding:.7rem;overflow-wrap:anywhere}
 .comparison-setup label {display:flex;gap:.55rem;align-items:baseline}
+.comparison-setup label.dossier-notes {display:grid;align-items:start}
+.comparison-setup label.dossier-notes textarea {width:100%;resize:vertical}
 .comparison-setup input {flex:none}
 .comparison-setup .comparison-history {display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center}
 .comparison-scroll {max-width:100%;border:1px solid var(--line);border-radius:var(--control-radius)}

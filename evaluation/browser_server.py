@@ -32,6 +32,17 @@ def fixture_response(payload: dict) -> dict:
     instruction = payload["messages"][0]["content"]
     if "synthetic connectivity check" in instruction:
         return {"ready": True}
+    if instruction.startswith("Produce a JSON object with a subquestions array"):
+        if payload["model"] != "fixture:one":
+            raise HTTPException(400, "Question planning must use the configured extraction model.")
+        return {"subquestions": [
+            {"title": "Sample conditions", "question": "Which sample conditions were reported?",
+             "keywords": ["sample", "split"]},
+            {"title": "Metric reporting", "question": "Which F1 results were reported?",
+             "keywords": ["F1", "score"]},
+            {"title": "Study limitations", "question": "Which limitations were reported?",
+             "keywords": ["limitation", "validation"]},
+        ]}
     if instruction.startswith("Select findings about the paper itself"):
         if payload["model"] != "fixture:one":
             raise HTTPException(400, "The comparison must use the configured extraction model.")

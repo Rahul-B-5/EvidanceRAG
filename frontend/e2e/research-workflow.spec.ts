@@ -196,6 +196,16 @@ test("import, inspect, save, answer and export a real PDF", async ({page, reques
   await page.getByRole("button", {name:"Overview", exact:true}).click();
   await expect(page.getByRole("heading", {level:1,name:"Overview"})).toBeVisible();
   await capture(page, "overview");
+  await page.getByRole("button", {name:"Question coverage",exact:true}).click();
+  await page.getByRole("textbox", {name:"Research question",exact:true}).fill("What study conditions were used for StarlingNet?");
+  await page.getByRole("button", {name:"Map question coverage"}).click();
+  const conditions = page.locator("details").filter({has:page.getByText("Study conditions", {exact:true})});
+  await expect(conditions.locator("summary")).toContainText("One contributing paper");
+  await conditions.locator("summary").click();
+  await expect(conditions.locator("blockquote")).toContainText("StarlingNet");
+  await capture(page, "question-coverage");
+  await conditions.getByRole("link", {name:"Open source · p. 2"}).click();
+  await expect(page.locator(".cited-passage")).toContainText("StarlingNet");
   await page.getByRole("button", {name:"Settings", exact:true}).click();
   await expect(page.getByText("PostgreSQL connected", {exact:true})).toBeVisible();
   await expect(page.getByText("1 of 1 passages", {exact:true})).toBeVisible();
@@ -398,6 +408,13 @@ test("provider settings discover models and switch the running Assistant", async
   await page.getByRole("button", {name:"Create evidence packet"}).click();
   await page.getByRole("button", {name:"Draft with provider"}).click();
   await expect(page.getByRole("textbox", {name:"Briefing text"})).toHaveValue("Model fixture:two reports 37 observations [E1].");
+  await page.getByRole("button", {name:"Question coverage",exact:true}).click();
+  await page.getByRole("textbox", {name:"Research question",exact:true}).fill("What evidence supports StarlingNet?");
+  await page.getByRole("checkbox", {name:"Suggest subquestions with the configured provider"}).check();
+  await page.getByRole("button", {name:"Map question coverage"}).click();
+  await expect(page.getByText("Sample conditions", {exact:true})).toBeVisible();
+  await expect(page.getByText("Metric reporting", {exact:true})).toBeVisible();
+  await expect(page.getByText("Study limitations", {exact:true})).toBeVisible();
 });
 
 test("Reader preserves table cells and separates neighboring measurements", async ({page}) => {
