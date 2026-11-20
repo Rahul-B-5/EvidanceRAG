@@ -7,6 +7,7 @@ from psycopg.types.json import Jsonb
 
 from app.core.config import get_settings
 from app.db.connection import get_connection
+from research.atlas import finding_key
 from research.structured import comparison_result, extract_paper
 
 RUN_FIELDS = "id, workspace_id, document_ids, titles, status, created_at, updated_at, error"
@@ -36,6 +37,11 @@ def run_details(run_id: UUID) -> dict | None:
         row = cursor.execute(f"SELECT {RUN_FIELDS}, papers FROM comparison_runs WHERE id=%s", (run_id,)).fetchone()
         if row is not None:
             row["result"] = comparison_result(row.pop("papers"), conn)
+            for paper in row["result"]["papers"]:
+                for finding in paper["findings"]:
+                    source = finding["source"]
+                    finding["claim_id"] = finding_key(source["document_id"], source["chunk_id"],
+                                                      finding["topic"], finding["quote"])
         return row
 
 
@@ -95,6 +101,8 @@ def execute_run(run_id: UUID, titles: dict[int, str], workspace_id: int | None) 
                 """, (Jsonb([paper]), lease, run_id))
                 if updated.rowcount != 1:
                     return
+                conn.execute("SELECT record_comparison_claims(%s::uuid,%s::bigint,%s::jsonb,NOW())",
+                             (run_id, workspace_id, Jsonb(paper)))
     except Exception as exc:
         # Provider RuntimeErrors use curated messages; unexpected exceptions can
         # include credentials or snippets and are kept out of the record.

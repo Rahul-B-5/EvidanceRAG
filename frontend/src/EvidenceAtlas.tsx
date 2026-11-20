@@ -4,6 +4,7 @@ import type { FindingQuestion } from "./ComparisonStudio";
 import { SavePassage } from "./SavedEvidence";
 import { CounterevidencePanel } from "./CounterevidencePanel";
 import { OpposingFindings } from "./OpposingFindings";
+import type { ClaimLocation } from "./ClaimExplorer";
 import "./atlas.css";
 
 const typeNames: Record<string, string> = {
@@ -15,8 +16,9 @@ function clampLabel(s: string) {
   return s.length > 64 ? s.slice(0, 61) + "…" : s;
 }
 
-export function EvidenceAtlas({compare, ask}: {compare: () => void; ask: (q: FindingQuestion) => void}) {
-  const [workspace, setWorkspace] = useState("");
+export function EvidenceAtlas({compare, ask, initial}: {compare: () => void; ask: (q: FindingQuestion) => void; initial?: ClaimLocation}) {
+  const [workspace, setWorkspace] = useState(initial?.workspace ?? "");
+  const [target, setTarget] = useState(initial?.id);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [atlas, setAtlas] = useState<Atlas | null>(null);
   const [error, setError] = useState("");
@@ -38,16 +40,16 @@ export function EvidenceAtlas({compare, ask}: {compare: () => void; ask: (q: Fin
   useEffect(() => {
     const controller = new AbortController();
     setAtlas(null); setSelected(""); setError(""); setRelation("");
-    api.atlas(workspace, controller.signal).then(data => {
+    api.atlas(workspace, controller.signal, target).then(data => {
       if (!controller.signal.aborted) {
         setAtlas(data);
-        setSelected(data.nodes.find(n => n.kind === "finding")?.id ?? data.nodes[0]?.id ?? "");
+        setSelected(data.nodes.find(n => n.id === target)?.id ?? data.nodes.find(n => n.kind === "finding")?.id ?? data.nodes[0]?.id ?? "");
       }
     }).catch(e => {
       if (!controller.signal.aborted) setError(e instanceof Error ? e.message : "Unable to load evidence graph.");
     });
     return () => controller.abort();
-  }, [workspace]);
+  }, [workspace,target]);
 
   const nodes = new Map(atlas?.nodes.map(n => [n.id, n]));
   const center = nodes.get(selected);
@@ -73,7 +75,7 @@ export function EvidenceAtlas({compare, ask}: {compare: () => void; ask: (q: Fin
   const source = center?.provenance;
   return <div className="research-tools">
     <section className="panel atlas-toolbar">
-      <label>Workspace<select value={workspace} onChange={e => setWorkspace(e.target.value)}>
+      <label>Workspace<select value={workspace} onChange={e => {setWorkspace(e.target.value);setTarget(undefined);}}>
         <option value="">Library comparisons</option>{workspaces.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
       </select></label>
       <label>Find a node<input type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Paper, metric or excerpt" /></label>
@@ -149,6 +151,7 @@ export function EvidenceAtlas({compare, ask}: {compare: () => void; ask: (q: Fin
           <h2>{typeNames[center.kind]}</h2><p>{center.label}</p>
           {source && <div className="finding-actions">
             <a href={`#paper=${source.document_id}&page=${source.page_start}`}>Open source · p. {source.page_start}</a><SavePassage id={source.chunk_id} />
+            {center.kind === "finding" && <a href={`#claim=${center.id}${workspace ? `&workspace=${workspace}` : ""}`}>Open claim</a>}
             {center.kind === "finding" && <button className="secondary" onClick={() => ask({
               documentId: source.document_id, workspaceId: workspace ? Number(workspace) : undefined,
               question: `What context or qualifications does this paper provide for this excerpt?\n\n“${center.label}”`,

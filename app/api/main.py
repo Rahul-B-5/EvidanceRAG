@@ -20,6 +20,7 @@ from app.api.answer_stream import stream_answer
 from app.api.embedding_rebuilds import router as embedding_rebuilds_router
 from app.api.settings import router as settings_router
 from app.api.browser_guard import BrowserGuard
+from app.api.claims import router as claims_router
 
 from app.core.config import get_settings
 from app.db.connection import get_connection
@@ -68,6 +69,7 @@ app.include_router(saved_evidence_router)
 app.include_router(reader_annotations_router)
 app.include_router(embedding_rebuilds_router)
 app.include_router(settings_router)
+app.include_router(claims_router)
 configured_origins = [origin.strip() for origin in get_settings().cors_origins.split(",") if origin.strip()]
 app.add_middleware(
     CORSMiddleware,
@@ -660,9 +662,12 @@ def stop_comparison(run_id: uuid.UUID) -> None:
 
 
 @app.get("/evidence-atlas")
-def evidence_atlas(workspace_id: int | None = Query(default=None, gt=0, le=9223372036854775807)) -> dict:
+def evidence_atlas(
+    workspace_id: int | None = Query(default=None, gt=0, le=9223372036854775807),
+    focus: Annotated[str | None, Query(pattern=r"^finding:[0-9a-f]{24}$")] = None,
+) -> dict:
     validate_workspace_scope(workspace_id, [])
-    return atlas_for_workspace(workspace_id)
+    return atlas_for_workspace(workspace_id, focus)
 
 
 @app.get("/evidence-atlas/{finding_id}/counterevidence")
@@ -677,7 +682,7 @@ def finding_counterevidence(
 
 def resolve_finding(finding_id: str, workspace_id: int | None) -> tuple[dict, list[dict]]:
     validate_workspace_scope(workspace_id, [])
-    atlas = atlas_for_workspace(workspace_id)
+    atlas = atlas_for_workspace(workspace_id, finding_id)
     finding = next((node for node in atlas["nodes"]
                     if node["kind"] == "finding" and node["id"] == finding_id), None)
     if finding is None:

@@ -42,6 +42,11 @@ The application is served at `http://127.0.0.1:5173` and uses the local API at
 - `GET /health` — checks database reachability.
 - `GET /settings` — reports the active generation configuration, PostgreSQL
   reachability, and embedding coverage without exposing credentials.
+- `GET /claims` searches persisted comparison claims by text, workspace,
+  paper, topic and assessment status. `GET /claims/{id}` includes related
+  claims with their shared study labels. Use `PUT /claims/{id}/assessment`
+  for revision-checked human assessments. Claim Explorer links to Reader,
+  Evidence Atlas and the original excerpts.
 - `POST /settings/test-provider` — accepts `{"synthetic": true}` and checks
   JSON generation with a fixed prompt containing no library excerpts.
 - `GET /documents` — lists library metadata and chunk counts.

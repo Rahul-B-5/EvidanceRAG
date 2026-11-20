@@ -37,8 +37,16 @@ export type Comparison = {
 };
 export type Finding = {
   topic: string; quote: string; outcome: Record<string, string>;
+  claim_id?: string;
+  relative_statement?: {quote: string; direction: string; conditions: Record<string,string>};
   source: {document_id: number; chunk_id: number; page_start: number; page_end: number; excerpt_id?: string};
 };
+export type ResearchAssessment = {status: "supported" | "qualified" | "unsupported" | "uncertain"; note: string; revision: number};
+export type ResearchClaim = {
+  id: string; document_id: number; chunk_id: number; topic: string; quote: string; title: string;
+  finding: Finding; run_id: string; observed_at: string; assessment: ResearchAssessment | null;
+};
+export type ClaimDetail = ResearchClaim & {related: Array<ResearchClaim & {shared_labels: Record<string,string>}>};
 export type StructuredComparison = {
   topics: string[];
   papers: Array<{document_id: number; title: string; findings: Finding[]; reviewed_passages: number; rejected_findings: number;
@@ -118,6 +126,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  claims: (params: URLSearchParams, signal?: AbortSignal) =>
+    request<{claims: ResearchClaim[]; has_more: boolean}>(`/claims?${params}`, {signal}),
+  claim: (id: string, workspace: string, signal?: AbortSignal) =>
+    request<ClaimDetail>(`/claims/${id}${workspace ? `?workspace_id=${workspace}` : ""}`, {signal}),
+  assessClaim: (id: string, workspace: string, assessment: ResearchAssessment) =>
+    request<ResearchAssessment>(`/claims/${id}/assessment${workspace ? `?workspace_id=${workspace}` : ""}`, {
+      method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(assessment),
+    }),
   health: () => request<{ status: string }>("/health"),
   runtimeSettings: (signal?: AbortSignal) => request<RuntimeSettings>("/settings", {signal}),
   testProvider: (signal?: AbortSignal) => request<{elapsed_ms: number}>("/settings/test-provider", {
@@ -154,7 +170,12 @@ export const api = {
   }),
   comparisonRun: (id: string, signal?: AbortSignal) => request<ComparisonRun & {result: StructuredComparison}>(`/comparison-runs/${id}`, {signal}),
   cancelComparison: (id: string) => request<void>(`/comparison-runs/${id}/cancel`, {method:"POST"}),
-  atlas: (workspaceId: string, signal?: AbortSignal) => request<Atlas>(workspaceId ? `/evidence-atlas?workspace_id=${workspaceId}` : "/evidence-atlas", {signal}),
+  atlas: (workspaceId: string, signal?: AbortSignal, focus?: string) => {
+    const params = new URLSearchParams();
+    if (workspaceId) params.set("workspace_id", workspaceId);
+    if (focus) params.set("focus", focus);
+    return request<Atlas>(`/evidence-atlas?${params}`, {signal});
+  },
   counterevidence: (id: string, workspaceId: string, signal?: AbortSignal) => request<Counterevidence>(
     `/evidence-atlas/${encodeURIComponent(id)}/counterevidence${workspaceId ? `?workspace_id=${workspaceId}` : ""}`, {signal}),
   saveClaimReview: (id: string, chunk: number, workspaceId: string, review: Pick<ClaimReview, "relation" | "alignment" | "note">) => request<ClaimReview>(

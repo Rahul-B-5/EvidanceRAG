@@ -13,11 +13,13 @@ from evaluation.database import isolated_database
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def fixture_pdf(path: Path) -> None:
+def fixture_pdf(path: Path, title: str = "EvidenceRAG browser fixture", sample_size: int = 37) -> None:
     with pymupdf.open() as document:
-        document.set_metadata({"title": "EvidenceRAG browser fixture"})
+        document.set_metadata({"title": title})
         document.new_page().draw_rect(pymupdf.Rect(54, 54, 220, 60), color=(0.1, 0.2, 0.4), fill=(0.1, 0.2, 0.4))
-        document.new_page().insert_text((54, 54), "The held-out sample size was 37 observations.")
+        page = document.new_page()
+        page.insert_text((54, 54), f"The held-out sample size was {sample_size} observations.")
+        page.insert_text((54, 72), "F1 score was 87% on OrchardBench.")
         document.save(path)
 
 
@@ -32,6 +34,7 @@ def run_browser_tests() -> int:
     with TemporaryDirectory(prefix="evidencerag-browser-") as workdir, isolated_database() as (schema, database_url):
         root = Path(workdir)
         fixture_pdf(root / "browser-fixture.pdf")
+        fixture_pdf(root / "browser-second.pdf", "EvidenceRAG replication fixture", 42)
         api_port, web_port = available_ports()
         env = {
             **os.environ,

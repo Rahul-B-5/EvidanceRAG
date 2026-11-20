@@ -98,3 +98,37 @@ test("keyboard navigation and responsive layout work on a narrow viewport", asyn
   await page.getByRole("button", {name:theme === "dark" ? "Light theme" : "Dark theme", exact:true}).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", theme === "dark" ? "light" : "dark");
 });
+
+test("comparison claims stay searchable and assessments survive reopening", async ({page}) => {
+  await page.goto("/");
+  await page.getByRole("button", {name:"Library", exact:true}).click();
+  await page.locator("input[type=file]").setInputFiles([
+    join(process.env.EVIDENCERAG_E2E_TEMP!, "browser-fixture.pdf"),
+    join(process.env.EVIDENCERAG_E2E_TEMP!, "browser-second.pdf"),
+  ]);
+  await expect(page.getByRole("button", {name:"EvidenceRAG replication fixture",exact:true})).toBeVisible();
+  await page.getByRole("button", {name:"Comparison studio",exact:true}).click();
+  await page.getByRole("checkbox", {name:title,exact:true}).check();
+  await page.getByRole("checkbox", {name:"EvidenceRAG replication fixture",exact:true}).check();
+  await page.getByRole("button", {name:"Run structured comparison"}).click();
+  await expect(page.getByText("Comparison completed", {exact:true})).toBeVisible({timeout:15000});
+  await page.getByRole("link", {name:"Open claim",exact:true}).first().click();
+  const detail = page.getByRole("region", {name:"Claim details"});
+  await expect(detail.locator("blockquote").first()).toContainText("The held-out sample size was 37 observations.");
+  await detail.getByLabel("Evidence status").selectOption("qualified");
+  await detail.getByLabel("Assessment note").fill("The excerpt reports the sample size.");
+  await detail.getByRole("button", {name:"Save assessment",exact:true}).click();
+  await expect(detail.getByText("Assessment saved.",{exact:true})).toBeVisible();
+  await detail.getByRole("link", {name:"Explore in Atlas"}).click();
+  await expect(page.getByRole("heading", {name:"Evidence Atlas",exact:true})).toBeVisible();
+  await page.getByRole("link", {name:"Open claim",exact:true}).click();
+  await expect(detail.getByLabel("Evidence status")).toHaveValue("qualified");
+  await detail.getByRole("link", {name:/Open source/}).click();
+  await expect(page.getByRole("img", {name:"PDF page 2"})).toBeVisible();
+  await page.getByRole("link", {name:"Explore claims",exact:true}).click();
+  await page.getByRole("searchbox", {name:"Search claims",exact:true}).fill("observations");
+  await page.getByRole("button", {name:"Search",exact:true}).click();
+  const list = page.getByRole("region", {name:"Claim search results"});
+  await expect(list.getByRole("button", {name:/37 observations/})).toBeVisible();
+  await expect(list.getByRole("button", {name:/42 observations/})).toHaveCount(0);
+});

@@ -6,8 +6,8 @@ import { EmbeddingPanel } from "./EmbeddingPanel";
 
 const PdfViewer = lazy(() => import("./PdfViewer"));
 
-export function Reader({document, initialPage = 1, remove, update}: {
-  document: Document; initialPage?: number; remove: () => void; update: (paper: Document) => void;
+export function Reader({document, initialPage = 1, workspace = "", remove, update}: {
+  document: Document; initialPage?: number; workspace?: string; remove: () => void; update: (paper: Document) => void;
 }) {
   const [page, setPage] = useState(initialPage);
   const [draft, setDraft] = useState(String(initialPage));
@@ -27,7 +27,7 @@ export function Reader({document, initialPage = 1, remove, update}: {
   const source = api.sourceUrl(document.id);
   return <section className="panel reader-workspace">
     <div className="reader-heading"><div><h2>{document.title}</h2><p>{[document.venue, document.publication_year, document.doi].filter(Boolean).join(" · ") || document.filename}</p></div>
-      <div className="finding-actions"><MetadataEditor paper={document} update={update} /><button className="secondary danger" onClick={remove}>Delete paper</button></div>
+      <div className="finding-actions"><a href={`#claims-paper=${document.id}${workspace ? `&workspace=${workspace}` : ""}`}>Explore claims</a><MetadataEditor paper={document} update={update} /><button className="secondary danger" onClick={remove}>Delete paper</button></div>
     </div>
     <EmbeddingPanel documentId={document.id} />
     <div className="reader-toolbar">

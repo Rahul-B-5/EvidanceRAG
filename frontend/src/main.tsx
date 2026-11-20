@@ -13,6 +13,7 @@ import { ResearchDirectionStudio } from "./ResearchDirections";
 import { EvidencePackets } from "./EvidencePackets";
 import { LibraryCollections } from "./LibraryCollections";
 import { SettingsView } from "./SettingsView";
+import { ClaimExplorer, type ClaimLocation } from "./ClaimExplorer";
 import "./styles.css";
 
 const views = [
@@ -22,6 +23,7 @@ const views = [
   ["assistant", "Assistant", "✧"],
   ["research", "Evidence & compare", "⌕"],
   ["compare", "Comparison studio", "▥"],
+  ["claims", "Claim Explorer", "≡"],
   ["atlas", "Evidence Atlas", "⌘"],
   ["reproduction", "Reproducibility", "▧"],
   ["coverage", "Question coverage", "▦"],
@@ -35,7 +37,7 @@ type View = typeof views[number][0];
 const keptViews: View[] = ["library", "compare", "reproduction", "coverage", "directions", "packets"];
 const navGroups: Array<[string, View[]]> = [
   ["Library", ["dashboard", "library", "reader", "workspaces"]],
-  ["Investigate", ["assistant", "research", "compare", "atlas", "reproduction", "coverage", "directions"]],
+  ["Investigate", ["assistant", "research", "compare", "claims", "atlas", "reproduction", "coverage", "directions"]],
   ["Write", ["saved", "packets"]],
   ["Preferences", ["settings"]],
 ];
@@ -52,7 +54,10 @@ function App() {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [readerPage, setReaderPage] = useState(1);
+  const [readerWorkspace, setReaderWorkspace] = useState("");
   const [findingQuestion, setFindingQuestion] = useState<FindingQuestion>();
+  const [claimLocation, setClaimLocation] = useState<ClaimLocation>();
+  const [atlasLocation, setAtlasLocation] = useState<ClaimLocation>();
   const [openedResearchViews, setOpenedResearchViews] = useState<Set<View>>(() => new Set());
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -82,12 +87,15 @@ function App() {
       setOpenedResearchViews(previous => previous.has(next) ? previous : new Set([...previous, next]));
     }
     if (next === "assistant") setFindingQuestion(undefined);
+    if (next === "claims") setClaimLocation(undefined);
+    if (next === "atlas") setAtlasLocation(undefined);
     if (next === "dashboard") void refresh();
   }
 
   function openPaper(id: number) {
     setSelectedId(id);
     setReaderPage(1);
+    setReaderWorkspace("");
     navigate("reader");
   }
 
@@ -99,11 +107,21 @@ function App() {
   useEffect(() => { void refresh(); }, []);
   useEffect(() => {
     const followCitation = () => {
-      const match = /^#paper=(\d+)&page=(\d+)$/.exec(location.hash);
-      if (!match) return;
-      setSelectedId(Number(match[1]));
-      setReaderPage(Number(match[2]));
-      setView("reader");
+      const match = /^#paper=(\d+)&page=(\d+)(?:&workspace=(\d+))?$/.exec(location.hash);
+      const claim = /^#(claim|atlas)=(finding:[a-f0-9]{24})(?:&workspace=(\d+))?$/.exec(location.hash);
+      const claimPaper = /^#claims-paper=(\d+)(?:&workspace=(\d+))?$/.exec(location.hash);
+      if (match) {
+        setSelectedId(Number(match[1]));
+        setReaderPage(Number(match[2]));
+        setReaderWorkspace(match[3] ?? "");
+        setView("reader");
+      } else if (claim?.[1] === "atlas") {
+        setAtlasLocation({id:claim[2],workspace:claim[3]});
+        setView("atlas");
+      } else if (claim || claimPaper) {
+        setClaimLocation({id:claim?.[2],workspace:claim?.[3] ?? claimPaper?.[2],paper:claimPaper?.[1]});
+        setView("claims");
+      } else return;
       history.replaceState(null, "", location.pathname + location.search);
     };
     followCitation();
@@ -178,12 +196,14 @@ function App() {
 
   let content: ReactNode;
   if (view === "reader") content = selected
-    ? <Reader key={`${selected.id}-${readerPage}`} document={selected} initialPage={readerPage}
+    ? <Reader key={`${selected.id}-${readerPage}`} document={selected} initialPage={readerPage} workspace={readerWorkspace}
       update={paper => setDocuments(current => current.map(d => d.id === paper.id ? paper : d))} remove={() => void remove(selected)} />
     : loading ? <p role="status">Loading paper…</p>
     : <section className="panel empty"><h2>Select a paper to read</h2><button onClick={() => navigate("library")}>Open library</button></section>;
   else if (view === "assistant") content = <Conversations documents={documents} initial={findingQuestion} />;
-  else if (view === "atlas") content = <EvidenceAtlas compare={() => navigate("compare")} ask={askFinding} />;
+  else if (view === "atlas") content = <EvidenceAtlas key={JSON.stringify(atlasLocation)} initial={atlasLocation} compare={() => navigate("compare")} ask={askFinding} />;
+  else if (view === "claims") content = <ClaimExplorer key={JSON.stringify(claimLocation)} initial={claimLocation}
+    documents={documents} workspaces={workspaces} ask={askFinding} />;
   else if (keptViews.includes(view)) content = null;
   else if (view === "saved") content = <SavedEvidence />;
   else if (view === "settings") content = <SettingsView />;

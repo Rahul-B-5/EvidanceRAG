@@ -58,7 +58,7 @@ def build_atlas(papers: list[dict], conn: Connection | None = None) -> dict:
     return {"nodes": list(nodes.values()), "edges": list(edges.values()), "contradictions": contradictions}
 
 
-def atlas_for_workspace(workspace_id: int | None) -> dict:
+def atlas_for_workspace(workspace_id: int | None, focus: str | None = None) -> dict:
     with get_connection() as conn:
         rows = conn.execute("""
             WITH latest_runs AS (
@@ -78,4 +78,13 @@ def atlas_for_workspace(workspace_id: int | None) -> dict:
             )
             SELECT paper FROM paper_extracts ORDER BY updated_at DESC, id DESC LIMIT 30
         """, (workspace_id,)).fetchall()
-        return build_atlas([r[0] for r in rows], conn)
+        papers = [r[0] for r in rows]
+        if focus:
+            claim = conn.execute("""
+                SELECT document_id,title,finding FROM visible_research_claims
+                WHERE scope_key=%s AND id=%s
+            """, (workspace_id or 0, focus)).fetchone()
+            if claim is not None:
+                document_id, title, finding = claim
+                papers.insert(0, {"document_id":document_id, "title":title, "findings":[finding]})
+        return build_atlas(papers, conn)

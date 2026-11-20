@@ -14,7 +14,7 @@ const labels: Record<string, string> = {
 const findingKey = (f: Finding) => `${f.source.chunk_id}:${f.topic}:${f.quote}`;
 const active = (run: ComparisonRun | null) => run?.status === "queued" || run?.status === "running";
 
-function FindingCard({finding, ask}: {finding: Finding; ask: () => void}) {
+function FindingCard({finding, ask, workspaceId}: {finding: Finding; ask: () => void; workspaceId?: number}) {
   const {source, outcome, quote} = finding;
   return <article className="finding-card">
     {outcome.metric && <strong>{outcome.metric} · {outcome.value}</strong>}
@@ -23,8 +23,9 @@ function FindingCard({finding, ask}: {finding: Finding; ask: () => void}) {
     {outcome.metric && <dl>{Object.entries(outcome).filter(([key]) => key !== "metric" && key !== "value")
       .map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}</dl>}
     <div className="finding-actions">
-      <a href={`#paper=${source.document_id}&page=${source.page_start}`}>Open source · p. {source.page_start}{source.page_end !== source.page_start ? `–${source.page_end}` : ""}</a>
+      <a href={`#paper=${source.document_id}&page=${source.page_start}${workspaceId ? `&workspace=${workspaceId}` : ""}`}>Open source · p. {source.page_start}{source.page_end !== source.page_start ? `–${source.page_end}` : ""}</a>
       <SavePassage id={source.chunk_id} /><button className="secondary" onClick={ask}>Ask Assistant</button>
+      {finding.claim_id && <a href={`#claim=${finding.claim_id}${workspaceId ? `&workspace=${workspaceId}` : ""}`}>Open claim</a>}
     </div>
   </article>;
 }
@@ -191,15 +192,15 @@ export function ComparisonStudio({documents, workspaceId, ask}: {
           <thead><tr><th scope="col">Topic</th>{result.papers.map(p => <th scope="col" key={p.document_id}>{p.title}<small>{p.reviewed_passages} passages reviewed · {p.findings.length} findings</small>{p.rejected_findings > 0 && <small>{p.rejected_findings} extraction items rejected</small>}</th>)}</tr></thead>
           <tbody>{topics.map(topic => <tr key={topic}><th scope="row">{labels[topic]}</th>{result.papers.map(p => {
             const matches = p.findings.filter(f => f.topic === topic);
-            return <td key={p.document_id}>{matches.length ? matches.map(f => <FindingCard key={findingKey(f)} finding={f} ask={() => askFinding(f)} />)
-              : <span className="muted">{p.reviewed_passages ? "No verified finding" : "No matching indexed passages"}</span>}</td>;
+            return <td key={p.document_id}>{matches.length ? matches.map(f => <FindingCard key={findingKey(f)} finding={f} workspaceId={workspaceId} ask={() => askFinding(f)} />)
+              : <span className="muted">{p.reviewed_passages ? "No selected excerpt" : "No matching indexed passages"}</span>}</td>;
           })}</tr>)}</tbody></table></div>
           : layout === "graph" ? <EvidenceGraph papers={result.papers} topics={topics} labels={labels}
             inspect={(topic, paper) => {setTopicFilter(topic);setPaperFilter(String(paper));setLayout("claims");}} />
           : result.papers.filter(p => !paperFilter || String(p.document_id) === paperFilter).map(p => {
             const matches = p.findings.filter(f => topics.includes(f.topic));
             return <section key={p.document_id} className="claim-group"><h3>{p.title}</h3>
-              {matches.length ? matches.map(f => <div key={findingKey(f)}><small>{labels[f.topic]}</small><FindingCard finding={f} ask={() => askFinding(f)} /></div>) : <p className="muted">No verified findings for this filter.</p>}
+              {matches.length ? matches.map(f => <div key={findingKey(f)}><small>{labels[f.topic]}</small><FindingCard finding={f} workspaceId={workspaceId} ask={() => askFinding(f)} /></div>) : <p className="muted">No indexed excerpts match this filter.</p>}
             </section>;
           })}
       </section>
