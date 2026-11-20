@@ -14,7 +14,7 @@ delivery status live in [PROGRESS.md](PROGRESS.md).
 | Reproduction | Assess 11 categories with specific wording, general mentions, missing-in-sample labels and Markdown dossier | Validate whether matched details are sufficient to reproduce the selected experiment |
 | Research directions | Scope-bounded limitation themes, evidence coverage, editable hypothesis and experiment plan, Markdown export | Cross-theme corpus analysis and wider literature verification |
 | Deliverables | Saved notes, extractive comparison briefing, durable evidence packets, cited editable drafts, Markdown/HTML/JSON/BibTeX export | More briefing templates, integration with broader citation workflows and optional PDF export |
-| Reader | Page links, split PDF view, persistent bookmarks and indexed-text highlights with revisioned notes | Integrated PDF search, zoom, rendering and finer page anchors |
+| Reader | Selectable PDF text, local phrase search, zoom, persistent bookmarks and indexed-text highlights with revisioned notes | Exact PDF-coordinate annotations, finer indexed page anchors and OCR |
 | Everyday UX | Themes, keyboard palette and table views | Flagship visual review at desktop and narrow widths, accessibility and browser interaction regressions |
 | Operations | Versioned additive migrations, local settings, PostgreSQL tests | Recovery and retention, safer ingestion lifecycle, model error/cancellation tests, quality and latency benchmarks |
 

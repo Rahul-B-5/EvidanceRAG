@@ -30,7 +30,9 @@
   Ollama synthetic smoke test recovered the expected 87% result with its
   exact indexed quote and zero rejected items.
 - Recovered structured comparison pushed as `9d95e3d` and confirmed on
-  `origin/main`. Versioned migration `003_comparison_runs` adds run history,
+  `origin/main`.
+- Durable comparison history pushed as `5cda273`. Versioned migration
+  `003_comparison_runs` adds run history,
   per-paper progress, partial results, cancellation and a worker lease.
   Applying the migration twice succeeded. PostgreSQL-enabled tests passed
   (67 total), covering progress persistence, failure, stale lease recovery,
@@ -44,46 +46,49 @@
   A subsequent live two-paper comparison retained six findings, with 18
   rejected records still surfaced for review. Extraction quality remains
   model-dependent and bounded by sampled passage coverage.
-- Durable comparison history pushed as `5cda273` and confirmed on
-  `origin/main`. Evidence Atlas reconstructs typed nodes and edges from
+- Evidence Atlas pushed as `dffb2f7`. It reconstructs typed nodes and edges from
   persisted comparison excerpts, rechecks current workspace members and
   turns each edge into a source reference. Browser tested populated desktop
   and 390-pixel views, node-type filtering, keyboard zoom and Reader handoff.
   Full test gate: 72 PostgreSQL-enabled tests, production build and diff check.
-- Atlas committed as `dffb2f7` and confirmed on `origin/main`.
-  Counterevidence search resolves the source finding in scope and retrieves
+- Counterevidence pushed as `5470e35`. It resolves the source finding in scope and retrieves
   other indexed papers with quoted context, qualifying language, and matching
   reported condition labels. Browser tested real results and Reader handoff.
   PostgreSQL tests reject out-of-scope findings and verify self exclusion and
   ranking. Full gate: 74 PostgreSQL-enabled tests and production build.
-- Counterevidence committed as `5470e35` and verified on `origin/main`.
-  Additive migration `004_claim_reviews` persists reviewer-assigned support,
+- Claim assessments pushed as `979bf3f`. Additive migration
+  `004_claim_reviews` persists reviewer-assigned support,
   qualification, challenge or uncertainty alongside an independent assessment
   of experiment alignment, a note, and source snapshots. Browser verified form
   controls. PostgreSQL verified save, edit, canonical snapshots and scope
   revocation. Full suite still passes (74).
-- Claim assessments pushed as `979bf3f` and confirmed on `origin/main`.
-  Reproducibility Studio checks 11 categories for each scoped paper, separates
+- Reproducibility Studio pushed as `f23f386`. It checks 11 categories for each scoped paper, separates
   specific wording from general mentions and items not located, and exports
   source-linked Markdown with practical verification steps and draft notes.
   Browser verified real-paper analysis, filter, source link and Markdown
   download. Integration tests verify reported values and workspace rejection.
   Full gate: 76 PostgreSQL-enabled tests and production build.
-- Reproducibility Studio pushed as `f23f386` and confirmed on `origin/main`.
-  Question coverage maps a broad question to local research facets or three
+- Question Coverage pushed as `224b510`. It maps a broad question to local research facets or three
   to five opt-in model-proposed subquestions. Workspace SQL requires both
   topic and facet terms and deduplicates papers. Browser verified actual
   library results, Assistant handoff and state retention. Ollama returned four
   valid subquestions in a live smoke test. Full gate: 79 PostgreSQL-enabled
   tests and production build.
-- Question coverage pushed as `224b510` and confirmed on `origin/main`.
-  Research Directions finds five classes of limitation or follow-up language
+- Research Directions pushed as `22fb392`. It finds five classes of limitation or follow-up language
   in the scoped ranked sample, deduplicates papers and offers editable
   investigation plans. Browser verified real passages, export download, Reader
   handoff and draft retention. PostgreSQL verifies qualifying language,
   deduplication and workspace rejection. Full gate: 81 PostgreSQL-enabled tests
   and production build.
 - Evidence Packets pushed as `f1d4037` and confirmed on `origin/main`.
+- Additive migration `005_evidence_packets` persists scoped saved-passage
+  snapshots, notes, bibliography fields and editable briefings with revision
+  checks. Browser verified scoped packet creation, a real local Ollama draft
+  using synthetic calibration evidence, saving, HTML export and reopening
+  after reload. The disposable packet, passage, document and workspace were
+  removed. Full gate: 82 PostgreSQL-enabled tests, 3 frontend export tests
+  and production build.
+- Imports and metadata pushed as `5dd2e08`, verified on `origin/main`.
   Library import now supports multiple PDFs with per-file queue states and
   retry. Corrupt PDFs are rejected before managed publication. Metadata
   migration `006_document_metadata` adds DOI, venue, tags and revision checks.
@@ -93,38 +98,38 @@
   passed. Both hash-identified synthetic records and managed copies were
   removed afterward. Full gate: 84 PostgreSQL-enabled tests, 3 frontend
   export tests and production build.
-- Imports and metadata pushed as `5dd2e08`, verified on `origin/main`.
+- Collections pushed as `18eece7` and confirmed on `origin/main`.
   Additive migration `007_collections` supports library and workspace
   collections with case-insensitive unique names and scoped membership.
   Library can create, rename, attach, detach, and filter. Browser tests verified
   state retention, non-destructive removal, and cleanup of the disposable
   empty collection. Full gate: 85 PostgreSQL-enabled tests, 3 frontend
   export tests and production build.
-- Collections pushed as `18eece7` and confirmed on `origin/main`.
-  Additive migration `005_evidence_packets` persists scoped saved-passage
-  snapshots, notes, bibliography fields and editable briefings with revision
-  checks. Browser verified scoped packet creation, a real local Ollama draft
-  using synthetic calibration evidence, saving, HTML export and reopening
-  after reload. The disposable packet, passage, document and workspace were
-  removed. Full gate: 82 PostgreSQL-enabled tests, 3 frontend export tests
-  and production build.
-- Additive migration `008_reader_annotations` stores page bookmarks, exact
+- Reader annotations pushed as `9a84128`. Additive migration
+  `008_reader_annotations` stores page bookmarks, exact
   indexed quotes and revisioned notes. Browser verified creating a bookmark,
   highlighting text, saving a note and reopening it via the bookmark. The
   synthetic PDF and annotations were removed afterward. Full gate: 86
   PostgreSQL-enabled tests, 3 frontend tests and production build.
+- Reader now renders locally with a lazy-loaded PDF.js worker and selectable
+  text. Browser verified phrase search to the correct synthetic source page,
+  fit-width and 125% zoom, a no-match result and a 390px layout without
+  horizontal page overflow. Source range tests verify the bytes and headers.
+  Full gate: 87 PostgreSQL-enabled tests, 5 frontend tests and production build.
 
 ## Outstanding
 
-1. Add integrated PDF text search, zoom and richer page rendering. Refine
-   page attribution for chunks that span several pages.
+1. Add durable multi-paper scope to Assistant conversations and verify
+   retrieval and citation isolation. Add streaming and cancellation.
 2. Add contradiction candidates only for aligned study conditions and opposing
-   claims with two citable sources. Add reproducibility disclosure validation,
-   corpus-scoped gap exploration and evidence-grounded research briefings.
+   claims with two citable sources. Improve reproducibility disclosure
+   validation, gap coverage and evidence-grounded briefing templates.
 3. Expand graph exploration across workspaces and notebook sources.
-4. Extend the notebook with tags, collections, annotations and bibliography export. Add browser coverage for save, edit, reopen and export. Add source view smoke coverage using a synthetic PDF.
+4. Extend the notebook with tags, collections and integrated annotations.
+   Refine page attribution for chunks that span several pages.
 5. Add retrieval and answer evaluation fixtures, quality/latency reporting and automated browser regressions. Identifier validation does not establish factual entailment.
-6. Harden ingestion lifecycle, source cleanup races, legacy conversation scope backfill and re-embedding. Upgrade the local Node runtime from Node 20 to a supported release when convenient.
+6. Harden ingestion lifecycle, source cleanup races, legacy conversation scope
+   backfill and re-embedding.
 
 ## Continuation
 

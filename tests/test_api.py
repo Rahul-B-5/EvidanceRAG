@@ -1,8 +1,10 @@
 from contextlib import nullcontext
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 
 from app.api.main import app
+from app.core.config import get_settings
 
 
 client = TestClient(app)
@@ -96,3 +98,20 @@ def test_answer_without_provider_returns_service_unavailable(monkeypatch):
 
     assert response.status_code == 503
     assert response.json()["detail"] == "No generation provider is configured."
+
+
+def test_managed_pdf_range_supports_cross_origin_reader(monkeypatch, tmp_path):
+    source = tmp_path / "synthetic.pdf"
+    source.write_bytes(b"%PDF-1.7\nreader-byte-range-fixture")
+    origins = get_settings().cors_origins
+    origin = origins.split(",")[0].strip()
+    monkeypatch.setattr("app.api.main.get_settings", lambda: SimpleNamespace(upload_dir=tmp_path))
+    monkeypatch.setattr("app.api.main.get_connection", lambda: nullcontext(object()))
+    monkeypatch.setattr("app.api.main.get_document_source_path", lambda *args: str(source))
+    response = client.get("/documents/1/source", headers={"Origin": origin, "Range": "bytes=0-7"})
+    assert response.status_code == 206
+    assert response.content == source.read_bytes()[:8]
+    assert response.headers["content-range"] == f"bytes 0-7/{source.stat().st_size}"
+    assert response.headers["accept-ranges"] == "bytes"
+    assert response.headers["access-control-allow-origin"] == origin
+    assert "content-range" in response.headers["access-control-expose-headers"].lower()

@@ -21,7 +21,7 @@ hybrid keyword/vector evidence, and returns source-linked answers.
    .venv/bin/uvicorn app.api.main:app --reload
    ```
 
-4. In another terminal, start the React frontend (Node 20+):
+4. In another terminal, start the React frontend (Node 22.13+):
 
    ```bash
    cd frontend
@@ -199,7 +199,12 @@ the workflow benefits from more reasoning.
 Cloud providers receive the question, supporting excerpts and bounded chat context.
 Search, comparison passages, the reader and the notebook work without a provider.
 
-## Reader bookmarks and highlights
+## Reading and annotating PDFs
+
+Reader renders the original PDF locally through a bundled PDF.js worker. It
+supports fit-width zoom, selectable text and phrase search with page links.
+Search uses the PDF’s text layer. Image-only pages need OCR before their text
+can be found. **Open original PDF** opens the same source in the browser viewer.
 
 Bookmark pages for quick return. Select text in an indexed passage and choose
 **Highlight selection**, then add a note under **Page highlights**. The API

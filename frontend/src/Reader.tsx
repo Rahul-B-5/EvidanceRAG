@@ -1,7 +1,9 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { lazy, Suspense, useEffect, useState, type CSSProperties } from "react";
 import { api, type Document, type HighlightSelection, type Passage, type ReaderHighlight } from "./api";
 import { AnnotatedPassage, HighlightCard } from "./ReaderAnnotations";
 import { MetadataEditor } from "./DocumentMetadata";
+
+const PdfViewer = lazy(() => import("./PdfViewer"));
 
 export function Reader({document, initialPage = 1, remove, update}: {
   document: Document; initialPage?: number; remove: () => void; update: (paper: Document) => void;
@@ -9,7 +11,8 @@ export function Reader({document, initialPage = 1, remove, update}: {
   const [page, setPage] = useState(initialPage);
   const [draft, setDraft] = useState(String(initialPage));
   const [width, setWidth] = useState(68);
-  const maximum = document.page_count ?? 100000;
+  const [pdfPages, setPdfPages] = useState<number>();
+  const maximum = pdfPages ?? document.page_count ?? 100000;
 
   function go(next: number) {
     if (!Number.isInteger(next) || next < 1 || next > maximum) {
@@ -20,7 +23,7 @@ export function Reader({document, initialPage = 1, remove, update}: {
     setDraft(String(next));
   }
 
-  const source = `${api.sourceUrl(document.id)}#page=${page}`;
+  const source = api.sourceUrl(document.id);
   return <section className="panel reader-workspace">
     <div className="reader-heading"><div><h2>{document.title}</h2><p>{[document.venue, document.publication_year, document.doi].filter(Boolean).join(" · ") || document.filename}</p></div>
       <div className="finding-actions"><MetadataEditor paper={document} update={update} /><button className="secondary danger" onClick={remove}>Delete paper</button></div>
@@ -29,6 +32,7 @@ export function Reader({document, initialPage = 1, remove, update}: {
       <form onSubmit={e => {e.preventDefault(); go(Number(draft));}}>
         <button type="button" className="secondary" disabled={page <= 1} onClick={() => go(page - 1)}>Previous</button>
         <label>Page <input type="number" min={1} max={maximum} value={draft} onChange={e => setDraft(e.target.value)} /></label>
+        {(pdfPages ?? document.page_count) != null && <small>of {maximum}</small>}
         <button className="secondary" type="submit">Go</button>
         <button type="button" className="secondary" disabled={page >= maximum} onClick={() => go(page + 1)}>Next</button>
       </form>
@@ -37,7 +41,16 @@ export function Reader({document, initialPage = 1, remove, update}: {
     <div className="reader-panes" style={{"--reader-width": `${width}fr`, "--evidence-width": `${100 - width}fr`} as CSSProperties}>
       <div className="pdf-pane">
         {document.has_stored_source
-          ? <><a href={source} target="_blank" rel="noreferrer">Open original PDF</a><iframe key={source} title={`PDF: ${document.title}, page ${page}`} src={source} /></>
+          ? <><a href={`${source}#page=${page}`} target="_blank" rel="noreferrer">Open original PDF</a>
+            <Suspense fallback={<p role="status">Loading PDF preview…</p>}>
+              <PdfViewer url={source} page={page} go={go} onPageCount={count => {
+                setPdfPages(count);
+                if (page > count && count > 0) {
+                  setPage(count);
+                  setDraft(String(count));
+                }
+              }} />
+            </Suspense></>
           : <p className="empty">The original PDF is missing. Import the identical PDF from Library to restore it.</p>}
       </div>
       <ReaderEvidence key={page} documentId={document.id} page={page} go={go} />
