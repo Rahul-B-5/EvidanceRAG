@@ -48,6 +48,7 @@ from research.reproducibility import assess_document
 from research.coverage import question_coverage
 from research.gaps import research_directions
 from research.packets import create_packet, edit_packet, list_packets, packet_detail
+from research.packet_templates import TemplateID, draft_instruction, list_templates, unknown_citations
 from typing import Annotated, Literal
 
 
@@ -118,6 +119,7 @@ class CoverageRequest(BaseModel):
 class PacketRequest(BaseModel):
     title: str = Field(min_length=1, max_length=160)
     question: str = Field(default="", max_length=1500)
+    template: TemplateID = "general"
     workspace_id: int | None = Field(default=None, gt=0, le=9223372036854775807)
     chunk_ids: list[Annotated[int, Field(gt=0, le=9223372036854775807)]] = Field(min_length=1, max_length=50)
 
@@ -126,6 +128,7 @@ class PacketEdit(BaseModel):
     title: str = Field(min_length=1, max_length=160)
     question: str = Field(default="", max_length=1500)
     narrative: str = Field(default="", max_length=30000)
+    template: TemplateID | None = None
     revision: int = Field(gt=0, le=2147483646)
 
 
@@ -712,7 +715,7 @@ def new_packet(request: PacketRequest) -> dict:
     if not title or len(set(request.chunk_ids)) != len(request.chunk_ids):
         raise HTTPException(status_code=422, detail="Supply a title and select distinct saved passages.")
     validate_workspace_scope(request.workspace_id, [])
-    packet = create_packet(request.workspace_id, title, request.question.strip(), request.chunk_ids)
+    packet = create_packet(request.workspace_id, title, request.question.strip(), request.chunk_ids, request.template)
     if packet is None:
         raise HTTPException(status_code=422, detail="At least one saved passage is missing or outside this workspace.")
     return packet
@@ -722,6 +725,11 @@ def new_packet(request: PacketRequest) -> dict:
 def evidence_packets(workspace_id: int | None = Query(default=None, gt=0, le=9223372036854775807)) -> dict:
     validate_workspace_scope(workspace_id, [])
     return {"packets": list_packets(workspace_id)}
+
+
+@app.get("/evidence-packets/templates")
+def packet_templates() -> dict:
+    return {"templates": list_templates()}
 
 
 @app.get("/evidence-packets/{packet_id}")
@@ -737,7 +745,12 @@ def update_packet(packet_id: uuid.UUID, request: PacketEdit) -> dict:
     title = request.title.strip()
     if not title:
         raise HTTPException(status_code=422, detail="Supply a packet title.")
-    packet = edit_packet(packet_id, request.revision, title, request.question.strip(), request.narrative)
+    current = get_packet(packet_id)
+    if current["revision"] != request.revision:
+        raise HTTPException(status_code=409, detail="The packet has changed. Reopen it before saving.")
+    if unknown_citations(request.narrative, len(current["items"])):
+        raise HTTPException(status_code=422, detail="Use citation IDs from this packet's source snapshots.")
+    packet = edit_packet(packet_id, request.revision, title, request.question.strip(), request.narrative, request.template)
     if packet is None:
         get_packet(packet_id)
         raise HTTPException(status_code=409, detail="The packet has changed. Reopen it before saving.")
@@ -753,15 +766,16 @@ def draft_packet(packet_id: uuid.UUID) -> dict:
         raise HTTPException(status_code=422, detail="Drafting supports up to 16 packet passages. Export is available for larger packets.")
     passages = [{**item, "text": item["passage"]} for item in packet["items"]]
     context, evidence = build_evidence_context(passages, max_chars_per_chunk=1150)
-    query = (
-        "Draft a concise research briefing with sections for findings, limitations, "
-        "and unresolved questions. Cite each substantive observation. "
-        f"Research question: {packet['question'] or packet['title']}"
-    )
+    if len(evidence) != len(passages):
+        raise HTTPException(409, "A source snapshot is empty. Assemble a new packet from the indexed passages.")
+    query = draft_instruction(packet["template"], packet["question"] or packet["title"])
     try:
-        return generate_answer(query, context, evidence)
+        result = generate_answer(query, context, evidence)
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+    if get_packet(packet_id)["revision"] != packet["revision"]:
+        raise HTTPException(409, "The packet changed while drafting. Reopen it before retrying.")
+    return result
 
 
 CollectionID = Annotated[int, ApiPath(gt=0, le=9223372036854775807)]

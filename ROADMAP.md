@@ -13,7 +13,7 @@ delivery status live in [PROGRESS.md](PROGRESS.md).
 | Disagreement | Scope candidates to matching reported setups and explicitly opposing statements, and persist separate human judgments | Evaluate false positives and expand coverage to other types of disagreement |
 | Reproduction | Assess 24 components across 11 categories, cite access limitations and export a Markdown dossier | Verify artifact access and test experiments against documented instructions |
 | Research directions | Topic-focused workspace sampling separates stated limitations and reported evaluations, with editable plans and dual-source Markdown export | Cross-theme corpus analysis and wider literature verification |
-| Deliverables | Saved notes, extractive comparison briefing, durable evidence packets, cited editable drafts, Markdown/HTML/JSON/BibTeX export | More briefing templates, integration with broader citation workflows and optional PDF export |
+| Deliverables | Saved notes, comparison briefings, durable evidence packets, seven reusable outlines, cited drafts and Markdown/HTML/JSON/BibTeX exports | Integration with citation managers and optional PDF export |
 | Reader | Selectable PDF text, local phrase search, zoom, persistent bookmarks and indexed-text highlights with revisioned notes | Exact PDF-coordinate annotations, finer indexed page anchors and OCR |
 | Everyday UX | Themes, keyboard palette and table views | Flagship visual review at desktop and narrow widths, accessibility and browser interaction regressions |
 | Operations | Versioned additive migrations, local settings, PostgreSQL tests | Recovery and retention, safer ingestion lifecycle, model error/cancellation tests, quality and latency benchmarks |

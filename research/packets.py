@@ -6,8 +6,9 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
 from app.db.connection import get_connection
+from research.packet_templates import TemplateID
 
-FIELDS = "id, workspace_id, title, question, narrative, items, document_ids, revision, created_at, updated_at"
+FIELDS = "id, workspace_id, title, question, narrative, template, items, document_ids, revision, created_at, updated_at"
 VISIBLE = """(workspace_id IS NULL OR NOT EXISTS (
     SELECT 1 FROM unnest(document_ids) AS source(document_id)
     WHERE NOT EXISTS (
@@ -18,7 +19,8 @@ VISIBLE = """(workspace_id IS NULL OR NOT EXISTS (
 ))"""
 
 
-def create_packet(workspace_id: int | None, title: str, question: str, chunk_ids: list[int]) -> dict | None:
+def create_packet(workspace_id: int | None, title: str, question: str, chunk_ids: list[int],
+                  template: TemplateID = "general") -> dict | None:
     with get_connection() as conn, conn.cursor(row_factory=dict_row) as cursor:
         items = cursor.execute("""
             SELECT s.chunk_id, s.document_id, s.title, s.page_start, s.page_end,
@@ -39,15 +41,15 @@ def create_packet(workspace_id: int | None, title: str, question: str, chunk_ids
             if len(members) != len(ids):
                 return None
         return cursor.execute(f"""
-            INSERT INTO evidence_packets(id, workspace_id, title, question, items, document_ids)
-            VALUES (%s,%s,%s,%s,%s,%s) RETURNING {FIELDS}
-        """, (uuid4(), workspace_id, title, question, Jsonb(items), ids)).fetchone()
+            INSERT INTO evidence_packets(id, workspace_id, title, question, items, document_ids, template)
+            VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING {FIELDS}
+        """, (uuid4(), workspace_id, title, question, Jsonb(items), ids, template)).fetchone()
 
 
 def list_packets(workspace_id: int | None) -> list[dict]:
     with get_connection() as conn, conn.cursor(row_factory=dict_row) as cursor:
         return cursor.execute(f"""
-            SELECT id, title, revision, updated_at, jsonb_array_length(items) AS item_count
+            SELECT id, title, template, revision, updated_at, jsonb_array_length(items) AS item_count
             FROM evidence_packets WHERE workspace_id IS NOT DISTINCT FROM %s::bigint AND {VISIBLE}
             ORDER BY updated_at DESC LIMIT 50
         """, (workspace_id,)).fetchall()
@@ -58,10 +60,11 @@ def packet_detail(packet_id: UUID) -> dict | None:
         return cursor.execute(f"SELECT {FIELDS} FROM evidence_packets WHERE id=%s AND {VISIBLE}", (packet_id,)).fetchone()
 
 
-def edit_packet(packet_id: UUID, revision: int, title: str, question: str, narrative: str) -> dict | None:
+def edit_packet(packet_id: UUID, revision: int, title: str, question: str, narrative: str,
+                template: TemplateID | None = None) -> dict | None:
     with get_connection() as conn, conn.cursor(row_factory=dict_row) as cursor:
         return cursor.execute(f"""
             UPDATE evidence_packets SET title=%s, question=%s, narrative=%s,
-                revision=revision+1, updated_at=NOW()
+                template=COALESCE(%s, template), revision=revision+1, updated_at=NOW()
             WHERE id=%s AND revision=%s AND {VISIBLE} RETURNING {FIELDS}
-        """, (title, question, narrative, packet_id, revision)).fetchone()
+        """, (title, question, narrative, template, packet_id, revision)).fetchone()

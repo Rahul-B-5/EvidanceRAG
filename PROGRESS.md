@@ -141,21 +141,28 @@
   original PDF navigation and Markdown export with researcher notes on a
   synthetic paper. Full gate: 98 PostgreSQL-enabled tests, 9 frontend tests
   and production build.
-- Research Directions samples distinct papers within each theme and separates
+- Focused gap coverage pushed as `895c84d`. Research Directions samples distinct papers within each theme and separates
   author-stated limitations from reported evaluations. Browser verified a
   focused two-paper gap, Markdown export and Assistant handoff with both
   sources selected. Disposable fixtures were removed. Full gate:
   100 PostgreSQL-enabled tests, 9 frontend tests and production build.
+- Migration `010_packet_templates` persists seven forms of briefing. The
+  editor inserts outlines and citations and catches IDs outside the packet.
+  Browser verified a live Ollama abstention for missing methodology, a
+  cited question-investigation draft, saving and reopening the template,
+  and HTML export. Full gate: 101 PostgreSQL-enabled tests, 10 frontend
+  tests and production build.
 
 ## Outstanding
 
-1. Add reusable, evidence-grounded briefing templates. Evaluate disagreement,
-   gap and disclosure detection on representative corpora.
+1. Add a repeatable retrieval and answer evaluation with a versioned
+   synthetic corpus, citation and abstention checks, and latency reporting.
+   Add automated browser regressions on isolated data.
 2. Expand graph exploration across workspaces and notebook sources.
 3. Extend the notebook with tags, collections and integrated annotations.
    Refine page attribution for chunks that span several pages.
-4. Add retrieval and answer evaluation fixtures, quality/latency reporting
-   and automated browser regressions. A valid citation can still lack factual support.
+4. Evaluate disagreement, gap and disclosure detection on representative
+   corpora. A valid citation can still lack factual support.
 5. Harden ingestion lifecycle, source cleanup races, legacy conversation scope
    backfill and re-embedding.
 

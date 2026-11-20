@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { packetContents } from "../.test-build/packetExport.js";
+import { packetCitationStatus, packetContents } from "../.test-build/packetExport.js";
 const packet = {
   id: "fixture", title: "<script>unsafe</script>", question: "What changed?",
   narrative: "The result changed [E1].", revision: 2,
@@ -17,6 +17,14 @@ test("HTML export escapes researcher and source text", () => {
   assert.doesNotMatch(html, /<script>/i);
   assert.match(html, /&lt;script&gt;/);
   assert.match(html, /id="E1"/);
+  assert.match(html, /<a href="#E1">\[E1\]<\/a>/);
+});
+
+test("packet citation checks count unique sources and keep unknown labels visible", () => {
+  assert.deepEqual(packetCitationStatus("Compare [E1] [E1] [E2] [E3] [E01].", 2),
+    {cited:["E1","E2"],unknown:["E3","E01"]});
+  assert.match(packetContents(packet, "md", "Research-gap brief"), /Template · Research-gap brief/);
+  assert.doesNotMatch(packetContents({...packet, narrative:"Unknown [E3]"}, "html"), /href="#E3"/);
 });
 
 test("Markdown and structured exports preserve citation order and pages", () => {

@@ -1,23 +1,29 @@
-import { useEffect, useState } from "react";
-import { api, type EvidencePacket, type PacketSummary, type SavedPassage, type Workspace } from "./api";
-import { downloadPacket, type PacketFormat } from "./packetExport";
+import { useEffect, useRef, useState } from "react";
+import { api, type EvidencePacket, type PacketSummary, type PacketTemplate, type SavedPassage, type Workspace } from "./api";
+import { downloadPacket, packetCitationStatus, type PacketFormat } from "./packetExport";
 
 const formats: Array<[PacketFormat, string]> = [["md","Markdown"],["html","HTML"],["json","JSON"],["bib","BibTeX"]];
 
-function PacketEditor({packet, update}: {packet: EvidencePacket; update: (packet: EvidencePacket) => void}) {
+function PacketEditor({packet, templates, update}: {
+  packet: EvidencePacket; templates: PacketTemplate[]; update: (packet: EvidencePacket) => void;
+}) {
   const [title, setTitle] = useState(packet.title);
   const [question, setQuestion] = useState(packet.question);
   const [narrative, setNarrative] = useState(packet.narrative);
+  const [template, setTemplate] = useState(packet.template);
   const [format, setFormat] = useState<PacketFormat>("md");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const dirty = title !== packet.title || question !== packet.question || narrative !== packet.narrative;
+  const briefing = useRef<HTMLTextAreaElement>(null);
+  const selectedTemplate = templates.find(item => item.id === template);
+  const citationStatus = packetCitationStatus(narrative, packet.items.length);
+  const dirty = title !== packet.title || question !== packet.question || narrative !== packet.narrative || template !== packet.template;
 
   async function save() {
     setBusy(true);setError("");setMessage("");
     try {
-      const saved = await api.editPacket(packet.id, {title, question, narrative, revision:packet.revision});
+      const saved = await api.editPacket(packet.id, {title, question, narrative, template, revision:packet.revision});
       setTitle(saved.title);setQuestion(saved.question);setNarrative(saved.narrative);
       update(saved);setMessage("Briefing saved.");
     } catch(e) {
@@ -42,19 +48,37 @@ function PacketEditor({packet, update}: {packet: EvidencePacket; update: (packet
     }
   }
 
+  function insertCitation(index: number) {
+    const cursor = briefing.current?.selectionEnd ?? narrative.length;
+    const citation = ` [E${index + 1}]`;
+    if (narrative.length + citation.length > 30000) return;
+    setNarrative(narrative.slice(0, cursor) + citation + narrative.slice(cursor));
+    requestAnimationFrame(() => {
+      briefing.current?.focus({preventScroll:true});
+      briefing.current?.setSelectionRange(cursor + citation.length, cursor + citation.length);
+    });
+  }
+
   return <div className="research-controls">
     <section className="panel plan-editor">
       <h2>Research briefing</h2>
       <form onSubmit={e => {e.preventDefault();void save();}}>
         <label>Packet title<input value={title} disabled={busy} maxLength={160} onChange={e => setTitle(e.target.value)} /></label>
+        <label>Briefing template<select value={template} disabled={busy} onChange={e => setTemplate(e.target.value)}>
+          {templates.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
+        </select></label>
         <label>Research question<textarea value={question} disabled={busy} maxLength={1500} rows={3} onChange={e => setQuestion(e.target.value)} /></label>
-        <label>Briefing text<textarea value={narrative} disabled={busy} maxLength={30000} rows={12} onChange={e => setNarrative(e.target.value)}
+        <label>Briefing text<textarea ref={briefing} value={narrative} disabled={busy} maxLength={30000} rows={12} onChange={e => setNarrative(e.target.value)}
           placeholder="Use [E1], [E2] and the other packet IDs to cite source snapshots." /></label>
         <div className="finding-actions">
-          <button disabled={busy || !dirty || !title.trim()}>Save briefing</button>
+          <button disabled={busy || !dirty || !title.trim() || !!citationStatus.unknown.length}>Save briefing</button>
+          <button type="button" className="secondary" disabled={busy || !!narrative.trim() || !selectedTemplate}
+            onClick={() => {if (selectedTemplate) setNarrative(selectedTemplate.sections.map(heading => `## ${heading}\n\n`).join(""));}}>Insert outline</button>
           <button type="button" className="secondary" onClick={() => void draft()} disabled={busy || dirty || !!narrative || packet.items.length > 16}>Draft with provider</button>
         </div>
       </form>
+      {citationStatus.unknown.length ? <p role="alert" className="notice error">Some citation IDs have no source snapshot in this packet.</p>
+        : !!narrative.trim() && <p className="muted">{citationStatus.cited.length} of {packet.items.length} source snapshots cited.</p>}
       <p className="muted">Drafting uses the saved question and up to 16 passage snapshots. The configured provider receives these excerpts.</p>
       {message && <p role="status">{message}</p>}
       {error && <p className="notice error" role="alert">{error}</p>}
@@ -62,7 +86,8 @@ function PacketEditor({packet, update}: {packet: EvidencePacket; update: (packet
         <label>Export format <select value={format} onChange={e => setFormat(e.target.value as PacketFormat)}>
           {formats.map(([ext, label]) => <option key={ext} value={ext}>{label}</option>)}
         </select></label>
-        <button className="secondary" disabled={busy} onClick={() => downloadPacket({...packet, title, question, narrative}, format)}>Export evidence packet</button>
+        <button className="secondary" disabled={busy || (!!citationStatus.unknown.length && (format === "md" || format === "html"))}
+          onClick={() => downloadPacket({...packet, title, question, narrative, template}, format, selectedTemplate?.title)}>Export evidence packet</button>
       </div>
     </section>
     <section className="panel">
@@ -71,7 +96,11 @@ function PacketEditor({packet, update}: {packet: EvidencePacket; update: (packet
         <summary>[E{index + 1}] {item.title} · p. {item.page_start}</summary>
         <article className="finding-card"><blockquote>{item.passage}</blockquote>
           {item.note && <p>{item.note}</p>}
-          <a href={`#paper=${item.document_id}&page=${item.page_start}`}>Open source</a>
+          <div className="finding-actions">
+            <a href={`#paper=${item.document_id}&page=${item.page_start}`}>Open source</a>
+            <button className="secondary" disabled={busy || narrative.length + ` [E${index + 1}]`.length > 30000}
+              onClick={() => insertCitation(index)}>Insert [E{index + 1}]</button>
+          </div>
         </article>
       </details>)}
     </section>
@@ -85,18 +114,22 @@ export function EvidencePackets({workspaces}: {workspaces: Workspace[]}) {
   const [selected, setSelected] = useState<number[]>([]);
   const [packet, setPacket] = useState<EvidencePacket | null>(null);
   const [title, setTitle] = useState("");
+  const [template, setTemplate] = useState("general");
+  const [templates, setTemplates] = useState<PacketTemplate[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [refresh, setRefresh] = useState(0);
   useEffect(() => {
     let active = true;
     setSaved(null);setError("");setPackets([]);
-    Promise.all([api.savedEvidence(), api.packets(workspace), workspace ? api.workspace(Number(workspace)) : Promise.resolve(null)])
-      .then(([notebook, history, scope]) => {
+    Promise.all([api.savedEvidence(), api.packets(workspace), api.packetTemplates(),
+      workspace ? api.workspace(Number(workspace)) : Promise.resolve(null)])
+      .then(([notebook, history, catalog, scope]) => {
         if (!active) return;
         const ids = scope && new Set(scope.documents.map(x => x.id));
         setSaved(notebook.items.filter(item => !ids || ids.has(item.document_id)));
         setPackets(history.packets);
+        setTemplates(catalog.templates);
       }).catch(e => {if (active) setError(e instanceof Error ? e.message : "Unable to load evidence packets.");});
     return () => {active = false;};
   }, [workspace, refresh]);
@@ -104,7 +137,7 @@ export function EvidencePackets({workspaces}: {workspaces: Workspace[]}) {
   async function create() {
     setBusy(true);setError("");
     try {
-      const created = await api.createPacket(workspace, title.trim(), selected);
+      const created = await api.createPacket(workspace, title.trim(), selected, template);
       setPacket(created);setSelected([]);setTitle("");setRefresh(n => n + 1);
     } catch(e) {
       setError(e instanceof Error ? e.message : "Unable to create evidence packet.");
@@ -135,9 +168,12 @@ export function EvidencePackets({workspaces}: {workspaces: Workspace[]}) {
       <div><button className="secondary" disabled={busy} onClick={() => setRefresh(n => n + 1)}>Refresh saved passages</button></div>
     </div>
     {error && <p role="alert" className="notice error">{error}</p>}
-    {packet ? <PacketEditor key={packet.id} packet={packet} update={next => {setPacket(next);setRefresh(n => n + 1);}} />
+    {packet ? <PacketEditor key={packet.id} packet={packet} templates={templates} update={next => {setPacket(next);setRefresh(n => n + 1);}} />
       : <form className="panel comparison-setup" onSubmit={e => {e.preventDefault();void create();}}>
         <h2>Assemble a packet</h2><label>Packet title<input maxLength={160} disabled={busy} value={title} onChange={e => setTitle(e.target.value)} /></label>
+        <label>Briefing template<select value={template} disabled={busy} onChange={e => setTemplate(e.target.value)}>
+          {templates.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
+        </select></label>
         {!saved && !error && <p role="status">Loading saved passages…</p>}
         {saved?.length === 0 && <p>Save passages from Reader or the Evidence Atlas before assembling a packet.</p>}
         {!!saved?.length && <fieldset aria-label="Saved passages" disabled={busy}>
@@ -147,7 +183,7 @@ export function EvidencePackets({workspaces}: {workspaces: Workspace[]}) {
             <span>{item.title} · p. {item.page_start}<small className="packet-excerpt">{item.passage.slice(0, 170)}</small></span>
           </label>)}
         </fieldset>}
-        <div><button disabled={busy || !title.trim() || !selected.length}>Create evidence packet</button></div>
+        <div><button disabled={busy || !title.trim() || !selected.length || !templates.length}>Create evidence packet</button></div>
       </form>}
   </div>;
 }

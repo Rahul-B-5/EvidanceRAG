@@ -84,9 +84,10 @@ export type ResearchDirections = {
   directions: Array<{id: string; title: string; paper_count: number; verification: string; plan: InvestigationPlan;
     reviewed_paper_count: number; coverage_paper_count: number; evidence: DirectionSource[]; coverage: DirectionSource[]}>;
 };
-export type PacketSummary = {id: string; title: string; revision: number; updated_at: string; item_count: number};
+export type PacketTemplate = {id: string; title: string; sections: string[]};
+export type PacketSummary = {id: string; title: string; template: string; revision: number; updated_at: string; item_count: number};
 export type EvidencePacket = {
-  id: string; title: string; question: string; narrative: string; revision: number; workspace_id: number | null;
+  id: string; title: string; question: string; narrative: string; template: string; revision: number; workspace_id: number | null;
   items: Array<Omit<SavedPassage, "source_exists"> & {authors: string[]; publication_year: number | null;
     saved_at: string; doi?: string | null; venue?: string | null}>;
 };
@@ -177,12 +178,13 @@ export const api = {
   },
   packets: (workspaceId: string) => request<{packets: PacketSummary[]}>(
     workspaceId ? `/evidence-packets?workspace_id=${workspaceId}` : "/evidence-packets"),
-  createPacket: (workspaceId: string, title: string, chunkIds: number[]) => request<EvidencePacket>("/evidence-packets", {
+  packetTemplates: () => request<{templates: PacketTemplate[]}>("/evidence-packets/templates"),
+  createPacket: (workspaceId: string, title: string, chunkIds: number[], template: string) => request<EvidencePacket>("/evidence-packets", {
     method:"POST", headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({workspace_id:workspaceId ? Number(workspaceId) : undefined, title, chunk_ids:chunkIds}),
+    body:JSON.stringify({workspace_id:workspaceId ? Number(workspaceId) : undefined, title, chunk_ids:chunkIds, template}),
   }),
   packet: (id: string) => request<EvidencePacket>(`/evidence-packets/${id}`),
-  editPacket: (id: string, fields: Pick<EvidencePacket, "title" | "question" | "narrative" | "revision">) => request<EvidencePacket>(
+  editPacket: (id: string, fields: Pick<EvidencePacket, "title" | "question" | "narrative" | "revision" | "template">) => request<EvidencePacket>(
     `/evidence-packets/${id}`, {method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify(fields)}),
   draftPacket: (id: string) => request<{answer: string; abstained: boolean; reason: string | null}>(
     `/evidence-packets/${id}/draft`, {method:"POST"}),

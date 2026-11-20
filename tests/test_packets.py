@@ -10,6 +10,16 @@ from app.api.main import app
 from app.db.connection import get_connection
 
 
+def test_packet_templates_are_listed_and_unknown_names_are_rejected():
+    client = TestClient(app)
+    templates = client.get("/evidence-packets/templates").json()["templates"]
+    assert len(templates) == 7
+    assert "Comparability limits" in next(t["sections"] for t in templates if t["id"] == "technical-comparison")
+    assert client.post("/evidence-packets", json={
+        "title":"Invalid template", "chunk_ids":[1], "template":"unsupported",
+    }).status_code == 422
+
+
 @pytest.mark.skipif(os.getenv("EVIDENCERAG_INTEGRATION") != "1", reason="Requires PostgreSQL")
 def test_packet_snapshots_revisions_drafting_and_scope(monkeypatch):
     with get_connection() as conn, conn.transaction(force_rollback=True):
@@ -35,20 +45,27 @@ def test_packet_snapshots_revisions_drafting_and_scope(monkeypatch):
         response = client.post("/evidence-packets", json=request)
         assert response.status_code == 201
         packet = response.json()
+        assert packet["template"] == "general"
         assert packet["items"][0]["authors"] == ["Researcher, Example"]
         url = f"/evidence-packets/{packet['id']}"
         assert all(p["id"] != packet["id"] for p in client.get("/evidence-packets").json()["packets"])
         conn.execute("UPDATE saved_evidence SET note='Later note' WHERE chunk_id=%s", (chunk,))
         edit = {"title": "Revised packet", "question": "Which metric changed?", "narrative": "Read [E1].", "revision": 1}
+        assert client.patch(url, json={**edit, "narrative":"Read [E2]."}).status_code == 422
         updated = client.patch(url, json=edit)
         assert updated.status_code == 200 and updated.json()["revision"] == 2
         assert updated.json()["items"][0]["note"] == "Original note."
         assert client.patch(url, json=edit).status_code == 409
+        updated = client.patch(url, json={**edit, "revision": 2, "template": "technical-comparison"})
+        assert updated.status_code == 200
+        assert client.get(url).json()["template"] == "technical-comparison"
         generate = Mock(return_value={"answer": "The excerpt reports 87 percent [E1].", "abstained": False, "reason": None})
         monkeypatch.setattr("app.api.main.generate_answer", generate)
         assert client.post(url + "/draft").status_code == 200
         assert generate.call_args.args[2][0]["evidence_id"] == "E1"
         assert generate.call_args.args[2][0]["chunk_id"] == chunk
+        assert "Evaluation conditions" in generate.call_args.args[0]
+        assert "Compare only compatible outcomes" in generate.call_args.args[0]
         assert client.get(url).json()["narrative"] == "Read [E1]."
         conn.execute("DELETE FROM workspace_documents WHERE workspace_id=%s AND document_id=%s", (workspace, doc))
         assert client.get(url).status_code == 404

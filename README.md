@@ -68,6 +68,8 @@ The application is served at `http://127.0.0.1:5173` and uses the local API at
 - `GET/POST /evidence-packets`, `GET/PATCH /evidence-packets/{id}`, and
   `POST /evidence-packets/{id}/draft` — assemble, reopen, edit and draft
   research briefings using immutable saved-passage snapshots.
+- `GET /evidence-packets/templates` — lists seven briefing outlines. The
+  chosen `template` persists with the packet and guides provider drafts.
 - `DELETE /documents/{document_id}` — removes the document, its chunks, and its
   managed source file after the database transaction commits.
 - `GET /search?query=...` — returns hybrid-retrieved evidence passages.
@@ -180,10 +182,13 @@ baselines, metrics and validation steps before exporting a plan. The candidate
 directions require broader literature verification.
 
 **Evidence packets** combine selected saved passages, notes and bibliography
-metadata. Edit a briefing by hand or request a source-cited draft from the
-configured provider. Draft requests use up to 16 snapshots and only run on
-request. Export the packet to Markdown, escaped HTML, JSON or BibTeX. Revision
-checks protect against saving over a more recent briefing from another tab.
+metadata. Choose a briefing, literature review, technical comparison,
+methodology overview, gap brief, reproduction dossier or question
+investigation. Insert the outline or request a source-cited draft from the
+configured provider using up to 16 snapshots. Insert citation IDs from the
+source panel, then export to Markdown, escaped HTML, JSON or BibTeX. HTML
+citations link to the corresponding snapshot. Revision checks protect
+concurrent edits.
 
 Use **Quick open** (Ctrl/⌘K) to navigate by view or paper title. The reader shows
 the original PDF and indexed passages for the selected page. Its width slider
