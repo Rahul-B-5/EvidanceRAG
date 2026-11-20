@@ -1,10 +1,17 @@
 """Create isolated evaluation tables while retaining access to public pgvector types."""
 
 import re
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from uuid import uuid4
 
 from psycopg import Connection, sql
+from psycopg.conninfo import make_conninfo
+
+from app.core.config import get_settings
+from app.db.connection import get_connection
+from app.db.migrations import apply_migrations_in_transaction
 
 BASE_SCHEMA = Path(__file__).resolve().parents[1] / "app" / "db" / "schema.sql"
 TEST_TABLES = ("documents", "chunks", "workspaces", "workspace_documents", "conversations", "messages", "conversation_scopes")
@@ -34,3 +41,18 @@ def prepare_schema(conn: Connection, schema: str) -> None:
     conn.execute(sql.SQL("SET LOCAL search_path TO {}, public").format(sql.Identifier(schema)))
     conn.execute(BASE_SCHEMA.read_text(encoding="utf-8"), prepare=False)
     assert_isolated(conn, schema)
+
+
+@contextmanager
+def isolated_database() -> Iterator[tuple[str, str]]:
+    """Provide a committed scratch schema for tests using several connections."""
+    schema = fresh_schema()
+    with get_connection() as conn:
+        prepare_schema(conn, schema)
+        apply_migrations_in_transaction(conn)
+        assert_isolated(conn, schema, BROWSER_TABLES)
+    try:
+        yield schema, make_conninfo(get_settings().database_url, options=f"-c search_path={schema},public")
+    finally:
+        with get_connection() as conn:
+            conn.execute(sql.SQL("DROP SCHEMA {} CASCADE").format(sql.Identifier(schema)))

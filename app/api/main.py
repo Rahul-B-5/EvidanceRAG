@@ -2,23 +2,25 @@
 
 import uuid
 import re
+import logging
 from collections.abc import Callable
 from contextlib import suppress
 from pathlib import Path
 
-from fastapi import BackgroundTasks, FastAPI, File, HTTPException, Query, UploadFile, status
+from fastapi import BackgroundTasks, FastAPI, File, HTTPException, Query, Request, UploadFile, status
 from fastapi import Path as ApiPath
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
-from psycopg import Connection
-from psycopg.errors import ForeignKeyViolation, UniqueViolation
+from psycopg import Connection, DatabaseError, OperationalError
+from psycopg.errors import ForeignKeyViolation, LockNotAvailable, UniqueViolation
 from app.api.saved_evidence import router as saved_evidence_router
 from app.api.reader_annotations import router as reader_annotations_router
 from app.api.answer_stream import stream_answer
 
 from app.core.config import get_settings
 from app.db.connection import get_connection
+from app.db.source_lock import lock_source
 from app.db import collections as library_collections
 from app.db.repository import (
     add_message,
@@ -26,6 +28,7 @@ from app.db.repository import (
     delete_document,
     get_conversation,
     get_document,
+    get_document_hash,
     get_document_source_path,
     list_documents,
     add_document_to_workspace,
@@ -51,6 +54,7 @@ from research.packets import create_packet, edit_packet, list_packets, packet_de
 from research.packet_templates import TemplateID, draft_instruction, list_templates, unknown_citations
 from typing import Annotated, Literal
 
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="EvidenceRAG",
@@ -67,6 +71,16 @@ app.add_middleware(
     allow_headers=["Content-Type", "Range"],
     expose_headers=["Accept-Ranges", "Content-Range"],
 )
+
+
+@app.exception_handler(DatabaseError)
+def database_failure(_request: Request, error: DatabaseError) -> JSONResponse:
+    logger.warning("Database request failed (%s).", type(error).__name__)
+    if isinstance(error, LockNotAvailable):
+        return JSONResponse({"detail": "A concurrent operation is using this resource. Retry shortly."}, status_code=409)
+    if isinstance(error, OperationalError):
+        return JSONResponse({"detail": "Database is unavailable."}, status_code=503)
+    return JSONResponse({"detail": "Database request failed."}, status_code=500)
 
 SourceID = Annotated[int, Field(gt=0, le=9223372036854775807)]
 SourceSet = Annotated[list[SourceID], Field(min_length=1, max_length=12)]
@@ -189,7 +203,7 @@ def require_selected_papers(conn: Connection, document_ids: list[int], workspace
 
 
 def _bad_request(error: ValueError) -> HTTPException:
-    return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error))
+    return HTTPException(status_code=422, detail=str(error))
 
 
 @app.get("/health")
@@ -257,8 +271,10 @@ def _delete_managed_source(stored_path: str | None) -> None:
         path.resolve().relative_to(get_settings().upload_dir.resolve())
     except ValueError:
         return
-    with suppress(FileNotFoundError):
-        path.unlink()
+    try:
+        path.unlink(missing_ok=True)
+    except OSError as exc:
+        logger.warning("Managed source deletion cleanup deferred (%s).", type(exc).__name__)
 
 
 @app.delete("/documents/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -266,12 +282,17 @@ def remove_document(document_id: int) -> None:
     if document_id <= 0:
         raise HTTPException(status_code=422, detail="document_id must be positive.")
     with get_connection() as conn:
-        found, stored_path = delete_document(conn, document_id)
-    if not found:
-        raise HTTPException(status_code=404, detail="Document not found.")
-    # The database commit happens before the source is unlinked. A missing
-    # source is harmless; a source outside managed storage is never touched.
-    _delete_managed_source(stored_path)
+        file_hash = get_document_hash(conn, document_id)
+        if file_hash is None:
+            raise HTTPException(status_code=404, detail="Document not found.")
+        lock_source(conn, file_hash)
+        with conn.transaction():
+            found, stored_path = delete_document(conn, document_id)
+        if not found:
+            raise HTTPException(status_code=404, detail="Document not found.")
+        # Hold the lock through physical cleanup so a concurrent import
+        # cannot republish a row pointing to the file we're about to unlink.
+        _delete_managed_source(stored_path)
 
 
 @app.get("/documents/{document_id}/source")

@@ -13,6 +13,7 @@ def test_duplicate_restores_source_without_regenerating_embeddings(tmp_path, mon
         pdf.new_page().insert_text((72, 72), "Source restoration test")
         pdf.save(original)
     conn = Mock()
+    conn.transaction.side_effect = lambda: nullcontext()
     conn.execute.return_value.fetchone.return_value = (42,)
     monkeypatch.setattr(pipeline, "get_connection", lambda: nullcontext(conn))
     monkeypatch.setattr(pipeline, "get_settings", lambda: SimpleNamespace(

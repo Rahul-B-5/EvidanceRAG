@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     database_url: str = Field(
         default="postgresql://postgres:postgres@localhost:5433/evidencerag",
         alias="DATABASE_URL",
+        repr=False,
     )
     embedding_model: str = Field(
         default="sentence-transformers/all-MiniLM-L6-v2",
@@ -25,6 +26,7 @@ class Settings(BaseSettings):
     gemini_api_key: str | None = Field(
         default=None,
         alias="GEMINI_API_KEY",
+        repr=False,
     )
     gemini_model: str = Field(
         default="gemini-2.5-flash",

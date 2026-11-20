@@ -72,6 +72,9 @@ The application is served at `http://127.0.0.1:5173` and uses the local API at
   chosen `template` persists with the packet and guides provider drafts.
 - `DELETE /documents/{document_id}` — removes the document, its chunks, and its
   managed source file after the database transaction commits.
+  Import and deletion of the same PDF are serialized by its content hash.
+  A failed import cleans up a newly published file only after PostgreSQL
+  confirms it has no reference.
 - `GET /search?query=...` — returns hybrid-retrieved evidence passages.
 - `POST /answers` — creates an answer with evidence citations using the configured provider.
 - `POST /answers/stream` — accepts the same request and returns NDJSON phase

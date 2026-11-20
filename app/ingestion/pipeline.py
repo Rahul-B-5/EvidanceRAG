@@ -1,5 +1,6 @@
 
 import hashlib
+import logging
 import os
 import re
 import shutil
@@ -7,13 +8,17 @@ import uuid
 from pathlib import Path
 
 import pymupdf
+from psycopg import Connection, Error
 
 from app.core.config import get_settings
 from app.db.connection import get_connection
 from app.db.repository import insert_chunks, insert_document
+from app.db.source_lock import lock_source
 from app.ingestion.chunker import chunk_pages
 from app.ingestion.pdf_extractor import extract_pdf
 from app.retrieval.embeddings import embed_documents
+
+logger = logging.getLogger(__name__)
 
 
 def calculate_file_hash(file_path: Path) -> str:
@@ -72,7 +77,7 @@ def extract_metadata(file_path: Path) -> dict:
 
     title = (metadata.get("title") or "").strip()
 
-# Some PDFs contain a software-generated title instead of the paper title.
+    # Some PDFs contain a software-generated title instead of the paper title.
     if (
         not title
         or title.lower().startswith("microsoft word -")
@@ -88,6 +93,19 @@ def extract_metadata(file_path: Path) -> dict:
         "authors": authors,
         "publication_year": None,
     }
+
+
+def discard_failed_publication(conn: Connection, path: Path) -> None:
+    """Remove a new copy only if the database confirms no document uses it."""
+    try:
+        with conn.transaction():
+            referenced = conn.execute(
+                "SELECT EXISTS(SELECT 1 FROM documents WHERE stored_path = %s)", (str(path),)
+            ).fetchone()[0]
+        if not referenced:
+            path.unlink(missing_ok=True)
+    except (Error, OSError) as exc:
+        logger.warning("Managed source publication cleanup deferred (%s).", type(exc).__name__)
 
 
 def ingest_pdf(file_path: str | Path) -> dict:
@@ -114,87 +132,53 @@ def ingest_pdf(file_path: str | Path) -> dict:
 
     file_hash = calculate_file_hash(path)
 
-    # Quick duplicate check before spending time generating embeddings.
     with get_connection() as conn:
-        existing = conn.execute(
-            "SELECT id FROM documents WHERE file_hash = %s",
-            (file_hash,),
-        ).fetchone()
+        lock_source(conn, file_hash)
+        with conn.transaction():
+            existing = conn.execute("SELECT id FROM documents WHERE file_hash = %s", (file_hash,)).fetchone()
 
-    if existing is not None:
-        # Recover source links for legacy records while retaining their chunks
-        # and embedding profile. Only a byte-identical PDF can reach this path.
-        stored_path = persist_source_pdf(
-            path, file_hash=file_hash, upload_dir=settings.upload_dir,
-        )
-        with pymupdf.open(stored_path) as pdf:
-            page_count = len(pdf)
-        with get_connection() as conn:
-            conn.execute(
-                """
-                UPDATE documents SET stored_path = %s,
-                    file_size_bytes = %s, page_count = %s
-                WHERE id = %s AND file_hash = %s
-                """,
-                (str(stored_path), stored_path.stat().st_size, page_count,
-                 existing[0], file_hash),
-            )
-        return {
-            "status": "already_exists",
-            "document_id": existing[0],
-            "filename": path.name,
-            "chunks_created": 0,
-        }
+        if existing:
+            # Only byte-identical uploads can restore legacy source links.
+            try:
+                with pymupdf.open(path) as pdf:
+                    if not pdf.is_pdf or pdf.is_encrypted:
+                        raise ValueError("Only readable, unencrypted PDFs can restore a source.")
+                    page_count = len(pdf)
+            except pymupdf.FileDataError:
+                raise ValueError("Unable to read this PDF. The file may be damaged or empty.") from None
+        else:
+            pages = extract_pdf(path)
+            chunks = chunk_pages(pages)
+            if not chunks:
+                raise ValueError("No extractable text was found in this PDF. Scanned PDFs may require OCR.")
+            embeddings = embed_documents([chunk["text"] for chunk in chunks])
+            metadata = extract_metadata(path)
+            page_count = len(pages)
 
-    pages = extract_pdf(path)
-    chunks = chunk_pages(pages)
+        canonical = settings.upload_dir.resolve() / f"{file_hash}.pdf"
+        new_source = not canonical.exists()
+        stored_path = persist_source_pdf(path, file_hash=file_hash, upload_dir=settings.upload_dir)
+        try:
+            with conn.transaction():
+                if existing:
+                    document_id, created = existing[0], False
+                else:
+                    document_id, created = insert_document(
+                        conn, **metadata, filename=path.name, file_hash=file_hash,
+                        stored_path=str(stored_path), file_size_bytes=stored_path.stat().st_size,
+                        page_count=page_count,
+                    )
+                if not created:
+                    conn.execute("""
+                        UPDATE documents SET stored_path = %s, file_size_bytes = %s, page_count = %s
+                        WHERE id = %s AND file_hash = %s
+                    """, (str(stored_path), stored_path.stat().st_size, page_count, document_id, file_hash))
+                    return {"status": "already_exists", "document_id": document_id, "filename": path.name, "chunks_created": 0}
+                chunks_created = insert_chunks(conn, document_id=document_id, chunks=chunks, embeddings=embeddings)
+        except Exception:
+            if new_source:
+                discard_failed_publication(conn, stored_path)
+            raise
 
-    if not chunks:
-        raise ValueError(
-            "No extractable text was found in this PDF. "
-            "Scanned PDFs may require OCR."
-        )
-
-    embeddings = embed_documents([chunk["text"] for chunk in chunks])
-    # Preserve the user-facing filename as the title fallback; the persisted
-    # file is intentionally named by hash and would make a poor title.
-    metadata = extract_metadata(path)
-    stored_path = persist_source_pdf(path, file_hash=file_hash, upload_dir=settings.upload_dir)
-
-    # The connection context commits on success and rolls back on error.
-    with get_connection() as conn:
-        document_id, created = insert_document(
-            conn,
-            title=metadata["title"],
-            authors=metadata["authors"],
-            publication_year=metadata["publication_year"],
-            filename=path.name,
-            file_hash=file_hash,
-            stored_path=str(stored_path),
-            file_size_bytes=path.stat().st_size,
-            page_count=len(pages),
-        )
-
-        # Another process may have ingested the same PDF concurrently.
-        if not created:
-            return {
-                "status": "already_exists",
-                "document_id": document_id,
-                "filename": path.name,
-                "chunks_created": 0,
-            }
-
-        chunks_created = insert_chunks(
-            conn,
-            document_id=document_id,
-            chunks=chunks,
-            embeddings=embeddings,
-        )
-
-    return {
-        "status": "ingested",
-        "document_id": document_id,
-        "filename": path.name,
-        "pages_extracted": len(pages),
-        "chunks_created": chunks_created,
-    }
+        return {"status": "ingested", "document_id": document_id, "filename": path.name,
+                "pages_extracted": page_count, "chunks_created": chunks_created}

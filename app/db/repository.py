@@ -216,6 +216,11 @@ def delete_document(conn: psycopg.Connection, document_id: int) -> tuple[bool, s
     return True, None if still_referenced else stored_path
 
 
+def get_document_hash(conn: psycopg.Connection, document_id: int) -> str | None:
+    row = conn.execute("SELECT file_hash FROM documents WHERE id = %s", (document_id,)).fetchone()
+    return row[0] if row else None
+
+
 def create_conversation(
     conn: psycopg.Connection, *, title: str, document_id: int | None = None,
     workspace_id: int | None = None, document_ids: list[int] | None = None,

@@ -8,13 +8,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import pymupdf
-from psycopg import sql
-from psycopg.conninfo import make_conninfo
-
-from app.core.config import get_settings
-from app.db.connection import get_connection
-from app.db.migrations import apply_migrations_in_transaction
-from evaluation.database import BROWSER_TABLES, assert_isolated, fresh_schema, prepare_schema
+from evaluation.database import isolated_database
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -35,37 +29,28 @@ def available_ports() -> tuple[int, int]:
 
 
 def run_browser_tests() -> int:
-    schema = fresh_schema()
-    with TemporaryDirectory(prefix="evidencerag-browser-") as workdir:
+    with TemporaryDirectory(prefix="evidencerag-browser-") as workdir, isolated_database() as (schema, database_url):
         root = Path(workdir)
         fixture_pdf(root / "browser-fixture.pdf")
         api_port, web_port = available_ports()
-        with get_connection() as conn:
-            prepare_schema(conn, schema)
-            apply_migrations_in_transaction(conn)
-            assert_isolated(conn, schema, BROWSER_TABLES)
-        try:
-            env = {
-                **os.environ,
-                "DATABASE_URL": make_conninfo(get_settings().database_url, options=f"-c search_path={schema},public"),
-                "UPLOAD_DIR": str(root / "uploads"),
-                "CORS_ORIGINS": f"http://127.0.0.1:{web_port}",
-                "EMBEDDING_MODEL": "evidencerag-browser-fixture",
-                "EMBEDDING_DIMENSIONS": "3",
-                "CHUNK_SIZE": "1800",
-                "CHUNK_OVERLAP": "0",
-                "GENERATION_API_KEY": "",
-                "GEMINI_API_KEY": "",
-                "EVIDENCERAG_E2E_PYTHON": sys.executable,
-                "EVIDENCERAG_E2E_SCHEMA": schema,
-                "EVIDENCERAG_E2E_TEMP": str(root),
-                "EVIDENCERAG_E2E_API_PORT": str(api_port),
-                "EVIDENCERAG_E2E_WEB_PORT": str(web_port),
-            }
-            return subprocess.run(["npm", "run", "test:e2e"], cwd=ROOT / "frontend", env=env, check=False).returncode
-        finally:
-            with get_connection() as conn:
-                conn.execute(sql.SQL("DROP SCHEMA {} CASCADE").format(sql.Identifier(schema)))
+        env = {
+            **os.environ,
+            "DATABASE_URL": database_url,
+            "UPLOAD_DIR": str(root / "uploads"),
+            "CORS_ORIGINS": f"http://127.0.0.1:{web_port}",
+            "EMBEDDING_MODEL": "evidencerag-browser-fixture",
+            "EMBEDDING_DIMENSIONS": "3",
+            "CHUNK_SIZE": "1800",
+            "CHUNK_OVERLAP": "0",
+            "GENERATION_API_KEY": "",
+            "GEMINI_API_KEY": "",
+            "EVIDENCERAG_E2E_PYTHON": sys.executable,
+            "EVIDENCERAG_E2E_SCHEMA": schema,
+            "EVIDENCERAG_E2E_TEMP": str(root),
+            "EVIDENCERAG_E2E_API_PORT": str(api_port),
+            "EVIDENCERAG_E2E_WEB_PORT": str(web_port),
+        }
+        return subprocess.run(["npm", "run", "test:e2e"], cwd=ROOT / "frontend", env=env, check=False).returncode
 
 
 if __name__ == "__main__":

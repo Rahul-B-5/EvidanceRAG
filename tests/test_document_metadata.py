@@ -14,6 +14,7 @@ from app.db.connection import get_connection
 def test_corrupt_pdf_upload_returns_422_and_does_not_publish_source(tmp_path, monkeypatch):
     settings = SimpleNamespace(upload_dir=tmp_path, max_upload_mb=1)
     conn = Mock()
+    conn.transaction.side_effect = lambda: nullcontext()
     conn.execute.return_value.fetchone.return_value = None
     monkeypatch.setattr("app.api.main.get_settings", lambda: settings)
     monkeypatch.setattr("app.ingestion.pipeline.get_settings", lambda: settings)
