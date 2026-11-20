@@ -114,6 +114,17 @@ def test_following_metric_in_same_sentence_cannot_support_the_requested_measurem
     assert not scope.supports("Overview: 91% [E1].\nTable 2: 22% [E3].")
 
 
+def test_table_statement_allows_exact_row_capacity_and_section_identifier(evidence):
+    evidence[2]["section_title"] = "9 Results"
+    evidence[2]["table_row"]["cells"][0]["value"] = "100-MW reference model without augmentation"
+    evidence[0]["text"] = "The 100-MW reference model has an error rate of 17%."
+    question = QUESTION.replace("reference model", "100-MW reference model")
+    scope = scope_table_answer(question, evidence)
+    assert scope.supports("Overview: 17% [E1].\nTable 2 in '9 Results': 100-MW model scored 22% [E3].")
+    assert not scope.supports("Overview: 17% [E1].\nTable 2: 200-MW model scored 22% [E3].")
+    assert not scope.supports("Overview: 17% [E1].\nTable 2: 100-kW model scored 22% [E3].")
+
+
 def test_ambiguous_abbreviation_does_not_establish_condition(evidence):
     attach_term_definitions([
         {"page_number": 1, "text": "Data augmentation (DA) and design analysis (DA)."},

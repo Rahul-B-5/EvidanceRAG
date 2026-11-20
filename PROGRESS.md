@@ -473,6 +473,17 @@ launcher, wider browser review and release validation to the previous scope.
 
 ## Continuation
 
+- Resolved the latest Qwen cross-section abstention. It returned both
+  correct measurements but included the source's capacity and numbered
+  section title in the table statement. Validation now permits exact
+  qualified identifiers from the row label and exact section titles.
+  Changed capacities and capacity units remain rejected.
+- The full Qwen 8B report run at 8,192 tokens passed all four cases with
+  separate PDF page 7 and 45 citations. Passed 156 PostgreSQL tests and
+  the exact-source Chrome workflow. The prior full browser and frontend
+  build gates remain recorded above. Repeat across models and expand
+  source-grounding evaluation before the final release audit.
+
 - Latest prose grounding milestone selects statements matching the requested
   row and metric, excludes explicitly different conditions and checks currency
   and percentage units against the focused excerpt. Regressions reject a

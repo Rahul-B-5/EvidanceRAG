@@ -129,6 +129,19 @@ class TableScope:
                         remaining = remaining[:match.start()] + " " + remaining[match.end():]
                     if matches:
                         required.discard(compact(value))
+                for source in self.sources:
+                    if source["evidence_id"] not in anchors or not source.get("table_row"):
+                        continue
+                    section = source.get("section_title", "")
+                    if section:
+                        remaining = remaining.replace(section, "")
+                    for cell in source["table_row"]["cells"]:
+                        if measurement(cell["value"]):
+                            continue
+                        # Capacities and other numeric identifiers belong to
+                        # the row label. Require the whole qualified token.
+                        for identifier in re.findall(r"\b\d+(?:\.\d+)?[-–][A-Za-z]+\b", cell["value"]):
+                            remaining = re.sub(r"(?<!\w)" + re.escape(identifier) + r"(?!\w)", "", remaining)
                 residue = STANDALONE_NUMBER.findall(remaining)
                 if required or residue:
                     return False
