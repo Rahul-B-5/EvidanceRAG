@@ -4,6 +4,7 @@ import re
 from dataclasses import dataclass
 
 from app.retrieval.keyword import search_keyword
+from research.disclosures import assess_disclosures
 
 
 @dataclass(frozen=True)
@@ -16,13 +17,13 @@ class Rule:
 
 
 RULES = (
-    Rule("Dataset identity and version", "dataset OR benchmark OR samples OR corpus",
+    Rule("Dataset identity and version", "dataset OR benchmark OR samples OR corpus OR restricted OR available",
          r"\bdataset\s+(?:version|v\.?\s*\d)|\b\d[\d,]*\s+(?:images|samples|observations|records)\b",
          r"\b(?:dataset|benchmark|corpus)\b", "Confirm the dataset name, release, access and inclusion criteria."),
     Rule("Preprocessing", "preprocessing OR normalized OR resized OR augmented",
          r"\b(?:resized|cropped)\s+(?:to\s+)?\d+\s*[×x]\s*\d+|\b(?:mean|standard deviation)\s*(?:of|=|:)\s*[\d.]",
          r"\b(?:preprocess\w*|normaliz\w*|resiz\w*|augment\w*)\b", "Recreate transformation order and distinguish train-time augmentation from evaluation preprocessing."),
-    Rule("Data splits", "split OR holdout OR cross-validation",
+    Rule("Data splits", "split OR holdout OR cross-validation OR leakage OR partition",
          r"\b\d+[- ]fold\s+cross[- ]validation\b|\b\d+\s*%\s+(?:of (?:the )?data\s+)?(?:for\s+)?(?:training|testing|validation)\b",
          r"\b(?:held[- ]out|split|cross[- ]validation)\b", "Verify split proportions, grouping, stratification and leakage controls."),
     Rule("Model implementation", "backbone OR implementation OR architecture OR parameters",
@@ -43,7 +44,7 @@ RULES = (
     Rule("Hardware and compute", "gpu OR hardware OR runtime OR compute",
          r"\b(?:RTX\s*\d{3,5}|A100|H100|V100|TPU\s*v\d+|\d+(?:\.\d+)?\s+GPU[- ]hours?)\b",
          r"\b(?:GPU|hardware|compute|runtime|TPU)\b", "Confirm accelerator count, memory, precision and elapsed training time."),
-    Rule("Code and artifacts", "github OR repository OR checkpoints OR artifacts",
+    Rule("Code and artifacts", "github OR repository OR checkpoints OR artifacts OR code OR implementation OR commit",
          r"https?://(?:www\.)?(?:github\.com|gitlab\.com|zenodo\.org)/[^\s<>]+",
          r"\b(?:repository|checkpoints?|artifacts?|code (?:is|will be) available)\b", "Verify the linked repository belongs to this study, check access and pin the release or commit."),
     Rule("Statistical uncertainty", '"confidence interval" OR "standard deviation" OR variance OR significance',
@@ -56,9 +57,9 @@ def assess_document(document_id: int, workspace_id: int | None) -> list[dict]:
     assessment = []
     for rule in RULES:
         best = None
-        for passage in search_keyword(rule.query, top_k=5, document_id=document_id, workspace_id=workspace_id):
-            if passage["document_id"] != document_id:
-                continue
+        passages = [p for p in search_keyword(rule.query, top_k=5, document_id=document_id, workspace_id=workspace_id)
+                    if p["document_id"] == document_id]
+        for passage in passages:
             text = " ".join(passage["text"].split())
             detail = re.search(rule.detail, text, re.IGNORECASE)
             match = detail or re.search(rule.mention, text, re.IGNORECASE)
@@ -73,6 +74,15 @@ def assess_document(document_id: int, workspace_id: int | None) -> list[dict]:
                 }
             if detail:
                 break
+        disclosures = assess_disclosures(rule.label, passages)
+        hits = [evidence for disclosure in disclosures for evidence in disclosure["evidence"]]
+        preferred = next((hit for hit in hits if hit["kind"] == "reported"), hits[0] if hits else None)
+        if preferred and (best is None or (preferred["kind"] == "reported" and best["status"] == "mention")):
+            best = {
+                "status": "specific_detail" if preferred["kind"] == "reported" else "mention",
+                "matched_text": preferred["match"], "excerpt": preferred["excerpt"], "source": preferred["source"],
+            }
         assessment.append({"label": rule.label, "verify": rule.verify,
+                           "disclosures": disclosures,
                            **(best or {"status": "not_located", "matched_text": None, "excerpt": None, "source": None})})
     return assessment

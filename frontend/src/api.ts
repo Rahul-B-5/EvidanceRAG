@@ -66,8 +66,11 @@ export type ReproductionDossier = {
   document_id: number;
   title: string;
   items: Array<{label: string; verify: string; status: "specific_detail" | "mention" | "not_located";
-    matched_text: string | null; excerpt: string | null; source: Provenance | null}>;
+    matched_text: string | null; excerpt: string | null; source: Provenance | null; disclosures: DisclosureCheck[]}>;
 };
+export type DisclosureEvidence = {kind: "reported" | "limitation"; match: string; excerpt: string; source: Provenance};
+export type DisclosureCheck = {label: string; status: "reported" | "limitation" | "mixed" | "not_located";
+  evidence: DisclosureEvidence[]};
 export type CoverageMap = {
   question: string; anchors: string[];
   facets: Array<{title: string; question: string; status: "multiple_papers" | "single_paper" | "not_located";

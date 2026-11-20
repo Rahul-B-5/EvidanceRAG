@@ -54,7 +54,9 @@ The application is served at `http://127.0.0.1:5173` and uses the local API at
   `PATCH/DELETE /documents/{document_id}/reader-highlights/{highlight_id}` —
   save indexed text by Unicode character offsets and manage revisioned notes.
 - `GET /documents/{document_id}/reproducibility` — scans ranked passages for
-  11 reproducibility categories. An optional `workspace_id` limits the scope.
+  24 reproducibility components in 11 categories, with source excerpts for
+  reported details and access limitations. An optional `workspace_id` limits
+  the scope.
 - `POST /research/coverage` — builds a workspace-scoped question map. It
   requires both question terms and facet terms in each passage and shows at
   most one result per paper per facet.

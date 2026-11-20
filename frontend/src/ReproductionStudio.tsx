@@ -1,35 +1,29 @@
 import { useEffect, useRef, useState } from "react";
-import { api, type Document, type ReproductionDossier, type Workspace } from "./api";
+import { api, type Document, type Provenance, type ReproductionDossier, type Workspace } from "./api";
 import { SavePassage } from "./SavedEvidence";
-
-const labels = {
-  specific_detail: "Specific wording located",
-  mention: "General mention located",
-  not_located: "Not located in reviewed passages",
-};
+import { categoryLabels, disclosureLabels, evidenceLabels, reproductionMarkdown } from "./reproductionDossier";
 
 function exportDossier(dossier: ReproductionDossier, notes: string) {
-  const clean = (text: string) => text.replace(/[<>&]/g, char => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" })[char] ?? char);
-  const sections = [
-    "# Reproduction Dossier",
-    `## ${clean(dossier.title.replace(/\s+/g, " "))}`,
-    "Targeted scan of ranked passages. Check original pages and supplementary material before reproducing the study.",
-  ];
-  for (const item of dossier.items) {
-    sections.push(`### ${item.label}`, labels[item.status]);
-    if (item.excerpt && item.source) {
-      sections.push(`> ${clean(item.excerpt)}`,
-        `Paper ${dossier.document_id} · pages ${item.source.page_start}–${item.source.page_end} · passage ${item.source.chunk_id}`);
-    }
-    sections.push(`Verify: ${item.verify}`);
-  }
-  if (notes.trim()) sections.push("## Researcher notes", clean(notes));
-  const url = URL.createObjectURL(new Blob([sections.join("\n\n") + "\n"], {type:"text/markdown;charset=utf-8"}));
+  const url = URL.createObjectURL(new Blob([reproductionMarkdown(dossier, notes)], {type:"text/markdown;charset=utf-8"}));
   const a = document.createElement("a");
   a.href = url;
   a.download = `evidencerag-reproduction-${dossier.document_id}.md`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function DisclosureQuote({excerpt, source, match}: {excerpt: string; source: Provenance; match?: string}) {
+  const pages = source.page_start === source.page_end ? `p. ${source.page_start}` : `pp. ${source.page_start}–${source.page_end}`;
+  const start = match ? excerpt.indexOf(match) : -1;
+  return <div className="finding-card">
+    <blockquote>{match && start >= 0
+      ? <>{excerpt.slice(0, start)}<mark>{match}</mark>{excerpt.slice(start + match.length)}</>
+      : excerpt}</blockquote>
+    <div className="finding-actions">
+      <a href={`#paper=${source.document_id}&page=${source.page_start}`}>Open source · {pages}</a>
+      <SavePassage id={source.chunk_id} />
+    </div>
+  </div>;
 }
 
 export function ReproductionStudio({documents, workspaces}: {documents: Document[]; workspaces: Workspace[]}) {
@@ -52,6 +46,12 @@ export function ReproductionStudio({documents, workspaces}: {documents: Document
   }, [workspace]);
 
   const scoped = workspace ? documents.filter(d => members?.includes(d.id)) : documents;
+  const checks = result?.items.flatMap(item => item.disclosures ?? []) ?? [];
+  const reported = checks.filter(check => check.status === "reported").length;
+  const limitations = checks.filter(check => check.status === "limitation" || check.status === "mixed").length;
+  const visibleItems = result?.items.filter(item => !status || item.status === status || (
+    status === "limitations" && item.disclosures.some(check => check.status === "limitation" || check.status === "mixed")
+  )) ?? [];
   async function assess() {
     if (!scoped.some(d => String(d.id) === paper)) return;
     const controller = new AbortController();
@@ -90,20 +90,29 @@ export function ReproductionStudio({documents, workspaces}: {documents: Document
         <div><h2>{result.title}</h2><p>Review the linked wording and verify details in the paper or supplement.</p></div>
         <button className="secondary" onClick={() => exportDossier(result, notes)}>Export Reproduction Dossier</button>
       </div>
+      {!!checks.length && <ul className="dossier-summary" aria-label="Components reviewed">
+        <li><strong>{reported}</strong> details reported</li>
+        <li><strong>{limitations}</strong> limitations or mixed statements</li>
+        <li><strong>{checks.length - reported - limitations}</strong> not located</li>
+      </ul>}
       <div className="comparison-filters"><label>Show <select value={status} onChange={e => setStatus(e.target.value)}>
-        <option value="">All checklist items</option>{Object.entries(labels).map(([key, value]) => <option key={key} value={key}>{value}</option>)}
+        <option value="">All checklist items</option><option value="limitations">Stated limitations or mixed statements</option>
+        {Object.entries(categoryLabels).map(([key, value]) => <option key={key} value={key}>{value}</option>)}
       </select></label></div>
-      {result.items.filter(item => !status || item.status === status).map(item => <details key={item.label} className="check-row dossier-item">
-        <summary><strong>{item.label}</strong> <span>{labels[item.status]}</span></summary>
-        {item.excerpt && item.source && <article className="finding-card">
-          <blockquote>{item.excerpt}</blockquote>
-          <div className="finding-actions">
-            <a href={`#paper=${item.source.document_id}&page=${item.source.page_start}`}>Open source · p. {item.source.page_start}</a>
-            <SavePassage id={item.source.chunk_id} />
-          </div>
-        </article>}
-        <p>{item.verify}</p>
-      </details>)}
+      {!visibleItems.length && <p className="muted">No checklist items match this filter.</p>}
+      {visibleItems.map(item => <details key={item.label} className="check-row dossier-item">
+          <summary><strong>{item.label}</strong> <span>{categoryLabels[item.status]}</span></summary>
+          {item.excerpt && item.source && !item.disclosures.some(check => check.evidence.length) &&
+            <DisclosureQuote excerpt={item.excerpt} source={item.source} />}
+          <ul className="dossier-checks">{item.disclosures.map(check => <li key={check.label}>
+            <div className="comparison-heading"><strong>{check.label}</strong><span>{disclosureLabels[check.status]}</span></div>
+            {check.evidence.map(hit => <div key={hit.kind}>
+              {check.status === "mixed" && <small>{evidenceLabels[hit.kind]}</small>}
+              <DisclosureQuote excerpt={hit.excerpt} source={hit.source} match={hit.match} />
+            </div>)}
+          </li>)}</ul>
+          <p>{item.verify}</p>
+        </details>)}
       <label className="dossier-notes">Notes for export<textarea value={notes} rows={4} maxLength={5000} onChange={e => setNotes(e.target.value)} /></label>
     </section>}
   </div>;

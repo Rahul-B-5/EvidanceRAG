@@ -24,6 +24,13 @@
 .opposing-sources {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem;margin:.7rem 0}
 .opposing-sources .finding-card {border:1px solid var(--line);border-radius:.5rem;padding:.75rem}
 @media(max-width:760px){.opposing-sources{grid-template-columns:1fr}}
+.dossier-summary {display:flex;flex-wrap:wrap;gap:.55rem;list-style:none;margin:.9rem 0;padding:0}
+.dossier-summary li {background:var(--bg);border:1px solid var(--line);border-radius:.45rem;padding:.45rem .6rem;color:var(--muted)}
+.dossier-summary strong {color:var(--text);font-variant-numeric:tabular-nums}
+.dossier-checks {display:grid;gap:.5rem;list-style:none;margin:.7rem 0;padding:0}
+.dossier-checks li {border:1px solid var(--line);border-radius:.45rem;padding:.65rem;overflow-wrap:anywhere}
+.dossier-checks .comparison-heading span,.dossier-checks small {color:var(--muted)}
+.dossier-checks mark {background:#f6d486;color:#292116;border-radius:.15em}
 .comparison-scroll {overflow:auto}
 .comparison-scroll table {border-collapse:collapse;width:100%;text-align:left}
 .comparison-scroll th,.comparison-scroll td {border:1px solid var(--line);padding:1rem;vertical-align:top;min-width:230px}

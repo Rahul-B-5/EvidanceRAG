@@ -129,18 +129,22 @@
   messages, then retry saved exactly one cited exchange. Automated tests cover
   ASGI disconnects, transaction rollback and incomplete-stream handling.
   Full gate: 91 PostgreSQL-enabled tests, 7 frontend tests and production build.
-- Comparison Studio and Evidence Atlas flag explicit opposing comparative
+- Disagreement checks pushed as `30c8ea8`. Comparison Studio and Evidence Atlas flag explicit opposing comparative
   statements only when both report the same methods and evaluation labels.
   Browser verified a real local Ollama comparison of two synthetic papers, an
   Atlas edge with two source references, a saved assessment and a two-paper
   Assistant handoff. A fallback fills literal labels for explicit source
   clauses. Full gate: 97 PostgreSQL-enabled tests, 8 frontend tests and build.
+- Reproducibility dossiers now evaluate 24 components across 11 categories.
+  Browser verified numeric disclosures, stated data and code limitations,
+  original PDF navigation and Markdown export with researcher notes on a
+  synthetic paper. Full gate: 98 PostgreSQL-enabled tests, 9 frontend tests
+  and production build.
 
 ## Outstanding
 
-1. Improve reproducibility disclosure validation, gap coverage and
-   evidence-grounded briefing templates. Evaluate disagreement detection on a
-   representative public or synthetic corpus.
+1. Improve gap coverage and evidence-grounded briefing templates. Evaluate
+   disagreement and disclosure detection on representative corpora.
 2. Expand graph exploration across workspaces and notebook sources.
 3. Extend the notebook with tags, collections and integrated annotations.
    Refine page attribution for chunks that span several pages.

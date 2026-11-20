@@ -32,6 +32,26 @@ def test_specific_disclosure_outranks_mentions_and_ignores_other_document(monkey
     assert set(calls) == {(5, 3, 11)}
 
 
+def test_disclosures_keep_missing_values_and_conflicting_availability_separate(monkeypatch):
+    source = {"document_id":3, "page_start":2, "page_end":2}
+    monkeypatch.setattr("research.reproducibility.search_keyword", lambda *args, **kwargs: [
+        {**source, "chunk_id":1, "text":"The learning rate was 3e-4. The code is available only upon request."},
+        {**source, "chunk_id":2, "text":"The code is publicly available at https://github.com/org/research. The commit SHA was not specified."},
+        {**source, "document_id":4, "chunk_id":3, "text":"The batch size was 32."},
+    ])
+    assessment = assess_document(3, None)
+    checks = {check["label"]: check for item in assessment for check in item["disclosures"]}
+    assert checks["Learning rate"]["evidence"][0]["match"] == "learning rate was 3e-4"
+    assert checks["Batch size"]["status"] == checks["Version pin"]["status"] == "not_located"
+    assert checks["Repository locator"]["evidence"][0]["match"] == "https://github.com/org/research"
+    availability = checks["Code availability"]
+    assert availability["status"] == "mixed"
+    assert {hit["kind"]: hit["source"]["chunk_id"] for hit in availability["evidence"]} == {
+        "reported": 2, "limitation": 1,
+    }
+    assert availability["evidence"][0]["excerpt"] == "The code is available only upon request."
+
+
 @pytest.mark.skipif(os.getenv("EVIDENCERAG_INTEGRATION") != "1", reason="Requires PostgreSQL")
 def test_dossier_checks_workspace_and_returns_source_indexed_detail(monkeypatch):
     with get_connection() as conn, conn.transaction(force_rollback=True):
@@ -54,5 +74,6 @@ def test_dossier_checks_workspace_and_returns_source_indexed_detail(monkeypatch)
         assert response.status_code == 200
         items = {item["label"]: item for item in response.json()["items"]}
         assert items["Random seeds"]["source"]["chunk_id"] == chunk
+        assert items["Random seeds"]["disclosures"][0]["evidence"][0]["source"]["chunk_id"] == chunk
         assert items["Hardware and compute"]["matched_text"] == "A100"
         assert items["Code and artifacts"]["status"] == "not_located"
