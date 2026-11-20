@@ -51,6 +51,14 @@ def test_skips_empty_passages():
     assert "[E2]" not in context
 
 
+def test_carries_pdf_outline_without_modifying_the_source_excerpt():
+    result = {**make_result(), "section_title": "Executive Summary"}
+    context, evidence = build_evidence_context([result])
+    assert "PDF outline: Executive Summary" in context
+    assert evidence[0]["section_title"] == "Executive Summary"
+    assert evidence[0]["text"] == result["text"]
+
+
 def test_truncates_long_passages():
     long_text = "x" * 100
     _, evidence = build_evidence_context(

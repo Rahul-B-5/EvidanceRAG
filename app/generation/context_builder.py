@@ -32,6 +32,8 @@ def build_evidence_context(
             "text": passage,
             "rrf_score": result.get("rrf_score"),
         }
+        if result.get("section_title"):
+            item["section_title"] = result["section_title"]
         evidence.append(item)
 
         page_start = item["page_start"]
@@ -41,12 +43,14 @@ def build_evidence_context(
             if page_start == page_end
             else f"{page_start}-{page_end}"
         )
+        section = f"PDF outline: {item['section_title']}\n" if "section_title" in item else ""
 
         context_blocks.append(
             f"[{evidence_id}]\n"
             f"Source: {item['title']}\n"
             f"Filename: {item['filename'] or 'Unknown'}\n"
             f"Pages: {page_label}\n"
+            f"{section}"
             f"Passage:\n{passage}"
         )
 

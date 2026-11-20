@@ -50,6 +50,7 @@ export function AnnotatedPassage({passage, page, highlights, onHighlight}: {
   }
 
   return <article><small>{pageLabel(passage.page_start, passage.page_end)} · Passage {passage.chunk_id}</small>
+    {passage.section_title && <small>{passage.section_title}</small>}
     <p tabIndex={0} onMouseUp={e => capture(e.currentTarget)} onKeyUp={e => capture(e.currentTarget)}
       onTouchEnd={e => capture(e.currentTarget)}>
       {intervals.map(({start, end}) => {

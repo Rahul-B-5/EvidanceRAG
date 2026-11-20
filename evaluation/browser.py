@@ -21,6 +21,7 @@ def fixture_pdf(path: Path, title: str = "EvidenceRAG browser fixture", sample_s
         page = document.new_page()
         page.insert_text((54, 54), f"The held-out sample size was {sample_size} observations.")
         page.insert_text((54, 72), "StarlingNet F1 score was 87% on OrchardBench.")
+        document.set_toc([[1, "Calibration results", 2]])
         document.save(path)
 
 

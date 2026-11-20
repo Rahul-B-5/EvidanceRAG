@@ -42,6 +42,7 @@ def prepare_schema(conn: Connection, schema: str) -> None:
     conn.execute(sql.SQL("SET LOCAL search_path TO {}, public").format(sql.Identifier(schema)))
     conn.execute(BASE_SCHEMA.read_text(encoding="utf-8"), prepare=False)
     assert_isolated(conn, schema)
+    apply_migrations_in_transaction(conn)
 
 
 @contextmanager
@@ -50,7 +51,6 @@ def isolated_database() -> Iterator[tuple[str, str]]:
     schema = fresh_schema()
     with get_connection() as conn:
         prepare_schema(conn, schema)
-        apply_migrations_in_transaction(conn)
         assert_isolated(conn, schema, BROWSER_TABLES)
     try:
         yield schema, make_conninfo(get_settings().database_url, options=f"-c search_path={schema},public")

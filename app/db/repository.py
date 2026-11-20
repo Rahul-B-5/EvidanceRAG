@@ -102,6 +102,7 @@ def insert_chunks(
                 chunk["text"],
                 chunk["page_start"],
                 chunk["page_end"],
+                chunk.get("section_title"),
                 embedding,
                 settings.embedding_model,
                 settings.embedding_dimensions,
@@ -118,11 +119,12 @@ def insert_chunks(
                 text,
                 page_start,
                 page_end,
+                section_title,
                 embedding,
                 embedding_model,
                 embedding_dimensions
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
         rows,
     )

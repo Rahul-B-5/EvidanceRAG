@@ -19,6 +19,7 @@ def test_captioned_table_preserves_column_relationships_on_its_page(tmp_path):
         ):
             page.insert_text((60, y), metric)
             page.insert_text((186, y), score)
+        pdf.set_toc([[1, "Introduction", 1], [1, "Results", 2]])
         pdf.save(file)
 
     pages = extract_pdf(file)
@@ -27,5 +28,6 @@ def test_captioned_table_preserves_column_relationships_on_its_page(tmp_path):
     rows = [chunk["text"] for chunk in chunks if chunk["text"].startswith("Reconstructed table row: ")]
     assert len(rows) == 2
     assert "Metric = Precision | Score = 0.84" in rows[0] and "0.72" not in rows[0]
+    assert all(chunk["section_title"] == "Results" for chunk in chunks if chunk["page_start"] == 2)
     assert all(chunk["page_start"] == chunk["page_end"] == 2 for chunk in chunks if "Score =" in chunk["text"])
     assert all("Score =" not in chunk["text"] for chunk in chunks if chunk["page_start"] == 1)

@@ -184,7 +184,7 @@ export function Conversations({documents, initial}: {documents: Document[]; init
       <div className="assistant-turns">{conversation.messages.map(m => <article className={`assistant-turn ${m.role === "user" ? "user" : "assistant"}`} key={m.id}><h3>{m.role === "user" ? "You" : "EvidenceRAG"}</h3><p>{m.content}</p>
         {m.citations.map(c => <div className="citation-row" key={c.evidence_id}>
           {documents.some(d => d.id === c.document_id)
-            ? <><a href={`#paper=${c.document_id}&page=${c.page_start}${conversation.workspace_id ? `&workspace=${conversation.workspace_id}` : ""}`}>[{c.evidence_id}] {c.title} · {pageLabel(c.page_start, c.page_end)}</a><SavePassage id={c.chunk_id} /></>
+            ? <><a href={`#paper=${c.document_id}&page=${c.page_start}${conversation.workspace_id ? `&workspace=${conversation.workspace_id}` : ""}`}>[{c.evidence_id}] {c.title} · {pageLabel(c.page_start, c.page_end)}{c.section_title && ` · ${c.section_title}`}</a><SavePassage id={c.chunk_id} /></>
             : <span>[{c.evidence_id}] {c.title} · {pageLabel(c.page_start, c.page_end)} (source unavailable)</span>}
         </div>)}
       </article>)}</div>

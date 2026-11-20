@@ -9,7 +9,7 @@ export type ReadingProgress = {reading_status: ReadingStatus; last_read_page: nu
 export type ReadingUpdate = {page: number} | {status: ReadingStatus};
 export type Document = DocumentMetadata & ReadingProgress & {id: number; filename: string; page_count: number | null;
   chunk_count: number; processing_status: string; has_stored_source: boolean; created_at: string};
-export type Passage = {chunk_id: number; page_start: number; page_end: number; text: string};
+export type Passage = {chunk_id: number; page_start: number; page_end: number; text: string; section_title?: string};
 export type RelatedPaper = {document_id: number; title: string; claim_id: string; origin_claim_id: string;
   dataset: string; metric: string; source: Pick<Passage, "page_start" | "page_end">;
   origin_source: Pick<Passage, "page_start" | "page_end">};
@@ -36,7 +36,7 @@ export type RuntimeSettings = {
 };
 export type SavedPassage = {chunk_id: number; document_id: number; title: string; page_start: number; page_end: number; passage: string; note: string; tags: string[]; source_exists: boolean};
 export type NotebookHighlight = {id: string; document_id: number; title: string; page: number; quote: string; note: string; anchor_current: boolean};
-export type Evidence = { evidence_id: string; chunk_id: number; document_id: number; title: string; page_start: number; page_end: number; text: string };
+export type Evidence = { evidence_id: string; chunk_id: number; document_id: number; title: string; page_start: number; page_end: number; text: string; section_title?: string };
 export type Workspace = { id: number; name: string; description: string | null; document_count: number };
 export type Collection = {id: number; name: string; workspace_id: number | null; document_count: number};
 export type Conversation = {id: number; title: string; document_id: number | null; document_ids: number[] | null;

@@ -353,13 +353,14 @@ def document_passages(
         if conn.execute("SELECT 1 FROM documents WHERE id = %s", (document_id,)).fetchone() is None:
             raise HTTPException(status_code=404, detail="Document not found.")
         rows = conn.execute(
-            """SELECT id, page_start, page_end, text FROM chunks
+            """SELECT id, page_start, page_end, text, section_title FROM chunks
                WHERE document_id = %s AND page_start <= %s AND page_end >= %s
                ORDER BY chunk_index LIMIT 25""",
             (document_id, page, page),
         ).fetchall()
     return {"passages": [
-        {"chunk_id": r[0], "page_start": r[1], "page_end": r[2], "text": r[3]} for r in rows
+        {"chunk_id": r[0], "page_start": r[1], "page_end": r[2], "text": r[3],
+         **({"section_title": r[4]} if r[4] else {})} for r in rows
     ]}
 
 

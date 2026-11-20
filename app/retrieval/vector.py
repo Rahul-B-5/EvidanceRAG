@@ -48,7 +48,8 @@ def search_vector(
             c.text,
             c.page_start,
             c.page_end,
-            1 - (c.embedding <=> %s::vector) AS similarity
+            1 - (c.embedding <=> %s::vector) AS similarity,
+            c.section_title
         FROM chunks AS c
         JOIN documents AS d ON d.id = c.document_id
         WHERE c.embedding IS NOT NULL
@@ -93,6 +94,7 @@ def search_vector(
             "page_start": row[6],
             "page_end": row[7],
             "similarity": float(row[8]),
+            "section_title": row[9],
         }
         for row in rows
     ]

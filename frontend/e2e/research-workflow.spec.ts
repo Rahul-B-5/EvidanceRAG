@@ -117,6 +117,7 @@ test("import, inspect, save, answer and export a real PDF", async ({page, reques
   await page.getByRole("textbox", {name:"Question"}).fill("What is the held-out sample size?");
   await page.getByRole("button", {name:"Send question"}).click();
   const citation = page.getByRole("link", {name:/\[E1\].*page 2/i});
+  await expect(citation).toContainText("Calibration results");
   await expect(citation).toBeVisible();
   await expect(page.getByText("The held-out sample contains 37 observations [E1].", {exact:true})).toBeVisible();
   await capture(page, "assistant");

@@ -59,7 +59,8 @@ def check_answer(payload: dict, facts: dict[str, tuple[int, ...]], excludes: tup
         "abstention": payload["abstained"] == (not facts),
         "source_anchors": all(
             tag in evidence and item["document_id"] == paper and
-            all(item[key] == evidence[tag][key] for key in ("chunk_id", "page_start", "page_end"))
+            all(item.get(key) == evidence[tag].get(key)
+                for key in ("chunk_id", "page_start", "page_end", "section_title"))
             for tag, item in citations.items()
         ),
         "cited_facts": all(
@@ -112,6 +113,7 @@ def evaluate_pdf(path: Path, *, retrieval_only: bool = False) -> dict:
                 checks.update(check_answer(data, facts, excludes, paper))
             results.append({"case": name, "passed": all(checks.values()), "checks": checks,
                             "retrieved_pages": sorted({item["page_start"] for item in data["evidence"]}),
+                            "citations": data.get("citations", []),
                             "answer": data.get("answer")})
         return {"source": REPORT_URL, "source_identical": sha256(original.content).hexdigest() == REPORT_SHA256,
                 "pages": details["page_count"], "passages": details["chunk_count"], "top_k": TOP_K, "cases": results}

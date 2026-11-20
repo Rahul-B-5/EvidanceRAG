@@ -20,6 +20,9 @@ def chunk_pages(
     chunks = []
     for page in sorted(pages, key=lambda item: int(item["page_number"])):
         page_number = int(page["page_number"])
+        anchor: dict[str, int | str] = {"page_start": page_number, "page_end": page_number}
+        if "section_title" in page:
+            anchor["section_title"] = page["section_title"]
         text = str(page["text"]).strip()
         start = 0
         while start < len(text):
@@ -37,8 +40,7 @@ def chunk_pages(
                 chunks.append({
                     "chunk_index": len(chunks),
                     "text": chunk_text,
-                    "page_start": page_number,
-                    "page_end": page_number,
+                    **anchor,
                 })
             if end == len(text):
                 break
@@ -56,8 +58,7 @@ def chunk_pages(
                 chunks.append({
                     "chunk_index": len(chunks),
                     "text": row_text,
-                    "page_start": page_number,
-                    "page_end": page_number,
+                    **anchor,
                 })
 
     return chunks

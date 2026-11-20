@@ -14,6 +14,7 @@ class ExtractedPage(TypedDict):
     page_number: int
     text: str
     table_rows: NotRequired[list[str]]
+    section_title: NotRequired[str]
 
 
 def captioned_rows(page: pymupdf.Page) -> list[str]:
@@ -81,9 +82,23 @@ def extract_pdf(pdf_path: str | Path) -> list[ExtractedPage]:
             if document.is_encrypted:
                 raise ValueError("Encrypted PDFs are not supported.")
 
+            sections: dict[int, list[str]] = {}
+            try:
+                for level, title, destination in document.get_toc():
+                    clean = " ".join(title.replace("\x00", "").split())[:240]
+                    if level == 1 and 1 <= destination <= len(document) and clean:
+                        sections.setdefault(destination, []).append(clean)
+            except (ValueError, RuntimeError):
+                sections.clear()
+            current_section = None
             for page_number, page in enumerate(document, start=1):
                 text = page.get_text("text").strip()
                 extracted: ExtractedPage = {"page_number": page_number, "text": text}
+                change = sections.get(page_number)
+                if change:
+                    current_section = change[-1]
+                if current_section and (not change or len(change) == 1):
+                    extracted["section_title"] = current_section
                 if TABLE_CAPTION.search(text):
                     try:
                         rows = captioned_rows(page)

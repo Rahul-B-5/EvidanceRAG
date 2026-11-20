@@ -37,8 +37,9 @@ Rules:
 9. Do not claim that you verified something unless the evidence supports it.
 10. For table questions, match the named table, row conditions, and column
     before using a value. A result from a setup with an extra component
-    cannot answer a question about the setup without it. If asked to compare
-    named sections, cite a separate passage for each reported value. State
+    cannot answer a question about the setup without it. Use section_title
+    to identify the PDF outline section. If asked to compare named sections,
+    cite a separate passage for each reported value. State
     discrepancies and cite a source for any explanation of their cause.
 
 Return only a JSON object with these keys:
@@ -80,7 +81,8 @@ def generate_answer(
         "question": query,
         "prior_turns": [{"role": m["role"], "content": m["content"][:1500]} for m in (history or [])[-6:]],
         "evidence": [
-            {key: item[key] for key in ("evidence_id", "title", "page_start", "page_end", "text")}
+            {key: item[key] for key in ("evidence_id", "title", "page_start", "page_end", "section_title", "text")
+             if key in item}
             for item in evidence
         ],
     }
@@ -149,6 +151,8 @@ def generate_answer(
             "chunk_id": evidence_by_id[evidence_id]["chunk_id"],
             "document_id": evidence_by_id[evidence_id]["document_id"],
             "title": evidence_by_id[evidence_id]["title"],
+            **({"section_title": evidence_by_id[evidence_id]["section_title"]}
+               if "section_title" in evidence_by_id[evidence_id] else {}),
             "page_start": evidence_by_id[evidence_id]["page_start"],
             "page_end": evidence_by_id[evidence_id]["page_end"],
         }

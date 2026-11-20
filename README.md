@@ -284,6 +284,9 @@ Existing passages retain their recorded page ranges and identifiers.
 New imports also index complete rows from captioned, ruled tables when their
 columns can be recovered. These passages include the original caption and
 column names and link to the physical PDF page.
+When a PDF provides a top-level outline, new passages retain that section
+label in Reader and Assistant citations. The physical page remains the link
+target. Older passages continue to use their stored page ranges.
 
 Reader remembers the last page of each paper. Open a paper from Library to
 resume there, or follow a citation to open its specific page. Library can
