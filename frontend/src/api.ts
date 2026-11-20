@@ -45,6 +45,12 @@ export type Counterevidence = {
   passages: CandidatePassage[];
   reviews: ClaimReview[];
 };
+export type ReproductionDossier = {
+  document_id: number;
+  title: string;
+  items: Array<{label: string; verify: string; status: "specific_detail" | "mention" | "not_located";
+    matched_text: string | null; excerpt: string | null; source: Provenance | null}>;
+};
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, init);
@@ -89,6 +95,8 @@ export const api = {
   documents: () => request<{ documents: Document[] }>("/documents"),
   document: (id: number) => request<Document>(`/documents/${id}`),
   passages: (id: number, page: number, signal?: AbortSignal) => request<{passages: Passage[]}>(`/documents/${id}/passages?page=${page}`, {signal}),
+  reproduction: (id: string, workspaceId: string, signal?: AbortSignal) => request<ReproductionDossier>(
+    `/documents/${id}/reproducibility${workspaceId ? `?workspace_id=${workspaceId}` : ""}`, {signal}),
   upload: (file: File) => { const data = new FormData(); data.append("file", file); return request<{ document_id: number; status: string }>("/documents", { method: "POST", body: data }); },
   remove: (id: number) => request<void>(`/documents/${id}`, { method: "DELETE" }),
   search: (query: string, documentId?: number, workspaceId?: number) => request<{ evidence: Evidence[]; evidence_count: number }>(`/search?${new URLSearchParams({ query, ...(documentId ? { document_id: String(documentId) } : {}), ...(workspaceId ? {workspace_id: String(workspaceId)} : {}) })}`),

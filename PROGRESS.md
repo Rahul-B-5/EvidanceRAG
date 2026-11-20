@@ -62,12 +62,19 @@
   of experiment alignment, a note, and source snapshots. Browser verified form
   controls. PostgreSQL verified save, edit, canonical snapshots and scope
   revocation. Full suite still passes (74).
+- Claim assessments pushed as `979bf3f` and confirmed on `origin/main`.
+  Reproducibility Studio checks 11 categories for each scoped paper, separates
+  specific wording from general mentions and items not located, and exports
+  source-linked Markdown with practical verification steps and draft notes.
+  Browser verified real-paper analysis, filter, source link and Markdown
+  download. Integration tests verify reported values and workspace rejection.
+  Full gate: 76 PostgreSQL-enabled tests and production build.
 
 ## Outstanding
 
-1. Expand reproducibility analysis to distinguish explicit reported details
-   from keyword mentions. Produce a provenance-linked Reproduction Dossier
-   with missing details and manual verification steps.
+1. Build a Research Question Coverage Map. Decompose the question into bounded
+   topic facets, retrieve evidence on each within the selected workspace,
+   and distinguish retrieved coverage from unanswered subquestions.
 2. Add contradiction candidates only for aligned study conditions and opposing
    claims with two citable sources. Add reproducibility disclosure validation,
    corpus-scoped gap exploration and evidence-grounded research briefings.

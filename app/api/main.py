@@ -35,6 +35,7 @@ from research.structured import structured_comparison
 from research.atlas import atlas_for_workspace
 from research.counterevidence import find_passages
 from research.claim_reviews import read_reviews, write_review
+from research.reproducibility import assess_document
 from typing import Annotated, Literal
 
 
@@ -516,6 +517,19 @@ def save_claim_review(
     if review is None:
         raise HTTPException(status_code=409, detail="Workspace membership changed. Reload before reviewing.")
     return review
+
+
+@app.get("/documents/{document_id}/reproducibility")
+def reproducibility_dossier(
+    document_id: Annotated[int, ApiPath(gt=0, le=9223372036854775807)],
+    workspace_id: int | None = Query(default=None, gt=0, le=9223372036854775807),
+) -> dict:
+    validate_workspace_scope(workspace_id, [document_id])
+    with get_connection() as conn:
+        row = conn.execute("SELECT title FROM documents WHERE id=%s", (document_id,)).fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Document not found.")
+    return {"document_id": document_id, "title": row[0], "items": assess_document(document_id, workspace_id)}
 
 
 @app.delete("/workspaces/{workspace_id}/documents/{document_id}", status_code=204)

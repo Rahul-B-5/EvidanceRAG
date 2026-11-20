@@ -11,7 +11,7 @@ delivery status live in [PROGRESS.md](PROGRESS.md).
 | Comparison | Matrix, source preview, evidence saving, durable partial results and condition checks | More experimental fields, confidence and support checks, representative corpus evaluation |
 | Evidence Atlas | Browse persisted workspace graphs with paper, excerpt, topic, metric and dataset edges and source provenance | Durable reviewed claims, opposing-claim edges, alternative layouts and larger-library testing |
 | Disagreement | Surface differing or missing conditions, retrieve scoped candidate passages, and persist reviewer judgments with evidence | Model-suggested opposing propositions with protocol-sensitive checks and false-positive evaluation |
-| Reproduction | Find source mentions for five checklist items | Distinguish complete disclosures from mentions, extend fields and export a reproduction dossier |
+| Reproduction | Assess 11 categories with specific wording, general mentions, missing-in-sample labels and Markdown dossier | Validate whether matched details are sufficient to reproduce the selected experiment |
 | Research directions | Surface explicit follow-up wording in selected limitations | Corpus coverage analysis, hypothesis and experiment plan, broader verification status |
 | Deliverables | Saved notes, Markdown notebook export, extractive comparison briefing | Editable research drafts and evidence packets with JSON, HTML and BibTeX where appropriate |
 | Everyday UX | Themes, keyboard palette, split reader, table views | Flagship visual review at desktop and narrow widths, accessibility and browser interaction regressions |

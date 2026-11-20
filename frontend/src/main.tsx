@@ -7,6 +7,7 @@ import { Reader } from "./Reader";
 import { SavedEvidence } from "./SavedEvidence";
 import type { FindingQuestion } from "./ComparisonStudio";
 import { EvidenceAtlas } from "./EvidenceAtlas";
+import { ReproductionStudio } from "./ReproductionStudio";
 import "./styles.css";
 
 const views = [
@@ -17,6 +18,7 @@ const views = [
   ["research", "Evidence & compare", "⌕"],
   ["compare", "Comparison studio", "▥"],
   ["atlas", "Evidence Atlas", "⌘"],
+  ["reproduction", "Reproducibility", "▧"],
   ["saved", "Saved evidence", "◇"],
   ["workspaces", "Workspaces", "⊞"],
 ] as const;
@@ -148,6 +150,7 @@ function App() {
     : <section className="panel empty"><h2>Select a paper to read</h2><button onClick={() => navigate("library")}>Open library</button></section>;
   else if (view === "assistant") content = <Conversations documents={documents} initial={findingQuestion} />;
   else if (view === "atlas") content = <EvidenceAtlas compare={() => navigate("compare")} ask={askFinding} />;
+  else if (view === "reproduction") content = <ReproductionStudio documents={documents} workspaces={workspaces} />;
   else if (view === "compare") content = null;
   else if (view === "saved") content = <SavedEvidence />;
   else if (view === "research" || view === "workspaces") content = <WorkspaceArea key={view} documents={documents} manage={view === "workspaces"} />;
