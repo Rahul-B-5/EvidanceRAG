@@ -452,6 +452,25 @@ launcher, wider browser review and release validation to the previous scope.
   in both contexts. Test retrieval packing or an explicit context setting
   before redesigning the response shape again.
 
+## Local Ollama context setting
+
+- Added optional per-profile context sizes under Settings → AI Providers →
+  Advanced connection. A selected size uses the native loopback Ollama
+  transport, and a blank field uses the existing server default. Migration
+  `020_ollama_context_tokens` adds a nullable column and leaves existing
+  profiles in place.
+- Chrome rejected an invalid size, persisted 8,192 tokens, and exercised
+  the native transport against both installed Gemma and Qwen models.
+  The full gate passed 152 PostgreSQL tests, 10 frontend tests, six Chrome
+  workflows and the production build. The live database still contains
+  3 papers and 75 passages on port 5433 after the additive migration.
+- The native probe and the implemented provider both passed three of four
+  live NREL cases with Qwen at 8,192 tokens. The two numeric cases now
+  return cited answers, and the missing quote still produces abstention.
+  The cross-section case still abstains, including when the prompt fits.
+  Its remaining accuracy work is to bind the prose measurement to the
+  requested metric and condition and preserve the two source citations.
+
 ## Continuation
 
 - Product decisions are in [PRODUCT_STRATEGY.md](PRODUCT_STRATEGY.md). The journey

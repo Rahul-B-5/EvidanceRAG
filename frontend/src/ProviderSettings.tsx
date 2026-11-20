@@ -43,6 +43,7 @@ function ProfileForm({purpose, initial, onSave}: {
   const [provider, setProvider] = useState<ProviderKind>(initial?.provider ?? "ollama");
   const [model, setModel] = useState(initial?.model ?? "");
   const [endpoint, setEndpoint] = useState(initial?.endpoint ?? "");
+  const [contextTokens, setContextTokens] = useState(initial?.ollama_context_tokens?.toString() ?? "");
   const [key, setKey] = useState("");
   const [models, setModels] = useState<string[]>();
   const [connecting, setConnecting] = useState(false);
@@ -69,8 +70,15 @@ function ProfileForm({purpose, initial, onSave}: {
   }, [provider, endpoint, retry]);
 
   async function submit(test: boolean) {
+    const contextSize = provider === "ollama" && contextTokens ? Number(contextTokens) : null;
+    if (contextSize !== null && (!Number.isInteger(contextSize) || contextSize < 2048 || contextSize > 65536)) {
+      setStatus("");setError("Enter a context size from 2,048 to 65,536 tokens.");
+      return;
+    }
     setBusy(true);setError("");setStatus("");
-    const draft = {provider, model:model.trim(), endpoint, revision:saved?.revision ?? 0, ...(key ? {api_key:key} : {})};
+    const draft = {provider, model:model.trim(), endpoint, revision:saved?.revision ?? 0,
+      ollama_context_tokens: contextSize,
+      ...(key ? {api_key:key} : {})};
     try {
       if (test) {
         await api.testProviderProfile(purpose, draft);
@@ -90,7 +98,7 @@ function ProfileForm({purpose, initial, onSave}: {
       purpose === "extraction" ? "Uses the answering provider until an extraction model is saved." : "Choose a provider to override the server default."}</p>
     <div className="research-controls">
       <label>Provider<select disabled={busy} value={provider} onChange={e => {
-        setProvider(e.target.value as ProviderKind);setModel("");setEndpoint("");setModels(undefined);
+        setProvider(e.target.value as ProviderKind);setModel("");setEndpoint("");setContextTokens("");setModels(undefined);
         setConnectionError("");setKey("");setStatus("");setError("");
       }}>{Object.entries(names).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
       <label>Model identifier<input required disabled={busy} list={provider === "ollama" ? "installed-ollama-models" : undefined}
@@ -105,6 +113,10 @@ function ProfileForm({purpose, initial, onSave}: {
       <details><summary>Advanced connection</summary>
         <label>Ollama endpoint<input disabled={busy} value={endpoint} placeholder="http://127.0.0.1:11434"
           onChange={e => setEndpoint(e.target.value)} /></label>
+        <label>Context size in tokens<input type="number" min={2048} max={65536} step={1}
+          disabled={busy} placeholder="Ollama default" value={contextTokens} aria-describedby="ollama-context-help"
+          onChange={e => setContextTokens(e.target.value)} /></label>
+        <p id="ollama-context-help" className="muted">A larger context fits more evidence and uses more memory. Leave blank to use Ollama's default.</p>
       </details>
     </>}
     {provider === "openai-compatible" && <label>Endpoint<input required disabled={busy} value={endpoint}

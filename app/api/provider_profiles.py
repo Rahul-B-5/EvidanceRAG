@@ -44,6 +44,7 @@ class ProfileEdit(BaseModel):
     api_key: SecretStr | None = Field(default=None, max_length=4096)
     revision: int = Field(default=0, ge=0)
     clear_key: bool = False
+    ollama_context_tokens: int | None = Field(default=None, ge=2048, le=65536)
 
 
 class OllamaEndpoint(BaseModel):
@@ -90,13 +91,15 @@ def normalized_endpoint(provider: str, endpoint: str) -> str:
 def public_profile(profile: dict | None) -> dict | None:
     if profile is None:
         return None
-    return {key: profile[key] for key in ("provider", "model", "endpoint", "revision")} | {
+    return {key: profile[key] for key in ("provider", "model", "endpoint", "revision", "ollama_context_tokens")} | {
         "has_key": bool(profile["credential"]),
     }
 
 
 def draft_profile(edit: ProfileEdit, previous: dict | None, *, create_key: bool) -> dict:
     endpoint = normalized_endpoint(edit.provider, edit.endpoint)
+    if edit.provider != "ollama" and edit.ollama_context_tokens is not None:
+        raise HTTPException(422, "A local context size can only be set for Ollama.")
     key = edit.api_key.get_secret_value().strip() if edit.api_key else ""
     credential = None
     if key and not edit.clear_key:
@@ -107,7 +110,8 @@ def draft_profile(edit: ProfileEdit, previous: dict | None, *, create_key: bool)
         credential = previous["credential"]
     if edit.provider in {"openai", "anthropic", "gemini"} and not (credential or (key and not edit.clear_key)):
         raise HTTPException(422, "Enter an API key for this provider.")
-    return {"provider": edit.provider, "model": edit.model, "endpoint": endpoint, "credential": credential}
+    return {"provider": edit.provider, "model": edit.model, "endpoint": endpoint,
+            "credential": credential, "ollama_context_tokens": edit.ollama_context_tokens}
 
 
 @router.get("")
@@ -130,11 +134,14 @@ def save_profile(purpose: Purpose, edit: ProfileEdit, request: Request) -> dict:
         except RuntimeError as error:
             raise HTTPException(503, str(error)) from None
         revision = conn.execute("""
-            INSERT INTO generation_profiles (purpose,provider,model,endpoint,credential) VALUES (%s,%s,%s,%s,%s)
+            INSERT INTO generation_profiles (purpose,provider,model,endpoint,credential,ollama_context_tokens)
+            VALUES (%s,%s,%s,%s,%s,%s)
             ON CONFLICT (purpose) DO UPDATE SET provider=EXCLUDED.provider, model=EXCLUDED.model,
-                endpoint=EXCLUDED.endpoint, credential=EXCLUDED.credential, revision=generation_profiles.revision+1
+                endpoint=EXCLUDED.endpoint, credential=EXCLUDED.credential,
+                ollama_context_tokens=EXCLUDED.ollama_context_tokens, revision=generation_profiles.revision+1
             RETURNING revision
-        """, (purpose, profile["provider"], profile["model"], profile["endpoint"], profile["credential"])).fetchone()[0]
+        """, (purpose, profile["provider"], profile["model"], profile["endpoint"], profile["credential"],
+              profile["ollama_context_tokens"])).fetchone()[0]
     return public_profile({**profile, "revision": revision})
 
 

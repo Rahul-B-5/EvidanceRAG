@@ -60,6 +60,7 @@ def profile_settings(defaults: Settings, profile: dict) -> Settings:
         "generation_api_key": credential,
         "gemini_model": profile["model"],
         "gemini_api_key": credential,
+        "ollama_context_tokens": profile.get("ollama_context_tokens"),
     })
 
 

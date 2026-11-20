@@ -157,6 +157,55 @@ class ChatCompletionsProvider:
         return content
 
 
+class OllamaContextProvider:
+    def __init__(self, *, base_url: str, model: str, timeout: float, context_tokens: int,
+                 reasoning_effort: str, transport: httpx.BaseTransport | None = None):
+        endpoint = base_url.rstrip("/")
+        try:
+            url = urlsplit(endpoint)
+            if (url.hostname not in {"127.0.0.1", "localhost", "::1"} or url.scheme not in {"http", "https"}
+                    or url.path not in {"", "/v1"} or url.username or url.password or url.query or url.fragment):
+                raise ValueError
+            _ = url.port
+        except ValueError:
+            raise RuntimeError("A custom Ollama context requires a loopback Ollama URL.") from None
+        self.endpoint = endpoint.removesuffix("/v1") + "/api/chat"
+        self.model = model
+        self.timeout = timeout
+        self.context_tokens = context_tokens
+        self.reasoning_effort = reasoning_effort
+        self.transport = transport
+
+    def generate_json(self, *, prompt: str, system_instruction: str, schema: dict | None = None) -> str:
+        payload = {
+            "model": self.model, "stream": False, "format": schema if schema is not None else "json",
+            "messages": [{"role": "system", "content": system_instruction}, {"role": "user", "content": prompt}],
+            "options": {"num_ctx": self.context_tokens, "temperature": 0.1},
+        }
+        if self.reasoning_effort:
+            payload["think"] = False if self.reasoning_effort == "none" else self.reasoning_effort
+        try:
+            with httpx.Client(timeout=httpx.Timeout(self.timeout, connect=min(10, self.timeout)),
+                              transport=self.transport, follow_redirects=False, trust_env=False) as client:
+                response = client.post(self.endpoint, json=payload)
+                response.raise_for_status()
+                data = response.json()
+                content = data["message"]["content"]
+        except httpx.TimeoutException:
+            raise RuntimeError("Ollama timed out. Check the context size and available memory.") from None
+        except httpx.HTTPStatusError as error:
+            if error.response.status_code == 404:
+                raise RuntimeError("The Ollama model or native API route was not found.") from None
+            raise RuntimeError("Ollama rejected the chat request. Check the model and context size.") from None
+        except httpx.HTTPError:
+            raise RuntimeError("Cannot reach Ollama. Check its local endpoint.") from None
+        except (KeyError, TypeError, ValueError):
+            raise RuntimeError("Ollama returned an invalid response.") from None
+        if not isinstance(content, str) or not content.strip():
+            raise RuntimeError("Ollama returned an empty response.")
+        return content
+
+
 def get_generation_provider(settings: Settings) -> GenerationProvider:
     """Build the configured provider without exposing credentials in errors."""
     provider = settings.generation_provider.strip().lower()
@@ -172,8 +221,14 @@ def get_generation_provider(settings: Settings) -> GenerationProvider:
         default_urls = {"ollama": "http://127.0.0.1:11434/v1", "openai": "https://api.openai.com/v1"}
         if provider == "openai" and not settings.generation_api_key.strip():
             raise RuntimeError("Set GENERATION_API_KEY for OpenAI.")
+        base_url = settings.generation_base_url or default_urls.get(provider, "")
+        if provider == "ollama" and settings.ollama_context_tokens is not None:
+            return OllamaContextProvider(
+                base_url=base_url, model=settings.generation_model.strip(), timeout=settings.generation_timeout_seconds,
+                context_tokens=settings.ollama_context_tokens, reasoning_effort=settings.ollama_reasoning_effort,
+            )
         return ChatCompletionsProvider(
-            base_url=settings.generation_base_url or default_urls.get(provider, ""),
+            base_url=base_url,
             model=settings.generation_model.strip(), api_key=settings.generation_api_key.strip(),
             timeout=settings.generation_timeout_seconds,
             reasoning_effort=settings.ollama_reasoning_effort if provider == "ollama" else "",

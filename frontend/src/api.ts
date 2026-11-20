@@ -300,6 +300,6 @@ export const api = {
 
 export type ProviderKind = "ollama" | "openai" | "anthropic" | "gemini" | "openai-compatible";
 export type ProviderPurpose = "answer" | "extraction";
-export type ProviderDraft = {provider: ProviderKind; model: string; endpoint: string; revision: number; api_key?: string};
+export type ProviderDraft = {provider: ProviderKind; model: string; endpoint: string; revision: number; api_key?: string; ollama_context_tokens?: number | null};
 export type ProviderProfile = Omit<ProviderDraft, "api_key"> & {has_key: boolean};
 export type ProviderProfiles = Record<ProviderPurpose, ProviderProfile | null>;

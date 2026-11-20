@@ -270,7 +270,9 @@ OLLAMA_REASONING_EFFORT=none
 
 Open **Settings → AI Providers** to configure answering and structured
 extraction independently. Select Ollama to discover installed models. Use
-**Advanced connection** to enter a different loopback endpoint. For OpenAI,
+**Advanced connection** to change the loopback endpoint or request a larger
+context from the local model. Leave the context field blank to use the Ollama
+server default. For OpenAI,
 Anthropic Claude, Gemini or an OpenAI-compatible service, enter the model
 identifier and API key as needed. **Test connection** sends synthetic input
 only. **Save provider** takes effect on the next request. Extraction uses the
@@ -290,7 +292,9 @@ support Chat Completions JSON mode. For Claude's environment fallback, use
 `GENERATION_PROVIDER=anthropic`, `GENERATION_MODEL` and `GENERATION_API_KEY`.
 Ollama uses its `none` reasoning setting by default to keep extraction latency
 down. Set `OLLAMA_REASONING_EFFORT` to a level supported by your local model if
-the workflow benefits from more reasoning.
+the workflow benefits from more reasoning. For a launch or benchmark using
+environment defaults, `OLLAMA_CONTEXT_TOKENS` applies the same context
+override as the web field.
 Cloud providers receive the question, supporting excerpts and bounded chat context.
 Generation sends those fields in a structured payload and validates cited IDs
 against evidence from the current request.

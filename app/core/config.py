@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     generation_timeout_seconds: float = Field(default=90, gt=0, le=300, alias="GENERATION_TIMEOUT_SECONDS")
     provider_key_path: Path = Field(default=PROJECT_ROOT / ".evidencerag" / "provider.key", alias="PROVIDER_KEY_PATH")
     ollama_reasoning_effort: str = Field(default="none", alias="OLLAMA_REASONING_EFFORT")
+    ollama_context_tokens: int | None = Field(default=None, ge=2048, le=65536, alias="OLLAMA_CONTEXT_TOKENS")
     upload_dir: Path = Field(
         default=PROJECT_ROOT / "data" / "uploads",
         alias="UPLOAD_DIR",

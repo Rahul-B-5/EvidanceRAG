@@ -56,6 +56,18 @@ def main() -> None:
                   fixture_answer(payload["messages"][-1]["content"], model))
         return {"choices":[{"message":{"content":json.dumps(output)}}]}
 
+    @app.post("/api/chat")
+    async def fixture_context_chat(request: Request):
+        payload = await request.json()
+        model = payload["model"]
+        if model not in installed:
+            raise HTTPException(404, "Model not installed.")
+        if payload["options"]["num_ctx"] != 8192:
+            raise HTTPException(400, "Expected the configured context size.")
+        output = ({"ready": True} if "synthetic connectivity check" in payload["messages"][0]["content"] else
+                  fixture_answer(payload["messages"][-1]["content"], model))
+        return {"message":{"content":json.dumps(output)}, "done": True}
+
     def answer_provider(settings):
         active = active_settings(settings, "answer")
         return provider if active is settings else get_generation_provider(active)

@@ -327,12 +327,19 @@ test("provider settings discover models and switch the running Assistant", async
     const settings = page.getByRole("region", {name:"AI Providers"});
     await settings.getByText("Advanced connection").click();
     await settings.getByRole("textbox", {name:"Ollama endpoint"}).fill(localProvider);
+    const contextSize = settings.getByRole("spinbutton", {name:"Context size in tokens"});
     await expect(settings.getByText("Ollama connected · 2 installed models")).toBeVisible();
     const field = settings.getByRole("combobox", {name:"Model identifier"});
     await field.fill("fixture:missing");
     await settings.getByRole("button", {name:"Test connection"}).click();
-    await expect(settings.getByRole("alert")).toContainText("model or API route was not found");
+    await expect(settings.getByRole("alert")).toContainText(/model or (native )?API route was not found/);
     await field.fill(model);
+    if (model === "fixture:two") {
+      await contextSize.fill("1000");
+      await settings.getByRole("button", {name:"Test connection"}).click();
+      await expect(settings.getByRole("alert")).toContainText("Enter a context size from 2,048 to 65,536 tokens.");
+      await contextSize.fill("8192");
+    }
     await settings.getByRole("button", {name:"Test connection"}).click();
     await expect(settings.getByText("Connection passed.")).toBeVisible();
     await settings.getByRole("button", {name:"Save provider"}).click();
@@ -347,7 +354,10 @@ test("provider settings discover models and switch the running Assistant", async
   }
   await page.reload();
   await page.getByRole("button", {name:"Settings", exact:true}).click();
-  await expect(page.getByRole("region", {name:"AI Providers"}).getByText("Active model · fixture:two")).toBeVisible();
+  const settings = page.getByRole("region", {name:"AI Providers"});
+  await expect(settings.getByText("Active model · fixture:two")).toBeVisible();
+  await settings.getByText("Advanced connection").click();
+  await expect(settings.getByRole("spinbutton", {name:"Context size in tokens"})).toHaveValue("8192");
 });
 
 test("Reader preserves table cells and separates neighboring measurements", async ({page}) => {
@@ -399,6 +409,7 @@ test("configured local Ollama models answer with PDF citations", async ({page}) 
       const settings = page.getByRole("region", {name:"AI Providers"});
       await settings.getByText("Advanced connection").click();
       await settings.getByRole("textbox", {name:"Ollama endpoint"}).fill("http://127.0.0.1:11434");
+      await settings.getByRole("spinbutton", {name:"Context size in tokens"}).fill("8192");
       await expect(settings.getByText(/Ollama connected/)).toBeVisible();
       const field = settings.getByRole("combobox", {name:"Model identifier"});
       await field.fill(model);

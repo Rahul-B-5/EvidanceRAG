@@ -4,7 +4,7 @@ import httpx
 import pytest
 
 from app.core.config import Settings
-from app.generation.providers import ChatCompletionsProvider, GeminiProvider, get_generation_provider
+from app.generation.providers import ChatCompletionsProvider, GeminiProvider, OllamaContextProvider, get_generation_provider
 
 
 def test_chat_completions_sends_json_mode_with_system_role():
@@ -65,6 +65,25 @@ def test_local_ollama_can_constrain_the_answer_schema():
         transport=httpx.MockTransport(handle), structured_outputs=True,
     )
     assert json.loads(provider.generate_json(prompt="Question", system_instruction="Evidence", schema=ANSWER_SCHEMA))["abstained"]
+
+
+def test_ollama_context_override_requests_native_chat_with_schema():
+    def handle(request):
+        assert str(request.url) == "http://127.0.0.1:11434/api/chat"
+        payload = json.loads(request.content)
+        assert payload["format"] == {"type": "object"}
+        assert payload["options"]["num_ctx"] == 8192
+        assert payload["think"] is False and payload["stream"] is False
+        assert "Authorization" not in request.headers
+        return httpx.Response(200, json={"message": {"content": '{"ready":true}'}, "done": True})
+
+    provider = OllamaContextProvider(base_url="http://127.0.0.1:11434/v1", model="fixture",
+                                    timeout=1, context_tokens=8192, reasoning_effort="none",
+                                    transport=httpx.MockTransport(handle))
+    assert json.loads(provider.generate_json(prompt="Question", system_instruction="Evidence", schema={"type":"object"}))["ready"]
+    with pytest.raises(RuntimeError, match="requires a loopback"):
+        OllamaContextProvider(base_url="https://example.com/v1", model="fixture",
+                              timeout=1, context_tokens=8192, reasoning_effort="none")
 
 
 def test_gemini_provider_reopens_transport_for_each_paper(monkeypatch):
