@@ -450,6 +450,35 @@ test("Reader preserves table cells and separates neighboring measurements", asyn
   await expect(page.locator(".cited-passage")).toContainText("Precision without tuning");
 });
 
+test("cancelling a pending answer preserves the question and prevents a saved exchange", async ({page,request}) => {
+  const endpoint = `http://127.0.0.1:${process.env.EVIDENCERAG_E2E_API_PORT}`;
+  const question = "Hold this fixture answer until cancellation.";
+  await page.goto("/");
+  await page.getByRole("button", {name:"Library",exact:true}).click();
+  await page.locator("input[type=file]").setInputFiles(join(process.env.EVIDENCERAG_E2E_TEMP!, "browser-fixture.pdf"));
+  await expect(page.getByRole("button", {name:title,exact:true})).toBeVisible();
+  await page.getByRole("button", {name:"Assistant",exact:true}).click();
+  await page.getByRole("combobox", {name:"Sources"}).selectOption("selected");
+  await page.getByRole("checkbox", {name:title}).check();
+  await page.getByRole("textbox", {name:"Question"}).fill(question);
+  await page.getByRole("button", {name:"Send question"}).click();
+  await expect.poll(async () => (await (await request.get(endpoint + "/fixture/generation")).json()).started).toBe(true);
+  await page.getByRole("button", {name:"Cancel answer"}).click();
+  await expect(page.getByText("Answer request cancelled.", {exact:true})).toBeVisible();
+  await expect(page.getByRole("textbox", {name:"Question"})).toHaveValue(question);
+  await request.post(endpoint + "/fixture/generation/release");
+  await expect.poll(async () => (await (await request.get(endpoint + "/fixture/generation")).json()).finished).toBe(true);
+  await page.reload();
+  await page.getByRole("button", {name:"Assistant",exact:true}).click();
+  await page.getByRole("combobox", {name:"Conversation"}).selectOption({label:question});
+  await expect(page.getByText("No completed exchange yet.", {exact:true})).toBeVisible();
+  await expect(page.locator(".assistant-turn")).toHaveCount(0);
+  await page.getByRole("textbox", {name:"Question"}).fill("What was the held-out sample size?");
+  await page.getByRole("button", {name:"Send question"}).click();
+  await expect(page.locator(".assistant-turn")).toHaveCount(2);
+  await expect(page.locator(".assistant-turn.assistant")).toContainText("37 observations");
+});
+
 test("configured local Ollama models answer with PDF citations", async ({page}) => {
   const models = (process.env.EVIDENCERAG_BROWSER_OLLAMA_MODELS ?? "").split(",").map(model => model.trim()).filter(Boolean);
   test.skip(models.length !== 2, "Provide two installed Ollama models to run the live browser check.");

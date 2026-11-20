@@ -473,6 +473,21 @@ launcher, wider browser review and release validation to the previous scope.
 
 ## Continuation
 
+- A new browser cancellation regression exposed a race where closing the
+  stream could precede server disconnect detection and permit a late result
+  to save. Assistant now sends its UUID request token to an explicit cancel
+  endpoint before closing the stream. The worker checks cancellation before
+  saving, and the stream reports cancellation to clients that keep listening.
+- Chrome held an actual provider call, cancelled it, released it afterward,
+  reloaded the empty conversation and retried successfully. A backend
+  regression verifies the worker cannot reach saving and the request token
+  is removed when it finishes. Passed 158 PostgreSQL tests, 10 frontend
+  tests, six deterministic Chrome workflows and the production build.
+- Cancellation tokens are held by the active backend process. Deployment
+  across multiple worker processes needs shared cancellation state or request
+  affinity. The supported local launcher runs one backend process. Cloud
+  authentication and broader scientific evaluation remain pending.
+
 - Browser verification now covers local Question Coverage, exact source
   navigation and subquestion planning through the saved extraction profile.
   The fixture rejects planning requests sent to the answering model.

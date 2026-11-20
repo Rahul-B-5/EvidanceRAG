@@ -2,6 +2,8 @@
 
 import json
 import os
+import asyncio
+from threading import Event
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -14,9 +16,17 @@ from app.generation.profile_store import active_settings
 from app.generation.providers import get_generation_provider
 from evaluation.database import BROWSER_TABLES, assert_isolated
 
+generation_started = Event()
+generation_released = Event()
+generation_finished = Event()
+
 
 def fixture_answer(prompt: str, model: str | None = None) -> dict:
     data = json.loads(prompt)
+    if data["question"] == "Hold this fixture answer until cancellation.":
+        generation_started.set()
+        generation_released.wait(timeout=15)
+        generation_finished.set()
     if "without tuning in Table 2" in data["question"]:
         table = next(item for item in data["evidence"] if "table_row" in item)
         score = next(cell["value"] for cell in table["table_row"]["cells"] if cell["column"] == "Score")
@@ -65,6 +75,15 @@ def main() -> None:
     provider = SimpleNamespace(generate_json=lambda *, prompt, **_: json.dumps(fixture_answer(prompt)))
     installed = ["fixture:one", "fixture:two"]
 
+    @app.get("/fixture/generation")
+    def generation_state():
+        return {"started": generation_started.is_set(), "finished": generation_finished.is_set()}
+
+    @app.post("/fixture/generation/release")
+    def release_generation():
+        generation_released.set()
+        return {"released": True}
+
     @app.get("/api/tags")
     def fixture_models():
         return {"models": [{"name": model} for model in installed]}
@@ -75,7 +94,7 @@ def main() -> None:
         model = payload["model"]
         if model not in installed:
             raise HTTPException(404, "Model not installed.")
-        output = fixture_response(payload)
+        output = await asyncio.to_thread(fixture_response, payload)
         return {"choices":[{"message":{"content":json.dumps(output)}}]}
 
     @app.post("/api/chat")
@@ -86,7 +105,7 @@ def main() -> None:
             raise HTTPException(404, "Model not installed.")
         if payload["options"]["num_ctx"] != 8192:
             raise HTTPException(400, "Expected the configured context size.")
-        output = fixture_response(payload)
+        output = await asyncio.to_thread(fixture_response, payload)
         return {"message":{"content":json.dumps(output)}, "done": True}
 
     def answer_provider(settings):

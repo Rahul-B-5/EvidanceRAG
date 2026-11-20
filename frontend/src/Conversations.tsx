@@ -29,6 +29,7 @@ export function Conversations({documents, initial}: {documents: Document[]; init
   const [status, setStatus] = useState("");
   const [canCancel, setCanCancel] = useState(false);
   const pending = useRef<AbortController | null>(null);
+  const pendingRequest = useRef<string | null>(null);
   const needsSources = conversation?.scope_state === "legacy";
   useEffect(() => () => pending.current?.abort(), []);
   useEffect(() => {let cancelled = false;
@@ -91,6 +92,8 @@ export function Conversations({documents, initial}: {documents: Document[]; init
   async function send() {
     if (!canSend || pending.current) return;
     const controller = new AbortController();
+    const requestId = crypto.randomUUID();
+    pendingRequest.current = requestId;
     pending.current = controller;
     const question = query.trim();
     let current = conversation;
@@ -108,7 +111,7 @@ export function Conversations({documents, initial}: {documents: Document[]; init
       await api.reply(id, question, controller.signal, phase => {
         setStatus(PHASE_LABELS[phase]);
         if (phase === "saving") setCanCancel(false);
-      });
+      }, requestId);
       finished = true;
       setQuery("");
       setConversation(await api.conversation(id));
@@ -135,6 +138,7 @@ export function Conversations({documents, initial}: {documents: Document[]; init
       }
     } finally {
       pending.current = null;
+      pendingRequest.current = null;
       setCanCancel(false);
       setBusy(false);
     }
@@ -199,10 +203,16 @@ export function Conversations({documents, initial}: {documents: Document[]; init
       <label>Question<textarea disabled={busy} maxLength={10000} value={query} onChange={e => setQuery(e.target.value)} /></label>
       <div className="finding-actions">
         <button disabled={!canSend}>Send question</button>
-        {canCancel && <button type="button" className="secondary" onClick={() => {
+        {canCancel && <button type="button" className="secondary" onClick={async () => {
           setCanCancel(false);
           setStatus("Cancelling answer…");
-          pending.current?.abort();
+          try {
+            if (pendingRequest.current) await api.cancelAnswer(pendingRequest.current);
+            pending.current?.abort();
+          } catch (e) {
+            setError(e instanceof Error ? e.message : "Unable to cancel the answer.");
+            setCanCancel(true);
+          }
         }}>Cancel answer</button>}
       </div>
       {status && <p role="status" className="assistant-status">{status}</p>}

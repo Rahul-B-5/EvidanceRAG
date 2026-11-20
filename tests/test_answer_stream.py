@@ -1,11 +1,45 @@
 import asyncio
 import json
 from threading import Event
+from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from app.api.answer_stream import AnswerStreamCancelled, stream_answer
+from app.api.answer_stream import AnswerStreamCancelled, cancel_answer, stream_answer
 from app.api.main import app
+
+
+def test_explicit_cancellation_prevents_saving_before_provider_returns():
+    request_id = uuid4()
+    release = Event()
+    finished = Event()
+    prevented = Event()
+
+    def exchange(progress):
+        try:
+            progress("generating")
+            assert release.wait(timeout=2)
+            progress("saving")
+            raise AssertionError("A cancelled answer was allowed to save.")
+        except AnswerStreamCancelled:
+            prevented.set()
+            raise
+        finally:
+            finished.set()
+
+    async def exercise():
+        response = stream_answer(exchange, request_id)
+        iterator = response.body_iterator
+        assert json.loads(await anext(iterator))["phase"] == "generating"
+        assert cancel_answer(request_id)
+        release.set()
+        assert json.loads(await anext(iterator))["detail"] == "Answer request cancelled."
+        await iterator.aclose()
+        assert await asyncio.to_thread(finished.wait, 2)
+
+    asyncio.run(exercise())
+    assert prevented.is_set()
+    assert not cancel_answer(request_id)
 
 
 def test_stream_delivers_progress_and_final_validated_response(monkeypatch):

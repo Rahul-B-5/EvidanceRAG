@@ -121,7 +121,11 @@ The application is served at `http://127.0.0.1:5173` and uses the local API at
 - `POST /answers/stream` — accepts the same request and returns NDJSON phase
   updates followed by one validated answer or error. The Assistant uses this
   endpoint for progress and cancellation. Cancelling before commit keeps
-  the question available for retry. A provider call already in progress can
+  the question available for retry. The browser sends an explicit cancellation
+  request and waits for acknowledgement before closing its stream.
+  Clients can supply a UUID `request_id` and cancel it through
+  `POST /answers/stream/{request_id}/cancel`.
+  A provider call already in progress can
   continue until the provider responds or times out.
 - `GET /saved-evidence` and `PUT/PATCH /saved-evidence/{chunk_id}` — list and save
   provenance snapshots, and edit passage notes. Saved evidence exports to Markdown.

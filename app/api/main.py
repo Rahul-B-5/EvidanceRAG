@@ -18,7 +18,7 @@ from app.api.saved_evidence import router as saved_evidence_router
 from app.api.reader_annotations import router as reader_annotations_router
 from app.api.reading import router as reading_router
 from app.api.related_papers import router as related_papers_router
-from app.api.answer_stream import stream_answer
+from app.api.answer_stream import cancel_answer, stream_answer
 from app.api.embedding_rebuilds import router as embedding_rebuilds_router
 from app.api.settings import router as settings_router
 from app.api.provider_profiles import router as provider_profiles_router
@@ -107,6 +107,7 @@ SourceSet = Annotated[list[SourceID], Field(min_length=1, max_length=12)]
 
 
 class AnswerRequest(BaseModel):
+    request_id: uuid.UUID | None = None
     query: str = Field(min_length=1, max_length=10_000)
     document_id: SourceID | None = None
     document_ids: SourceSet | None = None
@@ -435,7 +436,12 @@ def answer(request: AnswerRequest) -> dict:
 
 @app.post("/answers/stream", response_class=StreamingResponse)
 async def answer_stream(request: AnswerRequest) -> StreamingResponse:
-    return stream_answer(lambda progress: answer_exchange(request, progress))
+    return stream_answer(lambda progress: answer_exchange(request, progress), request.request_id)
+
+
+@app.post("/answers/stream/{request_id}/cancel")
+def cancel_answer_stream(request_id: uuid.UUID) -> dict:
+    return {"cancelled": cancel_answer(request_id)}
 
 
 def answer_exchange(request: AnswerRequest, progress: Callable[[str], None] = lambda _: None) -> dict:

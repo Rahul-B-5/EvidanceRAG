@@ -191,9 +191,10 @@ export const api = {
     method:"POST", headers:{"Content-Type":"application/json"},
     body:JSON.stringify({title, document_ids:documentIds, workspace_id:workspaceId}),
   }),
-  reply: async (id: number, query: string, signal: AbortSignal, onProgress: (phase: AssistantPhase) => void) => {
+  cancelAnswer: (requestId: string) => request<{cancelled: boolean}>(`/answers/stream/${requestId}/cancel`, {method:"POST"}),
+  reply: async (id: number, query: string, signal: AbortSignal, onProgress: (phase: AssistantPhase) => void, requestId?: string) => {
     const response = await fetch(`${API_BASE}/answers/stream`, {
-      method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({conversation_id:id, query}), signal,
+      method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({conversation_id:id, query, request_id:requestId}), signal,
     });
     await checkResponse(response);
     if (!response.body) throw new Error("Unable to open an answer stream.");
