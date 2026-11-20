@@ -13,7 +13,7 @@ from research import comparison_runs
 @pytest.mark.skipif(os.getenv("EVIDENCERAG_INTEGRATION") != "1", reason="Requires PostgreSQL")
 def test_comparison_publishes_exact_scoped_claims_and_researcher_assessments(monkeypatch):
     with get_connection() as conn, conn.transaction(force_rollback=True):
-        for module in ("app.api.main", "app.api.claims", "research.comparison_runs", "research.atlas"):
+        for module in ("app.api.main", "app.api.claims", "app.api.related_papers", "research.comparison_runs", "research.atlas"):
             monkeypatch.setattr(f"{module}.get_connection", lambda: nullcontext(conn))
         workspace = conn.execute("INSERT INTO workspaces(name) VALUES ('Claim fixture') RETURNING id").fetchone()[0]
         paper_findings = {}
@@ -50,6 +50,13 @@ def test_comparison_publishes_exact_scoped_claims_and_researcher_assessments(mon
         assert detail["assessment"] is None
         assert detail["related"][0]["document_id"] == second
         assert detail["related"][0]["shared_labels"] == {"metric":"F1","dataset":"OrchardBench"}
+        related_url = f"/documents/{first}/related-papers"
+        recommendations = client.get(related_url, params=scope).json()["papers"]
+        assert len(recommendations) == 1
+        recommendation = recommendations[0]
+        assert recommendation["document_id"] == second and recommendation["origin_claim_id"] == claim
+        assert recommendation["source"]["page_end"] == recommendation["origin_source"]["page_end"] == 4
+        assert client.get(related_url).json()["papers"] == []
         assert client.get(path).status_code == 404
         assessment = {"status":"qualified","note":"Confirm the test split.","revision":0}
         assert client.put(path + "/assessment", params=scope, json=assessment).status_code == 200
@@ -58,6 +65,7 @@ def test_comparison_publishes_exact_scoped_claims_and_researcher_assessments(mon
         assert any(n["id"] == claim for n in client.get("/evidence-atlas", params={**scope,"focus":claim}).json()["nodes"])
         conn.execute("DELETE FROM workspace_documents WHERE workspace_id=%s AND document_id=%s", (workspace,second))
         assert client.get(path, params=scope).json()["related"] == []
+        assert client.get(related_url, params=scope).json()["papers"] == []
         conn.execute("DELETE FROM workspace_documents WHERE workspace_id=%s AND document_id=%s", (workspace,first))
         assert client.get(path, params=scope).status_code == 404
         assert client.get("/claims", params=scope).json()["claims"] == []

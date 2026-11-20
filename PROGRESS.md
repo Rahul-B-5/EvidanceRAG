@@ -249,20 +249,23 @@
   The source PDF, indexed passage, retryable upload and unrelated file
   retained their original contents. Full gate: 128 PostgreSQL tests, 10
   frontend tests, three browser tests and the production build.
-- The notebook can now filter saved passages and Reader highlights by
+- The notebook milestone `42d2b85` can now filter saved passages and Reader highlights by
   workspace and paper collection. PostgreSQL tests verified detached papers
   are inaccessible in their former scope and stale anchors retain the
   original excerpt. Chrome verified filtered annotation search and opening
   the same source twice. Full gate: 129 PostgreSQL tests, 10 frontend
   tests, three browser tests and build.
+- Reader shows related papers with matching reported dataset and metric labels
+  in the current comparison scope. Both claims remain inspectable from the
+  result. PostgreSQL verified source pages, workspace isolation and exclusion
+  after detachment. Chrome verified the related paper and both claim links.
 
 ## Outstanding
 
 1. Add independent disciplines and whole-paper tests. Measure standalone
    keyword recall on natural-language questions and track citation support
    under repeated live runs.
-2. Add related-paper recommendations grounded in local indexed claims.
-3. Test larger corpora and review legacy passages with several pages.
+2. Test larger corpora and review legacy passages with several pages.
 
 ## Continuation
 

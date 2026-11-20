@@ -213,6 +213,9 @@ test("comparison claims stay searchable and assessments survive reopening", asyn
   await expect(detail.getByLabel("Evidence status")).toHaveValue("qualified");
   await detail.getByRole("link", {name:/Open source/}).click();
   await expect(page.getByRole("img", {name:"PDF page 2"})).toBeVisible();
+  await page.getByText("Related papers", {exact:true}).click();
+  await expect(page.getByRole("link", {name:"EvidenceRAG replication fixture",exact:true})).toBeVisible();
+  await expect(page.getByRole("link", {name:"Claim in related paper",exact:true})).toHaveAttribute("href", /^#claim=finding:/);
   const original = new URL((await page.getByRole("link", {name:"Open original PDF"}).getAttribute("href"))!);
   const documentURL = original.origin + original.pathname.replace(/\/source$/, "");
   const passages = await (await request.get(documentURL + "/passages?page=2")).json();

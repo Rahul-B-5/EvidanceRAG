@@ -1,9 +1,10 @@
 import { lazy, Suspense, useEffect, useState, type CSSProperties } from "react";
-import { api, type Document, type HighlightSelection, type Passage, type ReaderHighlight, type ReadingStatus, type ReadingUpdate } from "./api";
+import { api, type Document, type HighlightSelection, type Passage, type ReaderHighlight, type ReadingStatus, type ReadingUpdate, type RelatedPaper } from "./api";
 import { AnnotatedPassage, HighlightCard } from "./ReaderAnnotations";
 import { MetadataEditor } from "./DocumentMetadata";
 import { EmbeddingPanel } from "./EmbeddingPanel";
 import { readingStatusLabels } from "./readingStatus";
+import { pageLabel } from "./pageLabel";
 
 const PdfViewer = lazy(() => import("./PdfViewer"));
 
@@ -88,10 +89,42 @@ export function Reader({document, initialPage = 1, workspace = "", remove, updat
       <ReaderEvidence key={page} documentId={document.id} page={page} go={go} />
     </div>
     <div className="reader-settings">
+      <RelatedPapers documentId={document.id} workspace={workspace} />
       <EmbeddingPanel documentId={document.id} />
       <button className="secondary danger" onClick={remove}>Delete paper</button>
     </div>
   </section>;
+}
+
+function RelatedPapers({documentId, workspace}: {documentId: number; workspace: string}) {
+  const [open, setOpen] = useState(false);
+  const [papers, setPapers] = useState<RelatedPaper[]>();
+  const [error, setError] = useState("");
+  const scope = workspace ? `&workspace=${workspace}` : "";
+  useEffect(() => {
+    if (!open) return;
+    const controller = new AbortController();
+    setPapers(undefined);setError("");
+    api.relatedPapers(documentId, workspace, controller.signal)
+      .then(data => { if (!controller.signal.aborted) setPapers(data.papers); })
+      .catch(err => { if (!controller.signal.aborted) setError(err.message); });
+    return () => controller.abort();
+  }, [documentId, workspace, open]);
+
+  return <details className="reader-related" onToggle={event => setOpen(event.currentTarget.open)}>
+    <summary>Related papers</summary>
+    {error && <p role="alert">{error}</p>}
+    {!papers && !error && <p role="status">Finding shared study labels…</p>}
+    {papers?.length === 0 && <p className="muted">No indexed comparison claims share both a dataset and a metric in this scope.</p>}
+    {!!papers?.length && <ul>{papers.map(paper => <li key={paper.document_id}>
+      <a href={`#paper=${paper.document_id}&page=${paper.source.page_start}${scope}`}>{paper.title}</a>
+      <p className="muted">{paper.dataset} · {paper.metric} · {pageLabel(paper.source.page_start, paper.source.page_end)}</p>
+      <div className="finding-actions">
+        <a href={`#claim=${paper.origin_claim_id}${scope}`}>Claim in this paper</a>
+        <a href={`#claim=${paper.claim_id}${scope}`}>Claim in related paper</a>
+      </div>
+    </li>)}</ul>}
+  </details>;
 }
 
 function ReaderEvidence({documentId, page, go}: {documentId: number; page: number; go: (page: number) => void}) {

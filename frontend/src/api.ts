@@ -10,6 +10,9 @@ export type ReadingUpdate = {page: number} | {status: ReadingStatus};
 export type Document = DocumentMetadata & ReadingProgress & {id: number; filename: string; page_count: number | null;
   chunk_count: number; processing_status: string; has_stored_source: boolean; created_at: string};
 export type Passage = {chunk_id: number; page_start: number; page_end: number; text: string};
+export type RelatedPaper = {document_id: number; title: string; claim_id: string; origin_claim_id: string;
+  dataset: string; metric: string; source: Pick<Passage, "page_start" | "page_end">;
+  origin_source: Pick<Passage, "page_start" | "page_end">};
 export type ReaderHighlight = {
   id: string; chunk_id: number | null; page: number; start_offset: number; end_offset: number;
   quote: string; note: string; revision: number;
@@ -136,6 +139,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  relatedPapers: (id: number, workspace: string, signal: AbortSignal) =>
+    request<{papers: RelatedPaper[]}>(`/documents/${id}/related-papers${workspace ? `?workspace_id=${workspace}` : ""}`, {signal}),
   claims: (params: URLSearchParams, signal?: AbortSignal) =>
     request<{claims: ResearchClaim[]; has_more: boolean}>(`/claims?${params}`, {signal}),
   claim: (id: string, workspace: string, signal?: AbortSignal) =>

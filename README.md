@@ -69,6 +69,10 @@ The application is served at `http://127.0.0.1:5173` and uses the local API at
   Retryable uploads keep their staged input.
 - `GET /documents/{document_id}/source` — serves a persisted original PDF.
 - `GET /documents/{document_id}/passages?page=...` — lists indexed chunks intersecting the page.
+- `GET /documents/{document_id}/related-papers` lists papers with source-backed
+  result claims that report the same dataset and metric. Reader links to the
+  related page and both claims. The optional `workspace_id` restricts matches
+  to that workspace's comparison claims.
 - `GET /documents/{document_id}/embeddings` — reports the active profile,
   compatible passage count, and most recent rebuild state.
 - `POST /documents/{document_id}/embeddings/rebuild` — queues an atomic rebuild
