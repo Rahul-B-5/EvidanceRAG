@@ -131,7 +131,7 @@ def insert_chunks(
     return len(rows)
 
 
-def list_documents(conn: psycopg.Connection) -> list[dict]:
+def list_documents(conn: psycopg.Connection, document_id: int | None = None) -> list[dict]:
     """Return library metadata without loading document content or embeddings."""
     rows = conn.execute(
         """
@@ -139,12 +139,13 @@ def list_documents(conn: psycopg.Connection) -> list[dict]:
             d.id, d.title, d.authors, d.publication_year, d.filename,
             d.stored_path, d.file_size_bytes, d.page_count,
             d.processing_status, d.processing_error, d.processed_at,
-            d.created_at, count(c.id) AS chunk_count
+            d.created_at, count(c.id) AS chunk_count, d.doi, d.venue, d.tags, d.metadata_revision
         FROM documents AS d
         LEFT JOIN chunks AS c ON c.document_id = d.id
+        WHERE (%s::bigint IS NULL OR d.id=%s)
         GROUP BY d.id
         ORDER BY d.created_at DESC, d.id DESC
-        """
+        """, (document_id, document_id),
     ).fetchall()
 
     return [
@@ -162,6 +163,10 @@ def list_documents(conn: psycopg.Connection) -> list[dict]:
             "processed_at": row[10],
             "created_at": row[11],
             "chunk_count": row[12],
+            "doi": row[13],
+            "venue": row[14],
+            "tags": row[15],
+            "metadata_revision": row[16],
         }
         for row in rows
     ]
@@ -177,10 +182,19 @@ def get_document_source_path(conn: psycopg.Connection, document_id: int) -> str 
 
 def get_document(conn: psycopg.Connection, document_id: int) -> dict | None:
     """Return document metadata and processing state for a detail view."""
-    for document in list_documents(conn):
-        if document["id"] == document_id:
-            return document
-    return None
+    return next(iter(list_documents(conn, document_id)), None)
+
+
+def update_document_metadata(conn: psycopg.Connection, document_id: int, revision: int, *,
+                             title: str, authors: list[str], publication_year: int | None,
+                             doi: str | None, venue: str | None, tags: list[str]) -> dict | None:
+    row = conn.execute("""
+        UPDATE documents
+        SET title=%s, authors=%s, publication_year=%s, doi=%s, venue=%s, tags=%s,
+            metadata_revision=metadata_revision+1
+        WHERE id=%s AND metadata_revision=%s RETURNING id
+    """, (title, authors, publication_year, doi, venue, tags, document_id, revision)).fetchone()
+    return get_document(conn, document_id) if row is not None else None
 
 
 def delete_document(conn: psycopg.Connection, document_id: int) -> tuple[bool, str | None]:

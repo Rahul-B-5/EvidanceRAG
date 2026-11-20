@@ -146,13 +146,7 @@ def ingest_pdf(file_path: str | Path) -> dict:
             "chunks_created": 0,
         }
 
-    stored_path = persist_source_pdf(
-        path,
-        file_hash=file_hash,
-        upload_dir=settings.upload_dir,
-    )
-
-    pages = extract_pdf(stored_path)
+    pages = extract_pdf(path)
     chunks = chunk_pages(pages)
 
     if not chunks:
@@ -165,6 +159,7 @@ def ingest_pdf(file_path: str | Path) -> dict:
     # Preserve the user-facing filename as the title fallback; the persisted
     # file is intentionally named by hash and would make a poor title.
     metadata = extract_metadata(path)
+    stored_path = persist_source_pdf(path, file_hash=file_hash, upload_dir=settings.upload_dir)
 
     # The connection context commits on success and rolls back on error.
     with get_connection() as conn:

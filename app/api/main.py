@@ -1,6 +1,7 @@
 """Local HTTP API for EvidenceRAG's document and evidence workflows."""
 
 import uuid
+import re
 from contextlib import suppress
 from pathlib import Path
 
@@ -25,6 +26,7 @@ from app.db.repository import (
     create_workspace,
     get_workspace,
     list_workspaces,
+    update_document_metadata,
 )
 from app.generation.answerer import generate_answer
 from app.generation.context_builder import build_evidence_context
@@ -114,6 +116,16 @@ class PacketEdit(BaseModel):
     revision: int = Field(gt=0, le=2147483646)
 
 
+class DocumentMetadata(BaseModel):
+    title: str = Field(min_length=1, max_length=300)
+    authors: list[Annotated[str, Field(max_length=200)]] = Field(default_factory=list, max_length=100)
+    publication_year: int | None = Field(default=None, ge=1000, le=3000)
+    doi: str | None = Field(default=None, max_length=220)
+    venue: str | None = Field(default=None, max_length=200)
+    tags: list[Annotated[str, Field(max_length=48)]] = Field(default_factory=list, max_length=30)
+    metadata_revision: int = Field(gt=0, le=2147483646)
+
+
 def validate_workspace_scope(workspace_id: int | None, document_ids: list[int]) -> None:
     if workspace_id is None:
         return
@@ -159,6 +171,32 @@ def document_detail(document_id: int) -> dict:
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found.")
     return document
+
+
+@app.patch("/documents/{document_id}/metadata")
+def edit_document_metadata(
+    document_id: Annotated[int, ApiPath(gt=0, le=9223372036854775807)],
+    request: DocumentMetadata,
+) -> dict:
+    title = request.title.strip()
+    if not title:
+        raise HTTPException(status_code=422, detail="Document title cannot be empty.")
+    doi = re.sub(r"^(?:https?://(?:dx\.)?doi\.org/|doi:\s*)", "", (request.doi or "").strip(), flags=re.IGNORECASE)
+    if doi and not re.fullmatch(r"10\.\d{4,9}/[^\s\x00-\x1f\x7f]+", doi, flags=re.IGNORECASE):
+        raise HTTPException(status_code=422, detail="Use a DOI in the form 10.xxxx/suffix or a doi.org URL.")
+    authors = list(dict.fromkeys(v.strip() for v in request.authors if v.strip()))
+    tags = list({v.strip().casefold(): v.strip() for v in request.tags if v.strip()}.values())
+    with get_connection() as conn:
+        result = update_document_metadata(
+            conn, document_id, request.metadata_revision,
+            title=title, authors=authors, publication_year=request.publication_year,
+            doi=doi or None, venue=(request.venue or "").strip() or None, tags=tags,
+        )
+        if result is None:
+            if get_document(conn, document_id) is None:
+                raise HTTPException(status_code=404, detail="Document not found.")
+            raise HTTPException(status_code=409, detail="Metadata changed in another tab. Refresh the library before saving.")
+    return result
 
 
 def _delete_managed_source(stored_path: str | None) -> None:

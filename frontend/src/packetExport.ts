@@ -14,6 +14,8 @@ function bibliography(packet: EvidencePacket) {
     const fields = [`  title = {${clean(item.title)}}`];
     if (item.authors.length) fields.push(`  author = {${item.authors.map(clean).join(" and ")}}`);
     if (item.publication_year) fields.push(`  year = {${item.publication_year}}`);
+    if (item.doi) fields.push(`  doi = {${clean(item.doi)}}`);
+    if (item.venue) fields.push(`  howpublished = {${clean(item.venue)}}`);
     return `@misc{evidencerag${item.document_id},\n${fields.join(",\n")}\n}`;
   }).join("\n\n") + "\n";
 }

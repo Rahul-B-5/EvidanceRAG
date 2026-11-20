@@ -1,6 +1,9 @@
 const API_BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
-export type Document = { id: number; title: string; filename: string; authors: string[]; page_count: number | null; chunk_count: number; processing_status: string; has_stored_source: boolean; created_at: string };
+export type DocumentMetadata = {title: string; authors: string[]; publication_year: number | null;
+  doi: string | null; venue: string | null; tags: string[]; metadata_revision: number};
+export type Document = DocumentMetadata & {id: number; filename: string; page_count: number | null;
+  chunk_count: number; processing_status: string; has_stored_source: boolean; created_at: string};
 export type Passage = {chunk_id: number; page_start: number; page_end: number; text: string};
 export type SavedPassage = {chunk_id: number; document_id: number; title: string; page_start: number; page_end: number; passage: string; note: string; source_exists: boolean};
 export type Evidence = { evidence_id: string; chunk_id: number; document_id: number; title: string; page_start: number; page_end: number; text: string };
@@ -65,7 +68,8 @@ export type ResearchDirections = {
 export type PacketSummary = {id: string; title: string; revision: number; updated_at: string; item_count: number};
 export type EvidencePacket = {
   id: string; title: string; question: string; narrative: string; revision: number; workspace_id: number | null;
-  items: Array<Omit<SavedPassage, "source_exists"> & {authors: string[]; publication_year: number | null; saved_at: string}>;
+  items: Array<Omit<SavedPassage, "source_exists"> & {authors: string[]; publication_year: number | null;
+    saved_at: string; doi?: string | null; venue?: string | null}>;
 };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -110,6 +114,9 @@ export const api = {
     }),
   documents: () => request<{ documents: Document[] }>("/documents"),
   document: (id: number) => request<Document>(`/documents/${id}`),
+  editDocument: (id: number, metadata: DocumentMetadata) => request<Document>(`/documents/${id}/metadata`, {
+    method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify(metadata),
+  }),
   passages: (id: number, page: number, signal?: AbortSignal) => request<{passages: Passage[]}>(`/documents/${id}/passages?page=${page}`, {signal}),
   reproduction: (id: string, workspaceId: string, signal?: AbortSignal) => request<ReproductionDossier>(
     `/documents/${id}/reproducibility${workspaceId ? `?workspace_id=${workspaceId}` : ""}`, {signal}),

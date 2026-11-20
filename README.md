@@ -38,6 +38,8 @@ The application is served at `http://127.0.0.1:5173` and uses the local API at
 - `GET /health` — checks database reachability.
 - `GET /documents` — lists library metadata and chunk counts.
 - `GET /documents/{document_id}` — returns document metadata and processing status.
+- `PATCH /documents/{document_id}/metadata` — updates title, authors, publication
+  year, venue, DOI and tags using a metadata revision. Source and passage IDs persist.
 - `POST /documents` — imports one PDF as multipart field `file`.
 - `GET /documents/{document_id}/source` — serves a persisted original PDF.
 - `GET /documents/{document_id}/passages?page=...` — lists indexed chunks intersecting the page.
@@ -155,6 +157,10 @@ checks protect against saving over a more recent briefing from another tab.
 Use **Quick open** (Ctrl/⌘K) to navigate by view or paper title. The reader shows
 the original PDF and indexed passages for the selected page. Its width slider
 adjusts the split on wider screens. Citation links open the reader at the source page.
+Choose multiple PDFs in **Library** to index them in order. The queue reports
+imported, duplicate and failed items independently and lets you retry a failed
+file. Use **Edit metadata** in Reader to correct bibliographic details and tags.
+Library filtering includes DOI, venue and tags.
 
 ## Generation providers
 

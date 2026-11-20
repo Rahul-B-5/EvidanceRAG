@@ -83,6 +83,16 @@
   handoff and draft retention. PostgreSQL verifies qualifying language,
   deduplication and workspace rejection. Full gate: 81 PostgreSQL-enabled tests
   and production build.
+- Evidence Packets pushed as `f1d4037` and confirmed on `origin/main`.
+  Library import now supports multiple PDFs with per-file queue states and
+  retry. Corrupt PDFs are rejected before managed publication. Metadata
+  migration `006_document_metadata` adds DOI, venue, tags and revision checks.
+  Reader metadata editing and library filter/sort build on these fields.
+  Browser verified two actual synthetic imports, metadata editing, DOI
+  filtering and PDF page navigation. Byte-identical sources and range requests
+  passed. Both hash-identified synthetic records and managed copies were
+  removed afterward. Full gate: 84 PostgreSQL-enabled tests, 3 frontend
+  export tests and production build.
 - Research Directions pushed as `22fb392` and confirmed on `origin/main`.
   Additive migration `005_evidence_packets` persists scoped saved-passage
   snapshots, notes, bibliography fields and editable briefings with revision
@@ -94,9 +104,9 @@
 
 ## Outstanding
 
-1. Complete the Library journey. Add multi-PDF imports with per-file progress
-   and clear retry behavior, then metadata editing with DOI, venue, authors,
-   year and version-safe updates. Verify with synthetic PDFs.
+1. Add persistent Library collections within workspaces, attach papers without
+   duplicating source files, and filter/organize from the Library view. Follow
+   with Reader annotations/bookmarks and a richer PDF viewer.
 2. Add contradiction candidates only for aligned study conditions and opposing
    claims with two citable sources. Add reproducibility disclosure validation,
    corpus-scoped gap exploration and evidence-grounded research briefings.

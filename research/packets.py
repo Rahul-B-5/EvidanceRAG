@@ -22,7 +22,8 @@ def create_packet(workspace_id: int | None, title: str, question: str, chunk_ids
     with get_connection() as conn, conn.cursor(row_factory=dict_row) as cursor:
         items = cursor.execute("""
             SELECT s.chunk_id, s.document_id, s.title, s.page_start, s.page_end,
-                   s.passage, s.note, s.saved_at::text, COALESCE(d.authors, '{}') AS authors, d.publication_year
+                   s.passage, s.note, s.saved_at::text, COALESCE(d.authors, '{}') AS authors,
+                   d.publication_year, d.doi, d.venue
             FROM saved_evidence s LEFT JOIN documents d ON d.id=s.document_id
             WHERE s.chunk_id=ANY(%s) ORDER BY array_position(%s::bigint[], s.chunk_id)
         """, (chunk_ids, chunk_ids)).fetchall()

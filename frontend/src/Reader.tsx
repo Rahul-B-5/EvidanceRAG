@@ -1,9 +1,10 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { api, type Document, type Passage } from "./api";
 import { SavePassage } from "./SavedEvidence";
+import { MetadataEditor } from "./DocumentMetadata";
 
-export function Reader({document, initialPage = 1, remove}: {
-  document: Document; initialPage?: number; remove: () => void;
+export function Reader({document, initialPage = 1, remove, update}: {
+  document: Document; initialPage?: number; remove: () => void; update: (paper: Document) => void;
 }) {
   const [page, setPage] = useState(initialPage);
   const [draft, setDraft] = useState(String(initialPage));
@@ -32,8 +33,8 @@ export function Reader({document, initialPage = 1, remove}: {
 
   const source = `${api.sourceUrl(document.id)}#page=${page}`;
   return <section className="panel reader-workspace">
-    <div className="reader-heading"><div><h2>{document.title}</h2><p>{document.filename}</p></div>
-      <button className="secondary danger" onClick={remove}>Delete paper</button>
+    <div className="reader-heading"><div><h2>{document.title}</h2><p>{[document.venue, document.publication_year, document.doi].filter(Boolean).join(" · ") || document.filename}</p></div>
+      <div className="finding-actions"><MetadataEditor paper={document} update={update} /><button className="secondary danger" onClick={remove}>Delete paper</button></div>
     </div>
     <div className="reader-toolbar">
       <form onSubmit={e => {e.preventDefault(); go(Number(draft));}}>

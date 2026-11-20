@@ -25,18 +25,16 @@ def extract_pdf(pdf_path: str | Path) -> list[dict[str, int | str]]:
 
     pages = []
 
-    with pymupdf.open(path) as document:
-        if document.is_encrypted:
-            raise ValueError("Encrypted PDFs are not supported.")
+    try:
+        with pymupdf.open(path) as document:
+            if not document.is_pdf:
+                raise ValueError("The uploaded file is not a PDF.")
+            if document.is_encrypted:
+                raise ValueError("Encrypted PDFs are not supported.")
 
-        for page_number, page in enumerate(document, start=1):
-            text = page.get_text("text").strip()
-
-            pages.append(
-                {
-                    "page_number": page_number,
-                    "text": text,
-                }
-            )
+            for page_number, page in enumerate(document, start=1):
+                pages.append({"page_number": page_number, "text": page.get_text("text").strip()})
+    except pymupdf.FileDataError:
+        raise ValueError("Unable to read this PDF. The file may be damaged or empty.") from None
 
     return pages

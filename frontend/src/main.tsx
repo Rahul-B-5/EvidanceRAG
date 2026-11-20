@@ -29,6 +29,9 @@ const views = [
   ["workspaces", "Workspaces", "⊞"],
 ] as const;
 type View = typeof views[number][0];
+type ImportJob = {id: string; name: string; file?: File; state: "queued" | "indexing" | "imported" | "duplicate" | "failed";
+  error?: string; documentId?: number};
+const importLabels = {queued:"Queued", indexing:"Indexing", imported:"Imported", duplicate:"Already in library", failed:"Failed"};
 
 function App() {
   const [view, setView] = useState<View>("dashboard");
@@ -44,7 +47,8 @@ function App() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [notice, setNotice] = useState("");
+  const [imports, setImports] = useState<ImportJob[]>([]);
+  const importLock = useRef(false);
   const [command, setCommand] = useState("");
   const palette = useRef<HTMLDialogElement>(null);
 
@@ -64,7 +68,6 @@ function App() {
 
   function navigate(next: View) {
     setView(next);
-    setNotice("");
     if (next === "compare" || next === "reproduction" || next === "coverage" || next === "directions" || next === "packets") {
       setOpenedResearchViews(previous => previous.has(next) ? previous : new Set([...previous, next]));
     }
@@ -124,15 +127,28 @@ function App() {
     ...documents.map(d => ({key: `paper-${d.id}`, label: d.title, run: () => openPaper(d.id)})),
   ].filter(item => item.label.toLowerCase().includes(command.trim().toLowerCase())).slice(0, 12);
 
-  async function upload(file: File) {
-    setUploading(true); setError(""); setNotice("");
+  async function runImports(jobs: ImportJob[]) {
+    if (!jobs.length || importLock.current) return;
+    importLock.current = true;
+    setUploading(true);setError("");
     try {
-      const result = await api.upload(file);
-      setNotice(result.status === "already_exists" ? "Paper already in your library. Its source is available." : "Paper indexed and ready to read.");
+      const ids = new Set(jobs.map(j => j.id));
+      setImports(previous => [...jobs, ...previous.filter(job => !ids.has(job.id))]);
+      for (const job of jobs) {
+        if (!job.file) continue;
+        setImports(previous => previous.map(j => j.id === job.id ? {...j, state:"indexing"} : j));
+        try {
+          const result = await api.upload(job.file);
+          setImports(previous => previous.map(j => j.id === job.id
+            ? {...j, file:undefined, documentId:result.document_id, state:result.status === "already_exists" ? "duplicate" : "imported"} : j));
+        } catch (e) {
+          setImports(previous => previous.map(j => j.id === job.id
+            ? {...j, state:"failed", error:e instanceof Error ? e.message : "Import failed."} : j));
+        }
+      }
       await refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Upload failed.");
     } finally {
+      importLock.current = false;
       setUploading(false);
     }
   }
@@ -151,9 +167,12 @@ function App() {
   }
 
   let content: ReactNode;
-  if (view === "library") content = <Library documents={documents} loading={loading} uploading={uploading} upload={upload} openPaper={openPaper} />;
+  if (view === "library") content = <Library documents={documents} loading={loading} uploading={uploading}
+    imports={imports} queue={files => void runImports(files.map(file => ({id:crypto.randomUUID(), name:file.name, file, state:"queued"})))}
+    retry={job => void runImports([{...job, state:"queued", error:undefined}])} openPaper={openPaper} />;
   else if (view === "reader") content = selected
-    ? <Reader key={`${selected.id}-${readerPage}`} document={selected} initialPage={readerPage} remove={() => void remove(selected)} />
+    ? <Reader key={`${selected.id}-${readerPage}`} document={selected} initialPage={readerPage}
+      update={paper => setDocuments(current => current.map(d => d.id === paper.id ? paper : d))} remove={() => void remove(selected)} />
     : loading ? <p role="status">Loading paper…</p>
     : <section className="panel empty"><h2>Select a paper to read</h2><button onClick={() => navigate("library")}>Open library</button></section>;
   else if (view === "assistant") content = <Conversations documents={documents} initial={findingQuestion} />;
@@ -182,7 +201,6 @@ function App() {
     <main id="content" className="shell">
       <header className="page-header"><h1>{title}</h1><button className="secondary" disabled={loading} onClick={() => void refresh()}>Refresh library</button></header>
       {error && <p className="notice error" role="alert">{error}</p>}
-      {notice && <p className="notice" role="status">{notice}</p>}
       {content}
       {openedResearchViews.has("compare") && <div hidden={view !== "compare"}><WorkspaceArea documents={documents} compare={askFinding} /></div>}
       {openedResearchViews.has("reproduction") && <div hidden={view !== "reproduction"}><ReproductionStudio documents={documents} workspaces={workspaces} /></div>}
@@ -207,33 +225,44 @@ function PaperRows({documents, openPaper}: {documents: Document[]; openPaper: (i
   return <div className="table-scroll"><table className="paper-table">
     <thead><tr><th scope="col">Paper</th><th scope="col">Pages</th><th scope="col">Status</th></tr></thead>
     <tbody>{documents.map(d => <tr key={d.id}>
-      <td><button className="paper-link" onClick={() => openPaper(d.id)}>{d.title}</button><small>{d.authors?.join(", ") || d.filename}</small></td>
+      <td><button className="paper-link" onClick={() => openPaper(d.id)}>{d.title}</button>
+        <small>{[d.authors.join(", ") || d.filename, d.venue, d.publication_year].filter(Boolean).join(" · ")}</small>
+        {!!d.tags.length && <small>{d.tags.join(" · ")}</small>}</td>
       <td>{d.page_count ?? "—"}</td><td><span className="tag">{d.processing_status}</span></td>
     </tr>)}</tbody>
   </table></div>;
 }
 
-function Library({documents, loading, uploading, upload, openPaper}: {
-  documents: Document[]; loading: boolean; uploading: boolean;
-  upload: (file: File) => Promise<void>; openPaper: (id: number) => void;
+function Library({documents, loading, uploading, imports, queue, retry, openPaper}: {
+  documents: Document[]; loading: boolean; uploading: boolean; imports: ImportJob[];
+  queue: (files: File[]) => void; retry: (job: ImportJob) => void; openPaper: (id: number) => void;
 }) {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("recent");
   const input = useRef<HTMLInputElement>(null);
-  const visible = documents.filter(d => [d.title, d.filename, ...d.authors]
+  const visible = documents.filter(d => [d.title, d.filename, d.venue ?? "", d.doi ?? "", ...d.authors, ...d.tags]
     .some(text => text.toLowerCase().includes(query.trim().toLowerCase())));
   if (sort === "title") visible.sort((a, b) => a.title.localeCompare(b.title));
+  if (sort === "year") visible.sort((a, b) => (b.publication_year ?? 0) - (a.publication_year ?? 0));
   return <section className="panel">
     <div className="library-controls">
-      <label>Filter papers<input type="search" value={query} onChange={e => setQuery(e.target.value)} placeholder="Title, filename or author" /></label>
-      <label>Sort by<select value={sort} onChange={e => setSort(e.target.value)}><option value="recent">Recently added</option><option value="title">Title</option></select></label>
-      <input ref={input} type="file" accept=".pdf,application/pdf" hidden onChange={e => {
-        const file = e.target.files?.[0];
+      <label>Filter papers<input type="search" value={query} onChange={e => setQuery(e.target.value)} placeholder="Title, author, venue, DOI or tag" /></label>
+      <label>Sort by<select value={sort} onChange={e => setSort(e.target.value)}><option value="recent">Recently added</option><option value="title">Title</option><option value="year">Publication year</option></select></label>
+      <input ref={input} type="file" accept=".pdf,application/pdf" multiple hidden onChange={e => {
+        const files = Array.from(e.target.files ?? []);
         e.target.value = "";
-        if (file) void upload(file);
+        queue(files);
       }} />
-      <button disabled={uploading} onClick={() => input.current?.click()}>{uploading ? "Indexing PDF…" : "Import PDF"}</button>
+      <button disabled={uploading} onClick={() => input.current?.click()}>{uploading ? "Import in progress…" : "Import PDFs"}</button>
     </div>
+    {!!imports.length && <section className="import-queue" aria-label="PDF import queue">
+      <h2>Import queue</h2>
+      <ul>{imports.map(job => <li key={job.id}>
+        <span>{job.name}</span><span role="status">{importLabels[job.state]}{job.error ? ` · ${job.error}` : ""}</span>
+        {job.state === "failed" && job.file && <button className="secondary" disabled={uploading} onClick={() => retry(job)}>Retry</button>}
+        {job.documentId && <button className="secondary" disabled={uploading} onClick={() => openPaper(job.documentId!)}>Open paper</button>}
+      </li>)}</ul>
+    </section>}
     {loading ? <p role="status">Loading library…</p> : visible.length ? <PaperRows documents={visible} openPaper={openPaper} />
       : <p className="empty">{query ? "No matching papers." : "Your library is empty. Import a PDF to begin."}</p>}
   </section>;
