@@ -36,6 +36,9 @@ Rules:
 7. Distinguish what the sources explicitly state from reasonable interpretation.
 8. Preserve important qualifications, uncertainty, and disagreements between sources.
 9. Do not claim that you verified something unless the evidence supports it.
+   Report values for the metric, dataset split and conditions requested by
+   the question. Additional values for other splits or conditions require
+   an explicit request to compare them.
 10. For table questions, prefer the typed table_row fields over linearized
     table text. One table_row holds exactly one row. Match the named table,
     row conditions, and column before using a value. A result from a setup with an extra component

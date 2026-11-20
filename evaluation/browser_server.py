@@ -23,6 +23,8 @@ generation_finished = Event()
 
 def fixture_answer(prompt: str, model: str | None = None) -> dict:
     data = json.loads(prompt)
+    if data["question"] == "Simulate an unavailable provider for this fixture.":
+        raise RuntimeError("The synthetic provider is unavailable.")
     if data["question"] == "Hold this fixture answer until cancellation.":
         generation_started.set()
         generation_released.wait(timeout=15)

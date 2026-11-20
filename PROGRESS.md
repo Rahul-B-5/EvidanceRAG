@@ -1,6 +1,22 @@
 # EvidenceRAG progress
 
-## Verified
+## Current release audit
+
+The entries below describe the current checkout. The implementation history
+that follows records earlier checkpoints and their remaining work at the time.
+
+| Requirement | Current evidence | Remaining release work |
+| --- | --- | --- |
+| Existing research data | PostgreSQL 5433 retains 3 documents and 75 passages. Recovered the legacy original through byte-identical duplicate upload and verified unchanged document metadata and a digest of every chunk row, including embeddings. | Continue read-only integrity checks at release gates. |
+| Local launch | Supported launcher checks ports, PostgreSQL and additive migrations. Both loopback hostnames passed Chrome smoke tests. | Repeat the final smoke test against the release commit. |
+| AI configuration | Encrypted web profiles cover five providers, answering/extraction routing, local discovery and live model switching. Native Ollama context configuration is browser-tested. | Authenticated cloud calls need configured credentials. |
+| Library and Reader | Durable imports, duplicate handling, restart recovery, indexed pages, bookmarks, annotations and exact passage navigation have integration and browser coverage. | Scanned PDFs require OCR outside the current text ingestion path. |
+| Research workflows | Browser journeys cover comparison, claims, Atlas, opposing findings, reproducibility, directions, coverage, evidence packets and exports. | Wider representative scientific evaluation and assistive-technology testing. |
+| Scientific grounding | Qwen and Gemma each passed all four full NREL report cases. Qwen passed all five published-paper excerpt cases with live embeddings and generation. Gemma initially included extra split values, then passed all five after the scope instruction change. | Repeat across additional papers and formats. Exact source matching does not independently verify all scientific interpretations. |
+| Recovery and cancellation | Browser verifies acknowledged cancellation, no partial exchange after reload and successful retry. Provider-failure recovery has a separate browser regression. | Multiple backend workers need shared cancellation state or affinity. |
+| Performance | Synthetic retrieval measured up to 500 papers and 30,000 passages. A 24-PDF burst used real embeddings. | Concurrent, larger and more varied full-PDF workloads. |
+
+## Implementation history
 
 - Repository uses `main` and pushes to `Rahul-B-5/EvidanceRAG`. See `git log` and `git ls-remote --heads origin main` for current delivery status.
 - Local PostgreSQL with pgvector uses configured port 5433. Existing library has two papers and 34 indexed passages. Earlier smoke tests verified PDF import, duplicate detection, search, download and disposal of synthetic test records. Existing legacy papers still need byte-identical reimport to restore the original PDF links.
@@ -472,6 +488,20 @@ launcher, wider browser review and release validation to the previous scope.
   requested metric and condition and preserve the two source citations.
 
 ## Continuation
+
+- Added provider-failure browser recovery. It checks the retained question,
+  an empty persisted conversation after reload, a cited retry and removal of
+  the error state. Seven deterministic Chrome workflows passed.
+- Ran live embeddings and generation on the published-paper excerpt suite.
+  Qwen passed five of five. Gemma first passed four, adding development
+  metrics to a test-only question. The answer instruction now requests only
+  the specified split and conditions. Gemma then passed five of five.
+  This improves adherence but still requires evaluation on broader material.
+- Recovered the existing legacy PDF from a byte-identical local copy
+  through POST /documents. All three source endpoints now return bytes
+  matching their recorded hashes. Existing metadata and all indexed chunk
+  rows were verified unchanged. Passed 158 PostgreSQL tests, 10 frontend
+  tests and the build.
 
 - A new browser cancellation regression exposed a race where closing the
   stream could precede server disconnect detection and permit a late result
