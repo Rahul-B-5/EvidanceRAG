@@ -385,6 +385,10 @@ launcher, wider browser review and release validation to the previous scope.
 - These measurements use synthetic 384-dimensional vectors and repeated
   research text. They include connection setup. Model latency, PDF parsing,
   frontend rendering and concurrent load still need separate measurements.
+- A separate burst of 24 four-page synthetic PDFs completed through the
+  import-jobs API and real local embeddings in 2.3 seconds. All 96
+  page-anchored passages were indexed and a source download matched the
+  original bytes. This run used one worker and short text pages.
 
 ## Research screen review
 
@@ -437,6 +441,16 @@ launcher, wider browser review and release validation to the previous scope.
   providers and concurrent whole-library import still need live checks.
   The live settings database and server fallback currently have no
   configured cloud credentials.
+- Tried a general array of claims with structured evidence IDs. The
+  PostgreSQL and synthetic browser checks passed. Qwen timed out on both
+  ordinary numeric report cases, abstained on the comparison, and returned
+  unrelated background on the missing-quote case. The experimental
+  contract was removed. A native Ollama token probe then measured 6,132
+  and 6,562 prompt tokens for the residential and community cases at an
+  8,192-token context. The 4,096-token context reported only 2,050 tokens
+  for each of those prompts. The scoped comparison fit at 1,927 tokens
+  in both contexts. Test retrieval packing or an explicit context setting
+  before redesigning the response shape again.
 
 ## Continuation
 

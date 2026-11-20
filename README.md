@@ -377,9 +377,10 @@ replies. Add `--live-embeddings` and `--live-provider` to evaluate the configure
 models on the selected fixture. The JSON report includes the evaluated model
 answers for review.
 
-Assistant requests a constrained answer format from Ollama and Gemini and
-validates citations locally. OpenAI-compatible endpoints can use JSON object
-mode. Citation validation confirms the passage identifiers and their pages.
+Assistant requests a constrained answer format from Ollama, Gemini and
+native Claude and validates citations locally. OpenAI-compatible endpoints
+can use JSON object mode. Citation validation confirms the passage
+identifiers and their pages.
 Newly indexed PDFs with extractable tables also preserve the caption, row
 group and column-to-cell mapping on the physical page. Typed rows appear in
 Reader and in Assistant evidence. Earlier passages remain available in their
@@ -400,6 +401,14 @@ source checks without answer generation.
 
 ```bash
 .venv/bin/python -m evaluation.pdf_benchmark /path/to/87303.pdf --retrieval-only
+```
+
+The report benchmark uses a fresh schema. Select an installed local model
+with process-scoped settings for a live run.
+
+```bash
+GENERATION_PROVIDER=ollama GENERATION_MODEL=gemma4:e4b \
+  .venv/bin/python -m evaluation.pdf_benchmark /path/to/87303.pdf
 ```
 
 The browser suite runs the actual frontend and API in headless Chromium.
