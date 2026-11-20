@@ -36,6 +36,7 @@ from research.atlas import atlas_for_workspace
 from research.counterevidence import find_passages
 from research.claim_reviews import read_reviews, write_review
 from research.reproducibility import assess_document
+from research.coverage import question_coverage
 from typing import Annotated, Literal
 
 
@@ -88,6 +89,12 @@ class ClaimReviewRequest(BaseModel):
     relation: Literal["supports", "qualifies", "challenges", "uncertain"]
     alignment: Literal["aligned", "different", "unknown"]
     note: str = Field(default="", max_length=4000)
+
+
+class CoverageRequest(BaseModel):
+    question: str = Field(min_length=8, max_length=1200)
+    workspace_id: int | None = Field(default=None, gt=0, le=9223372036854775807)
+    use_provider: bool = False
 
 
 def validate_workspace_scope(workspace_id: int | None, document_ids: list[int]) -> None:
@@ -530,6 +537,17 @@ def reproducibility_dossier(
     if row is None:
         raise HTTPException(status_code=404, detail="Document not found.")
     return {"document_id": document_id, "title": row[0], "items": assess_document(document_id, workspace_id)}
+
+
+@app.post("/research/coverage")
+def map_coverage(request: CoverageRequest) -> dict:
+    validate_workspace_scope(request.workspace_id, [])
+    try:
+        return question_coverage(request.question.strip(), request.workspace_id, request.use_provider)
+    except ValueError as exc:
+        raise _bad_request(exc) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @app.delete("/workspaces/{workspace_id}/documents/{document_id}", status_code=204)

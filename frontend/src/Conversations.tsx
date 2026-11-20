@@ -8,7 +8,7 @@ export function Conversations({documents, initial}: {documents: Document[]; init
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [workspace, setWorkspace] = useState(initial?.workspaceId ? String(initial.workspaceId) : "");
-  const [source, setSource] = useState(initial ? String(initial.documentId) : "");
+  const [source, setSource] = useState(initial?.documentId ? String(initial.documentId) : "");
   const [query, setQuery] = useState(initial?.question ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");

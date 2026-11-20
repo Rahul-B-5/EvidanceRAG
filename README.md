@@ -43,6 +43,9 @@ The application is served at `http://127.0.0.1:5173` and uses the local API at
 - `GET /documents/{document_id}/passages?page=...` — lists indexed chunks intersecting the page.
 - `GET /documents/{document_id}/reproducibility` — scans ranked passages for
   11 reproducibility categories. An optional `workspace_id` limits the scope.
+- `POST /research/coverage` — builds a workspace-scoped question map. It
+  requires both question terms and facet terms in each passage and shows at
+  most one result per paper per facet.
 - `DELETE /documents/{document_id}` — removes the document, its chunks, and its
   managed source file after the database transaction commits.
 - `GET /search?query=...` — returns hybrid-retrieved evidence passages.
@@ -126,6 +129,12 @@ you revisit that finding.
 details that were not located in the ranked passages. Open each checklist item
 for the excerpt and a manual verification step. Export a Markdown Reproduction
 Dossier with indexed page references and optional draft notes.
+
+**Question coverage** uses four local research facets, with optional
+model-proposed subquestions. Planning sends only the question to the configured
+provider. Passage matching stays local. Expand a facet to inspect contributors,
+save a passage, or open a scope-preserving Assistant draft. Match counts describe
+retrieval coverage and need source review to establish support.
 
 Use **Quick open** (Ctrl/⌘K) to navigate by view or paper title. The reader shows
 the original PDF and indexed passages for the selected page. Its width slider

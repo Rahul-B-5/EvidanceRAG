@@ -69,12 +69,19 @@
   Browser verified real-paper analysis, filter, source link and Markdown
   download. Integration tests verify reported values and workspace rejection.
   Full gate: 76 PostgreSQL-enabled tests and production build.
+- Reproducibility Studio pushed as `f23f386` and confirmed on `origin/main`.
+  Question coverage maps a broad question to local research facets or three
+  to five opt-in model-proposed subquestions. Workspace SQL requires both
+  topic and facet terms and deduplicates papers. Browser verified actual
+  library results, Assistant handoff and state retention. Ollama returned four
+  valid subquestions in a live smoke test. Full gate: 79 PostgreSQL-enabled
+  tests and production build.
 
 ## Outstanding
 
-1. Build a Research Question Coverage Map. Decompose the question into bounded
-   topic facets, retrieve evidence on each within the selected workspace,
-   and distinguish retrieved coverage from unanswered subquestions.
+1. Build a workspace Research Gap Explorer from author-reported limitations,
+   recorded conditions and bounded corpus coverage. Show provenance and
+   external-verification status, and provide an editable hypothesis plan.
 2. Add contradiction candidates only for aligned study conditions and opposing
    claims with two citable sources. Add reproducibility disclosure validation,
    corpus-scoped gap exploration and evidence-grounded research briefings.

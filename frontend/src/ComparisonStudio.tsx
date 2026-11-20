@@ -4,7 +4,7 @@ import { SavePassage } from "./SavedEvidence";
 import { EvidenceGraph } from "./EvidenceGraph";
 import { comparisonBrief, followUpExcerpts } from "./comparisonBrief";
 
-export type FindingQuestion = { documentId: number; workspaceId?: number; question: string };
+export type FindingQuestion = { documentId?: number; workspaceId?: number; question: string };
 const labels: Record<string, string> = {
   methodology: "Methods", datasets: "Datasets", training: "Training", metrics: "Evaluation metrics",
   results: "Numerical findings", limitations: "Limitations", architecture: "Architecture", protocol: "Evaluation protocol",

@@ -51,6 +51,11 @@ export type ReproductionDossier = {
   items: Array<{label: string; verify: string; status: "specific_detail" | "mention" | "not_located";
     matched_text: string | null; excerpt: string | null; source: Provenance | null}>;
 };
+export type CoverageMap = {
+  question: string; anchors: string[];
+  facets: Array<{title: string; question: string; status: "multiple_papers" | "single_paper" | "not_located";
+    passages: Array<Provenance & {title: string; excerpt: string}>}>;
+};
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, init);
@@ -97,6 +102,10 @@ export const api = {
   passages: (id: number, page: number, signal?: AbortSignal) => request<{passages: Passage[]}>(`/documents/${id}/passages?page=${page}`, {signal}),
   reproduction: (id: string, workspaceId: string, signal?: AbortSignal) => request<ReproductionDossier>(
     `/documents/${id}/reproducibility${workspaceId ? `?workspace_id=${workspaceId}` : ""}`, {signal}),
+  coverage: (question: string, workspaceId: string, useProvider: boolean, signal?: AbortSignal) => request<CoverageMap>("/research/coverage", {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({question, workspace_id:workspaceId ? Number(workspaceId) : undefined, use_provider:useProvider}), signal,
+  }),
   upload: (file: File) => { const data = new FormData(); data.append("file", file); return request<{ document_id: number; status: string }>("/documents", { method: "POST", body: data }); },
   remove: (id: number) => request<void>(`/documents/${id}`, { method: "DELETE" }),
   search: (query: string, documentId?: number, workspaceId?: number) => request<{ evidence: Evidence[]; evidence_count: number }>(`/search?${new URLSearchParams({ query, ...(documentId ? { document_id: String(documentId) } : {}), ...(workspaceId ? {workspace_id: String(workspaceId)} : {}) })}`),

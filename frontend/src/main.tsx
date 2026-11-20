@@ -8,6 +8,7 @@ import { SavedEvidence } from "./SavedEvidence";
 import type { FindingQuestion } from "./ComparisonStudio";
 import { EvidenceAtlas } from "./EvidenceAtlas";
 import { ReproductionStudio } from "./ReproductionStudio";
+import { ResearchCoverage } from "./ResearchCoverage";
 import "./styles.css";
 
 const views = [
@@ -19,6 +20,7 @@ const views = [
   ["compare", "Comparison studio", "▥"],
   ["atlas", "Evidence Atlas", "⌘"],
   ["reproduction", "Reproducibility", "▧"],
+  ["coverage", "Question coverage", "▦"],
   ["saved", "Saved evidence", "◇"],
   ["workspaces", "Workspaces", "⊞"],
 ] as const;
@@ -34,7 +36,7 @@ function App() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [readerPage, setReaderPage] = useState(1);
   const [findingQuestion, setFindingQuestion] = useState<FindingQuestion>();
-  const [studioOpened, setStudioOpened] = useState(false);
+  const [openedResearchViews, setOpenedResearchViews] = useState<Set<View>>(() => new Set());
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -59,7 +61,9 @@ function App() {
   function navigate(next: View) {
     setView(next);
     setNotice("");
-    if (next === "compare") setStudioOpened(true);
+    if (next === "compare" || next === "reproduction" || next === "coverage") {
+      setOpenedResearchViews(previous => previous.has(next) ? previous : new Set([...previous, next]));
+    }
     if (next === "assistant") setFindingQuestion(undefined);
     if (next === "dashboard") void refresh();
   }
@@ -150,8 +154,7 @@ function App() {
     : <section className="panel empty"><h2>Select a paper to read</h2><button onClick={() => navigate("library")}>Open library</button></section>;
   else if (view === "assistant") content = <Conversations documents={documents} initial={findingQuestion} />;
   else if (view === "atlas") content = <EvidenceAtlas compare={() => navigate("compare")} ask={askFinding} />;
-  else if (view === "reproduction") content = <ReproductionStudio documents={documents} workspaces={workspaces} />;
-  else if (view === "compare") content = null;
+  else if (view === "compare" || view === "reproduction" || view === "coverage") content = null;
   else if (view === "saved") content = <SavedEvidence />;
   else if (view === "research" || view === "workspaces") content = <WorkspaceArea key={view} documents={documents} manage={view === "workspaces"} />;
   else content = <section className="panel overview">
@@ -177,7 +180,9 @@ function App() {
       {error && <p className="notice error" role="alert">{error}</p>}
       {notice && <p className="notice" role="status">{notice}</p>}
       {content}
-      {studioOpened && <div hidden={view !== "compare"}><WorkspaceArea documents={documents} compare={askFinding} /></div>}
+      {openedResearchViews.has("compare") && <div hidden={view !== "compare"}><WorkspaceArea documents={documents} compare={askFinding} /></div>}
+      {openedResearchViews.has("reproduction") && <div hidden={view !== "reproduction"}><ReproductionStudio documents={documents} workspaces={workspaces} /></div>}
+      {openedResearchViews.has("coverage") && <div hidden={view !== "coverage"}><ResearchCoverage workspaces={workspaces} ask={askFinding} /></div>}
     </main>
     <dialog ref={palette} className="palette" aria-label="Quick open">
       <form onSubmit={e => {e.preventDefault(); if (commands[0]) {palette.current?.close();commands[0].run();}}}>
