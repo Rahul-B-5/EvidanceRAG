@@ -277,3 +277,14 @@ The default uses fixed embeddings and model replies. Use
 on synthetic text. Passing this corpus verifies the specified facts and
 references on these cases. Broader scientific grounding needs separate
 review and evaluation.
+
+The browser suite runs the actual frontend and API in headless Chromium.
+It provisions an isolated PostgreSQL schema and temporary upload directory,
+then removes both. The suite generates its own two-page PDF and uses
+deterministic model replies. Install Playwright's Chromium before the first
+run, or set `PLAYWRIGHT_CHANNEL=chrome` to use an installed Google Chrome.
+
+```bash
+npm --prefix frontend exec -- playwright install chromium
+.venv/bin/python -m evaluation.browser
+```

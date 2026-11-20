@@ -7,7 +7,7 @@ delivery status live in [PROGRESS.md](PROGRESS.md).
 | Journey | Working path | Remaining verification or implementation |
 | --- | --- | --- |
 | Library | Multi-file queue, duplicate handling, retries, metadata editing, tags, workspace collections, scope filters and source recovery | Re-embedding and persistent import jobs |
-| Investigation | Hybrid search, fixed multi-paper scopes, page citations, streamed progress and cancel-before-commit | Automated browser upload-to-answer regression, evaluation of contextual follow-ups |
+| Investigation | Hybrid search, fixed multi-paper scopes, page citations, streamed progress and cancel-before-commit | Broader browser coverage and evaluation of contextual follow-ups |
 | Comparison | Matrix, source preview, evidence saving, durable partial results and condition checks | More experimental fields, confidence and support checks, representative corpus evaluation |
 | Evidence Atlas | Persisted workspace graphs with paper, excerpt, topic, metric and dataset edges, plus two-source disagreement edges | Integrate notebook evidence, alternate layouts and larger-library testing |
 | Disagreement | Scope candidates to matching reported setups and explicitly opposing statements, and persist separate human judgments | Evaluate false positives and expand coverage to other types of disagreement |
@@ -15,8 +15,8 @@ delivery status live in [PROGRESS.md](PROGRESS.md).
 | Research directions | Topic-focused workspace sampling separates stated limitations and reported evaluations, with editable plans and dual-source Markdown export | Cross-theme corpus analysis and wider literature verification |
 | Deliverables | Saved notes, comparison briefings, durable evidence packets, seven reusable outlines, cited drafts and Markdown/HTML/JSON/BibTeX exports | Integration with citation managers and optional PDF export |
 | Reader | Selectable PDF text, local phrase search, zoom, persistent bookmarks and indexed-text highlights with revisioned notes | Exact PDF-coordinate annotations, finer indexed page anchors and OCR |
-| Everyday UX | Themes, keyboard palette and table views | Flagship visual review at desktop and narrow widths, accessibility and browser interaction regressions |
-| Operations | Additive migrations, PostgreSQL tests and a versioned retrieval and answer benchmark with live model mode | Browser regressions, larger corpora, safe re-embedding, recovery and retention |
+| Everyday UX | Themes, keyboard palette, table views and narrow-screen keyboard regression | More responsive and accessibility coverage across research screens |
+| Operations | Additive migrations, PostgreSQL tests, a live/fixture evaluation benchmark and an isolated browser suite | Larger corpora, safe re-embedding, recovery and retention |
 
 ## Dependency order
 

@@ -1,0 +1,91 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { expect, test } from "@playwright/test";
+
+const title = "EvidenceRAG browser fixture";
+
+test("import, inspect, save, answer and export a real PDF", async ({page, request}) => {
+  const fixture = join(process.env.EVIDENCERAG_E2E_TEMP!, "browser-fixture.pdf");
+  await page.goto("/");
+  await page.getByRole("button", {name:"Library", exact:true}).click();
+  const importButton = page.getByRole("button", {name:"Import PDFs", exact:true});
+  const files = page.locator("input[type=file]");
+  const queue = page.getByRole("region", {name:"PDF import queue"});
+  await files.setInputFiles(fixture);
+  await expect(queue.getByText("Imported", {exact:true})).toBeVisible();
+  await expect(importButton).toBeEnabled();
+  await files.setInputFiles(fixture);
+  await expect(queue.getByText("Already in library", {exact:true})).toBeVisible();
+  await expect(importButton).toBeEnabled();
+  await files.setInputFiles({name:"corrupt.pdf", mimeType:"application/pdf", buffer:Buffer.from("%PDF-1.7\ninvalid")});
+  await expect(queue.getByText(/^Failed · /)).toBeVisible();
+  await expect(page.getByRole("table").getByRole("row")).toHaveCount(2);
+
+  await page.getByRole("button", {name:title, exact:true}).click();
+  await expect(page.getByRole("img", {name:"PDF page 1"})).toBeVisible();
+  await page.getByRole("searchbox", {name:"Find in PDF"}).fill("37 observations");
+  await page.getByRole("button", {name:"Find", exact:true}).click();
+  await page.getByRole("list", {name:"PDF search results"}).getByRole("button", {name:/Page 2/}).click();
+  await expect(page.getByRole("img", {name:"PDF page 2"})).toBeVisible();
+  await page.getByRole("button", {name:"Bookmark page", exact:true}).click();
+  await expect(page.getByRole("button", {name:"Remove page bookmark"})).toBeVisible();
+  await page.getByRole("button", {name:"Save passage", exact:true}).click();
+  await expect(page.getByRole("button", {name:"Saved", exact:true})).toBeVisible();
+  const source = await page.getByRole("link", {name:"Open original PDF"}).getAttribute("href");
+  expect(source).toMatch(/\/documents\/\d+\/source#page=2$/);
+  const pdf = await request.get(source!.split("#")[0], {headers:{Range:"bytes=0-7"}});
+  expect(pdf.status()).toBe(206);
+  expect(await pdf.body()).toEqual((await readFile(fixture)).subarray(0, 8));
+
+  await page.getByRole("button", {name:"Saved evidence", exact:true}).click();
+  await page.getByRole("textbox", {name:"Research note"}).fill("Verify the held-out sample counts.");
+  await page.getByRole("button", {name:"Save note", exact:true}).click();
+  await expect(page.getByText("Note saved.", {exact:true})).toBeVisible();
+  const notebook = page.waitForEvent("download");
+  await page.getByRole("button", {name:"Export Markdown"}).click();
+  expect(await readFile(await (await notebook).path(), "utf8")).toContain("Verify the held-out sample counts.");
+
+  await page.getByRole("button", {name:"Assistant", exact:true}).click();
+  await page.getByRole("combobox", {name:"Sources"}).selectOption("selected");
+  await page.getByRole("checkbox", {name:title}).check();
+  await page.getByRole("textbox", {name:"Question"}).fill("What is the held-out sample size?");
+  await page.getByRole("button", {name:"Send question"}).click();
+  const citation = page.getByRole("link", {name:/\[E1\].*page 2/});
+  await expect(citation).toBeVisible();
+  await expect(page.getByText("The held-out sample contains 37 observations [E1].", {exact:true})).toBeVisible();
+  await citation.click();
+  await expect(page.getByRole("img", {name:"PDF page 2"})).toBeVisible();
+  await expect(page.getByRole("button", {name:"Remove page bookmark"})).toBeVisible();
+
+  await page.getByRole("button", {name:"Evidence packets", exact:true}).click();
+  await page.getByRole("textbox", {name:"Packet title"}).fill("Calibration briefing");
+  await page.getByRole("combobox", {name:"Briefing template"}).selectOption("question-investigation");
+  await page.getByRole("checkbox", {name:/EvidenceRAG browser fixture/}).check();
+  await page.getByRole("button", {name:"Create evidence packet"}).click();
+  await page.getByRole("textbox", {name:"Briefing text"}).fill("The held-out sample contained 37 observations [E1].");
+  await page.getByRole("button", {name:"Save briefing"}).click();
+  await expect(page.getByText("Briefing saved.", {exact:true})).toBeVisible();
+  await page.getByRole("combobox", {name:"Export format"}).selectOption("html");
+  const exportEvent = page.waitForEvent("download");
+  await page.getByRole("button", {name:"Export evidence packet"}).click();
+  const markup = await readFile(await (await exportEvent).path(), "utf8");
+  expect(markup).toContain('<a href="#E1">[E1]</a>');
+  expect(markup).toContain("Verify the held-out sample counts.");
+});
+
+test("keyboard navigation and responsive layout work on a narrow viewport", async ({page}) => {
+  await page.setViewportSize({width:390, height:844});
+  await page.goto("/");
+  await expect(page.getByRole("button", {name:"Refresh library"})).toBeEnabled();
+  await page.keyboard.press("ControlOrMeta+k");
+  const dialog = page.getByRole("dialog", {name:"Quick open"});
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("textbox").fill("research directions");
+  await dialog.getByRole("textbox").press("Enter");
+  await expect(page.getByRole("heading", {level:1, name:"Research directions"})).toBeVisible();
+  await expect(dialog).not.toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  const theme = await page.locator("html").getAttribute("data-theme");
+  await page.getByRole("button", {name:theme === "dark" ? "Light theme" : "Dark theme", exact:true}).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", theme === "dark" ? "light" : "dark");
+});

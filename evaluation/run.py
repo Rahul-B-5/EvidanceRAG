@@ -10,19 +10,17 @@ from statistics import mean, median, quantiles
 from time import perf_counter
 from types import SimpleNamespace
 from unittest.mock import patch
-from uuid import uuid4
 
 from fastapi.testclient import TestClient
-from psycopg import sql
 
 from app.api.main import app
 from app.core.config import get_settings
 from app.db.connection import get_connection
 from app.generation import answerer
 from app.retrieval import embeddings, fusion, keyword, vector
+from evaluation.database import fresh_schema, prepare_schema
 
 CORPUS = Path(__file__).with_name("corpus.json")
-BASE_SCHEMA = CORPUS.parent.parent / "app" / "db" / "schema.sql"
 TOP_K = 4
 
 
@@ -109,17 +107,12 @@ def answer_checks(response, case: dict, identifiers: dict, anchors: dict, allowe
 
 def evaluate(live_provider: bool = False, live_embeddings: bool = False) -> dict:
     fixture = json.loads(CORPUS.read_text(encoding="utf-8"))
-    schema = "evidencerag_eval_" + uuid4().hex
+    schema = fresh_schema()
     results = []
     # The fresh namespace and all rows disappear with this rollback. The
     # library's tables are never selected, updated, truncated, or recreated.
     with get_connection() as conn, conn.transaction(force_rollback=True):
-        conn.execute(sql.SQL("CREATE SCHEMA {}").format(sql.Identifier(schema)))
-        conn.execute(sql.SQL("SET LOCAL search_path TO {}, public").format(sql.Identifier(schema)))
-        conn.execute(BASE_SCHEMA.read_text(encoding="utf-8"), prepare=False)
-        tables = [f"{schema}.{name}" for name in ("documents", "chunks", "workspaces", "workspace_documents")]
-        if not conn.execute("SELECT bool_and(to_regclass(name) IS NOT NULL) FROM unnest(%s::text[]) name", (tables,)).fetchone()[0]:
-            raise RuntimeError("Evaluation schema is incomplete. No fixture rows were written.")
+        prepare_schema(conn, schema)
         docs, identifiers, anchors, workspaces, settings = insert_fixtures(conn, fixture, live_embeddings)
 
         @contextmanager

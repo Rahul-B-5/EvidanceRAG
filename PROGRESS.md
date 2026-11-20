@@ -152,16 +152,23 @@
   cited question-investigation draft, saving and reopening the template,
   and HTML export. Full gate: 101 PostgreSQL-enabled tests, 10 frontend
   tests and production build.
-- The versioned benchmark runs real PostgreSQL retrieval and the answer API
+- Benchmark pushed as `854a8df`. It runs real PostgreSQL retrieval and the answer API
   in a fresh rollback-only schema. Both deterministic and live local Ollama
   modes passed six cases for ranking, workspace isolation, cited values,
   page references and abstention. Live hybrid recall@4 was 1.0 and answer
   p95 was about 3.4 seconds on this small corpus. Full gate:
   104 PostgreSQL-enabled tests, 10 frontend tests and production build.
+- Automated browser tests run the real frontend and API against a disposable
+  migrated PostgreSQL schema and deterministic model fixtures. Headless
+  Chrome passed upload, duplicate and corrupt-file handling, Reader search,
+  bookmarks, range download, notebook notes, scoped Assistant citation to page
+  2 and linked HTML export. A separate 390px test covered keyboard navigation
+  and theme switching. The fixture schema and files were removed.
 
 ## Outstanding
 
-1. Add automated browser regressions on isolated data.
+1. Harden source lifecycles and implement safe re-embedding using an existing
+   paper’s indexed text without changing its source or chunk IDs.
 2. Expand graph exploration across workspaces and notebook sources.
 3. Extend the notebook with tags, collections and integrated annotations.
    Refine page attribution for chunks that span several pages.

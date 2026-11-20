@@ -3,6 +3,7 @@ import os
 import pytest
 
 from app.db.connection import get_connection
+from evaluation.database import fresh_schema
 from evaluation.run import contains_answer_value, evaluate, retrieval_metrics
 
 
@@ -22,13 +23,16 @@ def test_value_matching_rejects_substrings_and_preserves_percentage_scale():
 
 
 @pytest.mark.skipif(os.getenv("EVIDENCERAG_INTEGRATION") != "1", reason="Requires PostgreSQL")
-def test_synthetic_evaluation_checks_real_retrieval_and_leaves_no_fixture_schema():
-    def schema_count():
-        with get_connection() as conn:
-            return conn.execute("SELECT count(*) FROM pg_namespace WHERE nspname LIKE 'evidencerag_eval_%'").fetchone()[0]
+def test_synthetic_evaluation_checks_real_retrieval_and_leaves_no_fixture_schema(monkeypatch):
+    schema = fresh_schema()
+    monkeypatch.setattr("evaluation.run.fresh_schema", lambda: schema)
 
-    before = schema_count()
+    def schema_exists():
+        with get_connection() as conn:
+            return conn.execute("SELECT 1 FROM pg_namespace WHERE nspname=%s", (schema,)).fetchone() is not None
+
+    assert not schema_exists()
     report = evaluate()
     assert report["passed"] == report["case_count"], [case for case in report["cases"] if not case["passed"]]
     assert report["retrieval"]["hybrid"]["recall"] == 1
-    assert schema_count() == before
+    assert not schema_exists()
