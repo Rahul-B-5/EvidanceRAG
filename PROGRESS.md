@@ -419,6 +419,12 @@ launcher, wider browser review and release validation to the previous scope.
   numerical answers and abstained on the cross-section comparison.
 - Passed 149 PostgreSQL tests, 10 frontend tests, six Chrome workflows
   including live Ollama, an exact-source browser rerun and the build.
+- Measurement validation preserves case in units. The regression rejects
+  milliwatts when the source cell reports megawatts. A subsequent full
+  Gemma run passed all four NREL cases with case-sensitive unit validation.
+- A separate restart smoke test ran two backend process IDs against a
+  disposable schema and upload directory. The completed import,
+  byte-identical PDF, bookmark and cited conversation survived restart.
 - Next release gate is repeatable cross-section grounding across models.
   Replace general numeric occurrence checks on cited prose with a
   measurement tied to the requested metric, condition and original unit.

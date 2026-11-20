@@ -86,6 +86,10 @@ def test_prefixed_units_and_qualifiers_are_kept_verbatim(evidence):
     scope = scope_table_answer(QUESTION, evidence)
     assert scope.supports("Overview: 17% [E1].\nTable 2: $1.17/W dc [E3].")
     assert not scope.supports("Overview: 17% [E1].\nTable 2: $1.17/W ac [E3].")
+    evidence[2]["table_row"]["cells"][1]["value"] = "1.17 MW"
+    scope = scope_table_answer(QUESTION, evidence)
+    assert scope.supports("Overview: 17% [E1].\nTable 2: 1.17 MW [E3].")
+    assert not scope.supports("Overview: 17% [E1].\nTable 2: 1.17 mW [E3].")
 
 
 def test_citation_returns_only_the_verified_cells(monkeypatch, evidence):

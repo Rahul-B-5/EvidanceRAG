@@ -21,7 +21,7 @@ def mentions(text: list[str], phrase: list[str]) -> bool:
 
 
 def compact(text: str) -> str:
-    return re.sub(r"\s+", "", text.casefold())
+    return re.sub(r"\s+", "", text)
 
 
 def measurement(value: str) -> bool:
@@ -73,7 +73,7 @@ class TableScope:
                 for value in sorted(source_values, key=len, reverse=True):
                     matches = list(re.finditer(
                         r"(?<![\w.])" + r"\s*".join(map(re.escape, compact(value))) + r"(?!\w|\.\d)",
-                        remaining, re.I,
+                        remaining,
                     ))
                     for match in reversed(matches):
                         remaining = remaining[:match.start()] + " " + remaining[match.end():]
@@ -102,7 +102,7 @@ class TableScope:
 
 
 def scope_table_answer(question: str, evidence: list[dict]) -> TableScope | None:
-    table_names = {compact(match.group()) for match in TABLE.finditer(question)}
+    table_names = {compact(match.group()).casefold() for match in TABLE.finditer(question)}
     excludes = list(EXCLUSION.finditer(question))
     if len(table_names) != 1 or len(excludes) != 1:
         return None
@@ -118,7 +118,7 @@ def scope_table_answer(question: str, evidence: list[dict]) -> TableScope | None
         row = source.get("table_row")
         if row:
             label = TABLE.match(row["caption"])
-            if label and compact(label.group()) == name:
+            if label and compact(label.group()).casefold() == name:
                 tables.append(source)
         elif source.get("section_title") and mentions(query, words(source["section_title"])):
             sections.setdefault(source["section_title"], set()).add(source["evidence_id"])
