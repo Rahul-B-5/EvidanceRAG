@@ -241,6 +241,7 @@ def create_conversation(
     return {
         "id": row[0], "title": row[1], "document_id": row[2],
         "workspace_id": workspace_id, "document_ids": document_ids,
+        "scope_state": "configured",
         "created_at": row[3], "updated_at": row[4],
         "messages": [],
     }
@@ -268,6 +269,7 @@ def get_conversation(conn: psycopg.Connection, conversation_id: int) -> dict | N
         "id": row[0], "title": row[1], "document_id": scope[0] if scope else row[2],
         "workspace_id": scope[1] if scope else None,
         "document_ids": scope[2] if scope else None,
+        "scope_state": "configured" if scope or row[2] is not None else "legacy",
         "created_at": row[3], "updated_at": row[4],
         "messages": [
             {"id": item[0], "role": item[1], "content": item[2],

@@ -33,7 +33,8 @@ export type Evidence = { evidence_id: string; chunk_id: number; document_id: num
 export type Workspace = { id: number; name: string; description: string | null; document_count: number };
 export type Collection = {id: number; name: string; workspace_id: number | null; document_count: number};
 export type Conversation = {id: number; title: string; document_id: number | null; document_ids: number[] | null;
-  workspace_id: number | null; messages: Array<{id: number; role: string; content: string; citations: Evidence[]}>};
+  workspace_id: number | null; scope_state: "configured" | "legacy";
+  messages: Array<{id: number; role: string; content: string; citations: Evidence[]}>};
 export type Comparison = {
   fields: string[];
   papers: Array<{document_id: number; title: string; fields: Record<string, {status: string; evidence: Evidence[]}>}>;
@@ -151,6 +152,11 @@ export const api = {
   }),
   conversations: () => request<{conversations: Array<{id: number; title: string}>}>("/conversations"),
   conversation: (id: number) => request<Conversation>(`/conversations/${id}`),
+  restoreConversationScope: (id: number, documentIds: number[], workspaceId?: number) =>
+    request<Conversation>(`/conversations/${id}/restore-scope`, {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({document_ids:documentIds, workspace_id:workspaceId}),
+    }),
   createConversation: (title: string, documentIds?: number[], workspaceId?: number) => request<Conversation>("/conversations", {
     method:"POST", headers:{"Content-Type":"application/json"},
     body:JSON.stringify({title, document_ids:documentIds, workspace_id:workspaceId}),

@@ -15,6 +15,13 @@ def main() -> None:
     schema = os.environ["EVIDENCERAG_E2E_SCHEMA"]
     with get_connection() as conn:
         assert_isolated(conn, schema, BROWSER_TABLES)
+        legacy = conn.execute(
+            "INSERT INTO conversations (title) VALUES ('Legacy browser conversation') RETURNING id",
+        ).fetchone()[0]
+        conn.execute(
+            "INSERT INTO messages (conversation_id, role, content) VALUES (%s, 'assistant', 'Archived calibration summary.')",
+            (legacy,),
+        )
     provider = SimpleNamespace(
         generate_json=lambda **_: '{"answer":"The held-out sample contains 37 observations [E1].","abstained":false,"reason":null}',
     )

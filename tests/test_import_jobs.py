@@ -3,6 +3,7 @@ import subprocess
 import sys
 
 import psycopg
+import pymupdf
 import pytest
 from fastapi.testclient import TestClient
 
@@ -95,3 +96,25 @@ def test_retry_uses_retained_file_and_malformed_pdf_cannot_be_retried(import_fix
     assert result["state"] == "failed" and not result["retryable"]
     assert not (storage / ".imports" / invalid["id"]).exists()
     assert client.post(f"/import-jobs/{invalid['id']}/retry").status_code == 409
+
+
+def test_import_persists_individual_physical_pages(import_fixture, monkeypatch):
+    fixture, _, connect, _ = import_fixture
+    source = fixture.with_name("separate-pages.pdf")
+    with pymupdf.open() as pdf:
+        pdf.new_page().insert_text((54, 54), "The first page defines the model.")
+        pdf.new_page()
+        pdf.new_page().insert_text((54, 54), "The third page reports the results.")
+        pdf.save(source)
+
+    dimension = get_settings().embedding_dimensions
+    monkeypatch.setattr(pipeline, "embed_documents", lambda texts: [[1.] + [0.] * (dimension - 1) for _ in texts])
+    client = TestClient(app)
+    assert upload(client, source).status_code == 202
+    assert jobs.process_next_job()
+    assert client.get("/import-jobs").json()["jobs"][0]["state"] == "imported"
+    with connect() as conn:
+        assert conn.execute("SELECT text, page_start, page_end FROM chunks ORDER BY chunk_index").fetchall() == [
+            ("The first page defines the model.", 1, 1),
+            ("The third page reports the results.", 3, 3),
+        ]

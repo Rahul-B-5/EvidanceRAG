@@ -116,6 +116,11 @@ class ConversationRequest(BaseModel):
     workspace_id: int | None = Field(default=None, gt=0)
 
 
+class RestoreConversationScopeRequest(BaseModel):
+    document_ids: SourceSet
+    workspace_id: SourceID | None = None
+
+
 class WorkspaceRequest(BaseModel):
     name: str = Field(min_length=1, max_length=160)
     description: str | None = Field(default=None, max_length=2_000)
@@ -437,6 +442,8 @@ def answer_exchange(request: AnswerRequest, progress: Callable[[str], None] = la
                 conversation = get_conversation(conn, request.conversation_id)
                 if conversation is None:
                     raise HTTPException(status_code=404, detail="Conversation not found.")
+                if conversation.get("scope_state") == "legacy":
+                    raise HTTPException(409, "Choose source papers before continuing this conversation.")
             for field in ("document_id", "workspace_id"):
                 supplied = getattr(request, field)
                 if supplied is not None and supplied != conversation.get(field):
@@ -472,9 +479,11 @@ def answer_exchange(request: AnswerRequest, progress: Callable[[str], None] = la
         if workspace_id is not None:
             retrieved = {item["document_id"] for item in retrieval["evidence"]}
             validate_workspace_scope(workspace_id, list(retrieved.union(selected)))
-        # User turns can resolve follow-ups, while historic workspace answers
-        # may reference papers that have since been detached.
-        provider_history = [m for m in history if m["role"] == "user"] if workspace_id else history
+        # Earlier answers can contain sources outside the current workspace or restored scope.
+        provider_history = (
+            [m for m in history if m["role"] == "user"]
+            if workspace_id is not None or document_ids is not None else history
+        )
         progress("generating")
         generated = generate_answer(
             request.query, retrieval["context"], retrieval["evidence"],
@@ -548,6 +557,26 @@ def conversation_detail(conversation_id: int) -> dict:
     if conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found.")
     return conversation
+
+
+@app.post("/conversations/{conversation_id}/restore-scope")
+def restore_conversation_scope(conversation_id: SourceID, request: RestoreConversationScopeRequest) -> dict:
+    selected = requested_source_set(None, request.document_ids)
+    with get_connection() as conn:
+        require_selected_papers(conn, selected, request.workspace_id)
+        row = conn.execute(
+            "SELECT document_id FROM conversations WHERE id = %s FOR UPDATE", (conversation_id,),
+        ).fetchone()
+        if row is None:
+            raise HTTPException(404, "Conversation not found.")
+        if row[0] is not None or conn.execute("""
+            INSERT INTO conversation_scopes (conversation_id, workspace_id, document_ids)
+            VALUES (%s, %s, %s) ON CONFLICT (conversation_id) DO NOTHING
+            RETURNING conversation_id
+        """, (conversation_id, request.workspace_id, selected)).fetchone() is None:
+            raise HTTPException(409, "Conversation source scope is already configured.")
+        conn.execute("UPDATE conversations SET updated_at = NOW() WHERE id = %s", (conversation_id,))
+        return get_conversation(conn, conversation_id)
 
 
 @app.get("/workspaces")

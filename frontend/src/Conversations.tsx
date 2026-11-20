@@ -27,6 +27,7 @@ export function Conversations({documents, initial}: {documents: Document[]; init
   const [status, setStatus] = useState("");
   const [canCancel, setCanCancel] = useState(false);
   const pending = useRef<AbortController | null>(null);
+  const needsSources = conversation?.scope_state === "legacy";
   useEffect(() => () => pending.current?.abort(), []);
   useEffect(() => {let cancelled = false;
     Promise.all([api.conversations(), api.workspaces()]).then(([c,w]) => {if (!cancelled) {setList(c.conversations);setWorkspaces(w.workspaces);}})
@@ -34,19 +35,20 @@ export function Conversations({documents, initial}: {documents: Document[]; init
     return () => {cancelled = true;};
   }, []);
   useEffect(() => {
-    if (!workspace || !choosePapers || conversation) return;
+    if (!workspace || !choosePapers || (conversation && !needsSources)) return;
     let cancelled = false;
     api.workspace(Number(workspace)).then(result => {
       if (!cancelled) setMembers({workspace, ids:new Set(result.documents.map(d => d.id))});
     }).catch(err => {if (!cancelled) setScopeError(err instanceof Error ? err.message : "Unable to load the workspace papers.");});
     return () => {cancelled = true;};
-  }, [workspace, choosePapers, conversation]);
+  }, [workspace, choosePapers, conversation, needsSources]);
 
   const scopeReady = !workspace || members?.workspace === workspace;
   const available = documents.filter(paper => !workspace || (scopeReady && members?.ids.has(paper.id)));
   const visible = available.filter(paper => `${paper.title} ${paper.filename}`.toLowerCase().includes(paperFilter.trim().toLowerCase()));
   const validSelection = selected.length > 0 && selected.every(id => available.some(paper => paper.id === id));
-  const canSend = !!query.trim() && !busy && (!!conversation || !choosePapers || (scopeReady && validSelection));
+  const canSend = !!query.trim() && !busy && !needsSources &&
+    (!!conversation || !choosePapers || (scopeReady && validSelection));
   const conversationSourceIds = conversation?.document_ids ?? (conversation?.document_id ? [conversation.document_id] : []);
   const scopeName = conversation?.workspace_id
     ? workspaces.find(item => item.id === conversation.workspace_id)?.name ?? `Workspace ${conversation.workspace_id}`
@@ -60,9 +62,29 @@ export function Conversations({documents, initial}: {documents: Document[]; init
     setStatus("");
     if (!id) {setConversation(null);setError("");return;}
     setBusy(true);setError("");
-    try {setConversation(await api.conversation(Number(id)));}
+    try {
+      const opened = await api.conversation(Number(id));
+      if (opened.scope_state === "legacy") {
+        setWorkspace("");setSelected([]);setMembers(undefined);setChoosePapers(true);
+        setScopeError("");setPaperFilter("");
+      }
+      setConversation(opened);
+    }
     catch(e) {setError(e instanceof Error ? e.message : "Unable to open conversation.");}
     finally {setBusy(false);}
+  }
+  async function restoreScope() {
+    if (!conversation || !needsSources || !scopeReady || !validSelection || busy) return;
+    setBusy(true);setError("");
+    try {
+      setConversation(await api.restoreConversationScope(
+        conversation.id, selected, workspace ? Number(workspace) : undefined));
+      setStatus("Sources saved for future replies.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unable to save conversation sources.");
+    } finally {
+      setBusy(false);
+    }
   }
   async function send() {
     if (!canSend || pending.current) return;
@@ -119,14 +141,18 @@ export function Conversations({documents, initial}: {documents: Document[]; init
     <section className="panel research-controls"><label>Conversation<select disabled={busy} value={conversation?.id ?? ""} onChange={e => void open(e.target.value)}>
       <option value="">New conversation</option>{list.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
     </select></label><button disabled={busy} onClick={() => {setConversation(null);setQuery("");setError("");setStatus("");}}>New conversation</button></section>
-    {!conversation && <section className="panel assistant-scope" aria-label="Conversation source scope">
+    {(!conversation || needsSources) && <section className="panel assistant-scope" aria-label="Conversation source scope">
+      {needsSources && <div>
+        <h2>Restore conversation sources</h2>
+        <p>The original scope could not be recovered. Choose papers to use for future replies.</p>
+      </div>}
       <div className="research-controls">
         <label>Workspace<select disabled={busy} value={workspace} onChange={e => {
           setWorkspace(e.target.value); setSelected([]); setMembers(undefined); setScopeError(""); setPaperFilter("");
         }}><option value="">Entire library</option>{workspaces.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}</select></label>
-        <label>Sources<select disabled={busy} value={choosePapers ? "selected" : "all"} onChange={e => {
+        {!needsSources && <label>Sources<select disabled={busy} value={choosePapers ? "selected" : "all"} onChange={e => {
           setChoosePapers(e.target.value === "selected"); setScopeError("");
-        }}><option value="all">All papers in scope</option><option value="selected">Select papers</option></select></label>
+        }}><option value="all">All papers in scope</option><option value="selected">Select papers</option></select></label>}
       </div>
       {choosePapers && <fieldset className="assistant-papers" disabled={busy}>
         <legend>Source papers <small>{selected.length} of {MAX_PAPERS} selected</small></legend>
@@ -144,9 +170,12 @@ export function Conversations({documents, initial}: {documents: Document[]; init
           {!!selected.length && <button className="secondary" onClick={() => setSelected([])}>Clear selection</button>}
         </>}
       </fieldset>}
+      {needsSources && <button disabled={busy || !scopeReady || !validSelection} onClick={() => void restoreScope()}>
+        Save conversation sources
+      </button>}
     </section>}
     {conversation && <section className="panel"><h2>{conversation.title}</h2>
-      <p className="assistant-scope-label">{scopeName}{conversationSourceIds.length ? ` · ${conversationSourceIds.length} selected ${conversationSourceIds.length === 1 ? "paper" : "papers"}` : ""}</p>
+      <p className="assistant-scope-label">{needsSources ? "Source selection needed" : scopeName}{conversationSourceIds.length ? ` · ${conversationSourceIds.length} selected ${conversationSourceIds.length === 1 ? "paper" : "papers"}` : ""}</p>
       {!!conversationSourceIds.length && <ul className="assistant-source-tags" aria-label="Saved conversation sources">
         {conversationSourceIds.map(id => <li className="tag" key={id}>{documents.find(paper => paper.id === id)?.title ?? "Unavailable paper"}</li>)}
       </ul>}

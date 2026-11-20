@@ -201,23 +201,27 @@
   dataset-and-metric edges cite both passages. The browser test verified graph
   filters, connection to Claim Explorer and both kinds of research artifact.
   Full gate: 116 PostgreSQL tests, 10 frontend tests, three browser tests and build.
-- Migration `013_import_jobs` adds durable PDF staging, queue state and
+- Durable imports pushed as `95523d2`. Migration `013_import_jobs` adds durable PDF staging, queue state and
   recoverable retries. A subprocess exited after the paper committed but before
   the job recorded success. A fresh worker replayed it and retained the same
   document and chunk. Browser verified queue history after reload. Full gate:
   118 PostgreSQL tests, 10 frontend tests, three browser tests and build.
+- New PDF imports keep chunks inside their physical PDF pages. PostgreSQL
+  verified separate citations across a blank page. The Assistant preserves older
+  transcripts and requires an explicit paper selection when their original scope
+  is unavailable. Known legacy paper scopes and existing index anchors retain
+  their saved identifiers. Chrome verified scope selection and a fresh citation
+  alongside the archived transcript. Full gate: 122 PostgreSQL tests, 10
+  frontend tests, three browser tests and the production build.
 
 ## Outstanding
 
-1. Refine new-ingestion page attribution and preserve or explicitly restore
-   the source scope of legacy conversations.
-2. Improve graph navigation and evaluate representative research material.
-3. Extend the notebook with tags, collections and integrated annotations.
-   Refine page attribution for chunks that span several pages.
-4. Evaluate disagreement, gap and disclosure detection on representative
-   corpora. A valid citation can still lack factual support.
-5. Improve legacy conversations whose original scope was lost before scope
-   records existed.
+1. Extend the notebook with searchable tags, collections and integrated annotations.
+2. Evaluate citation support, disagreement, comparability, gap and disclosure
+   detection on representative research material.
+3. Refine major screens and inspect desktop and narrow layouts in the browser.
+4. Improve graph navigation and test larger corpora. Retain exact stored ranges
+   for legacy passages with several pages.
 
 ## Continuation
 

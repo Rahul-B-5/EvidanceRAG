@@ -66,6 +66,18 @@ test("import, inspect, save, answer and export a real PDF", async ({page, reques
   await expect(page.getByRole("img", {name:"PDF page 2"})).toBeVisible();
   await expect(page.getByRole("button", {name:"Remove page bookmark"})).toBeVisible();
 
+  await page.getByRole("button", {name:"Assistant", exact:true}).click();
+  await page.getByRole("combobox", {name:"Conversation"}).selectOption({label:"Legacy browser conversation"});
+  await expect(page.getByText("Archived calibration summary.", {exact:true})).toBeVisible();
+  await page.getByRole("textbox", {name:"Question"}).fill("Did it report the sample size?");
+  await expect(page.getByRole("button", {name:"Send question"})).toBeDisabled();
+  await page.getByRole("checkbox", {name:title}).check();
+  await page.getByRole("button", {name:"Save conversation sources"}).click();
+  await expect(page.getByRole("status").filter({hasText:"Sources saved for future replies."})).toBeVisible();
+  await page.getByRole("button", {name:"Send question"}).click();
+  await expect(page.getByRole("link", {name:/\[E1\].*page 2/})).toBeVisible();
+  await expect(page.getByText("Archived calibration summary.", {exact:true})).toBeVisible();
+
   await page.getByRole("button", {name:"Evidence packets", exact:true}).click();
   await page.getByRole("textbox", {name:"Packet title"}).fill("Calibration briefing");
   await page.getByRole("combobox", {name:"Briefing template"}).selectOption("question-investigation");

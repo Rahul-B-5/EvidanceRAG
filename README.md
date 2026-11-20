@@ -112,6 +112,9 @@ The application is served at `http://127.0.0.1:5173` and uses the local API at
   provenance snapshots, and edit passage notes. Saved evidence exports to Markdown.
 - `POST /conversations` and `GET /conversations/{conversation_id}` — persist
   research-assistant conversation history and cited assistant responses.
+- `POST /conversations/{conversation_id}/restore-scope` assigns an explicit
+  paper selection to a legacy conversation whose scope could not be recovered.
+  The existing transcript stays visible, and new answers require a saved scope.
 - `GET /conversations` — lists the 100 most recently updated conversations.
   New conversations accept optional `workspace_id` and up to 12 distinct
   `document_ids`. The legacy `document_id` field also accepts a single paper.
@@ -119,7 +122,7 @@ The application is served at `http://127.0.0.1:5173` and uses the local API at
   and saves each user/assistant pair atomically after successful generation.
   Concurrent replies return `409` if the conversation changed during generation.
   A selected paper that leaves the workspace blocks new replies until the
-  scope is restored. Standalone searches also accept repeated `document_ids`
+  paper rejoins the workspace. Standalone searches also accept repeated `document_ids`
   query parameters alongside an optional workspace filter.
 - `GET/POST /workspaces`, `GET /workspaces/{workspace_id}`, and
   `PUT /workspaces/{workspace_id}/documents/{document_id}` — organize a
@@ -261,6 +264,10 @@ against evidence from the current request.
 Search, comparison passages, the reader and the notebook work without a provider.
 
 ## Reading and annotating PDFs
+
+New imports index each physical PDF page separately. Their search results and
+citations point to a single page, even when blank pages occur in the source.
+Existing passages retain their recorded page ranges and identifiers.
 
 Reader renders the original PDF locally through a bundled PDF.js worker. It
 supports fit-width zoom, selectable text and phrase search with page links.

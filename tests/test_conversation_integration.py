@@ -7,7 +7,7 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 from app.db.connection import get_connection
-from app.db.repository import create_conversation
+from app.db.repository import add_message, create_conversation
 from app.api.answer_stream import AnswerStreamCancelled
 from app.generation import answerer
 from app.retrieval import keyword, vector
@@ -129,3 +129,54 @@ def test_selected_papers_scope_both_retrievers_and_saved_answer(monkeypatch):
         conn.execute("DELETE FROM documents WHERE id=%s", (outsider,))
         assert client.get(f"/conversations/{global_chat['id']}").json()["document_ids"] == [outsider]
         assert client.post("/answers", json={**question, "conversation_id":global_chat["id"]}).status_code == 404
+
+
+@pytest.mark.skipif(os.environ.get("EVIDENCERAG_INTEGRATION") != "1", reason="Requires local PostgreSQL")
+def test_unknown_legacy_scope_requires_explicit_restore_without_rewriting_transcript(monkeypatch):
+    with get_connection() as conn, conn.transaction(force_rollback=True):
+        @contextmanager
+        def connection():
+            with conn.transaction():
+                yield conn
+
+        monkeypatch.setattr(api, "get_connection", connection)
+        cid = conn.execute("INSERT INTO conversations(title) VALUES ('Legacy chat') RETURNING id").fetchone()[0]
+        add_message(conn, conversation_id=cid, role="user", content="What did it report?")
+        add_message(conn, conversation_id=cid, role="assistant", content="Historical reply")
+        known = conn.execute("INSERT INTO documents(title, filename, file_hash) VALUES ('Fixture', 'fixture.pdf', %s) RETURNING id",
+                             (uuid4().hex * 2,)).fetchone()[0]
+        original_scope = conn.execute(
+            "INSERT INTO conversations(title, document_id) VALUES ('Known legacy paper', %s) RETURNING id", (known,),
+        ).fetchone()[0]
+        workspace = conn.execute("INSERT INTO workspaces(name) VALUES ('Restore test') RETURNING id").fetchone()[0]
+        retrieval_calls = []
+
+        def retrieve(_query, **scope):
+            retrieval_calls.append(scope)
+            return {"context": "", "evidence": []}
+
+        def generate(*args, history):
+            assert [turn["role"] for turn in history] == ["user"]
+            return {"answer": None, "reason": "No source evidence.", "abstained": True, "citations": []}
+
+        monkeypatch.setattr(api, "retrieve_evidence", retrieve)
+        monkeypatch.setattr(api, "generate_answer", generate)
+        client = TestClient(api.app)
+        route = f"/conversations/{cid}"
+        assert client.get(f"/conversations/{original_scope}").json()["scope_state"] == "configured"
+        legacy = client.get(route).json()
+        assert legacy["scope_state"] == "legacy"
+        reply = {"conversation_id": cid, "query": "Give me the result."}
+        assert client.post("/answers", json={**reply, "document_ids":[known]}).status_code == 409
+        assert not retrieval_calls
+        restore = {"document_ids": [known], "workspace_id": workspace}
+        assert client.post(f"{route}/restore-scope", json=restore).status_code == 422
+        conn.execute("INSERT INTO workspace_documents(workspace_id,document_id) VALUES (%s,%s)", (workspace, known))
+        restored = client.post(f"{route}/restore-scope", json=restore)
+        assert restored.status_code == 200
+        assert restored.json()["scope_state"] == "configured"
+        assert restored.json()["messages"] == legacy["messages"]
+        assert client.post(f"{route}/restore-scope", json=restore).status_code == 409
+        assert client.post("/answers", json=reply).status_code == 200
+        assert retrieval_calls[0]["document_ids"] == [known]
+        assert retrieval_calls[0]["workspace_id"] == workspace
