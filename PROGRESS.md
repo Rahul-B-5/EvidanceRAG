@@ -218,7 +218,7 @@
   their source snapshot. Chrome verified reload, filtering across tags and
   notes, and Markdown export. Full gate: 122 PostgreSQL tests, 10 frontend
   tests, three browser tests and the production build.
-- The public reading-comprehension benchmark adds five answer cases and eight
+- The public reading-comprehension benchmark pushed as `bf11dcf` adds five answer cases and eight
   research workflow checks from three published papers. It exercises
   statement-level citation support, metric association, comparability,
   contradiction false positives, source-backed directions and reproducibility.
@@ -228,10 +228,19 @@
   Hybrid recall@4 was 1.0, strict keyword recall@4 was 0.25, and answer p95 was
   3.7 seconds. The corpus covers a single domain with annotated excerpts.
   Full gate: 126 PostgreSQL tests, 10 frontend tests and the production build.
+- Inspected Library, Reader, Comparison Studio, Claim Explorer, Evidence Atlas
+  and Assistant in Chrome at 1280 px and 390 px, with desktop screenshots in
+  both themes. The mobile menu stays available after loading PDF.js.
+  The comparison table scrolls inside its panel, and Atlas centers the selected
+  evidence with its related sources. Library prioritizes papers above import
+  history, Reader prioritizes the PDF, and Assistant distinguishes questions
+  from cited replies. Full gate: 126 PostgreSQL tests, 10 frontend tests,
+  three browser tests with layout assertions across all six screens, and the
+  production build.
 
 ## Outstanding
 
-1. Refine major screens and inspect desktop and narrow layouts in the browser.
+1. Add durable reading progress and reading-state filters to Library and Reader.
 2. Add independent disciplines and whole-paper tests. Measure standalone
    keyword recall on natural-language questions and track citation support
    under repeated live runs.

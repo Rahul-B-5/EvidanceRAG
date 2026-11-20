@@ -72,6 +72,8 @@ function App() {
   const observedImports = useRef(new Set<string>());
   const importLock = useRef(false);
   const [command, setCommand] = useState("");
+  const [mobileNavigation, setMobileNavigation] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
   const palette = useRef<HTMLDialogElement>(null);
 
   async function refresh() {
@@ -90,6 +92,7 @@ function App() {
 
   function navigate(next: View) {
     setView(next);
+    setMobileNavigation(false);
     if (keptViews.includes(next)) {
       setOpenedResearchViews(previous => previous.has(next) ? previous : new Set([...previous, next]));
     }
@@ -112,6 +115,7 @@ function App() {
   }
 
   useEffect(() => { void refresh(); }, []);
+  useEffect(() => { window.scrollTo(0, 0); }, [view]);
   useEffect(() => {
     if (view !== "library") return;
     const controller = new AbortController();
@@ -261,10 +265,22 @@ function App() {
 
   return <div className="app">
     <a className="skip-link" href="#content">Skip to content</a>
-    <aside className="sidebar">
-      <div className="brand"><span aria-hidden="true">E</span> EvidenceRAG</div>
-      <button className="command-trigger" onClick={() => {setCommand("");palette.current?.showModal();}}>Quick open <kbd>Ctrl/⌘ K</kbd></button>
-      <nav aria-label="Research navigation">{navGroups.map(([group, ids]) =>
+    <aside className="app-sidebar" onKeyDown={event => {
+      if (event.key === "Escape" && mobileNavigation) {
+        setMobileNavigation(false);
+        menuButton.current?.focus();
+      }
+    }}>
+      <div className="app-sidebar-top">
+        <div className="brand"><span aria-hidden="true">E</span> EvidenceRAG</div>
+        <button ref={menuButton} className="secondary nav-toggle" aria-expanded={mobileNavigation} aria-controls="research-navigation"
+          onClick={() => setMobileNavigation(open => !open)}>Menu</button>
+      </div>
+      <div className="app-shortcuts">
+        <button className="command-trigger" onClick={() => {setCommand("");palette.current?.showModal();}}>Quick open <kbd>Ctrl/⌘ K</kbd></button>
+        <button className="theme-toggle theme-mobile" onClick={() => setDark(!dark)}><span aria-hidden="true">◐</span>{dark ? "Light theme" : "Dark theme"}</button>
+      </div>
+      <nav id="research-navigation" aria-label="Research navigation" data-open={mobileNavigation}>{navGroups.map(([group, ids]) =>
         <div className="nav-group" key={group} role="group" aria-label={group}>
           <small aria-hidden="true">{group}</small>
           {ids.map(id => {
@@ -274,10 +290,12 @@ function App() {
             </button>;
           })}
         </div>)}</nav>
-      <div className="sidebar-bottom"><button className="nav" onClick={() => setDark(!dark)}><span aria-hidden="true">◐</span>{dark ? "Light theme" : "Dark theme"}</button></div>
+      <div className="app-sidebar-bottom"><button className="nav" onClick={() => setDark(!dark)}><span aria-hidden="true">◐</span>{dark ? "Light theme" : "Dark theme"}</button></div>
     </aside>
     <main id="content" className="shell">
-      <header className="page-header"><h1>{title}</h1><button className="secondary" disabled={loading} onClick={() => void refresh()}>Refresh library</button></header>
+      <header className="page-header"><h1>{title}</h1>
+        {(view === "dashboard" || view === "library") && <button className="secondary" disabled={loading} onClick={() => void refresh()}>Refresh library</button>}
+      </header>
       {error && <p className="notice error" role="alert">{error}</p>}
       {content}
       {openedResearchViews.has("library") && <div hidden={view !== "library"}>
@@ -329,11 +347,9 @@ function Library({documents, workspaces, active, loading, uploading, imports, im
     .some(text => text.toLowerCase().includes(query.trim().toLowerCase())));
   if (sort === "title") visible.sort((a, b) => a.title.localeCompare(b.title));
   if (sort === "year") visible.sort((a, b) => (b.publication_year ?? 0) - (a.publication_year ?? 0));
-  return <section className="panel">
-    <LibraryCollections documents={documents} workspaces={workspaces} filter={setScoped} visible={active} />
-    <div className="library-controls">
-      <label>Filter papers<input type="search" value={query} onChange={e => setQuery(e.target.value)} placeholder="Title, author, venue, DOI or tag" /></label>
-      <label>Sort by<select value={sort} onChange={e => setSort(e.target.value)}><option value="recent">Recently added</option><option value="title">Title</option><option value="year">Publication year</option></select></label>
+  return <section className="panel library-panel">
+    <div className="library-heading">
+      <div><h2>Papers</h2><p className="muted">{visible.length} {visible.length === 1 ? "paper" : "papers"}</p></div>
       <input ref={input} type="file" accept=".pdf,application/pdf" multiple hidden onChange={e => {
         const files = Array.from(e.target.files ?? []);
         e.target.value = "";
@@ -341,6 +357,13 @@ function Library({documents, workspaces, active, loading, uploading, imports, im
       }} />
       <button disabled={uploading} onClick={() => input.current?.click()}>{uploading ? "Import in progress…" : "Import PDFs"}</button>
     </div>
+    <LibraryCollections documents={documents} workspaces={workspaces} filter={setScoped} visible={active} />
+    <div className="library-controls">
+      <label>Filter papers<input type="search" value={query} onChange={e => setQuery(e.target.value)} placeholder="Title, author, venue, DOI or tag" /></label>
+      <label>Sort by<select value={sort} onChange={e => setSort(e.target.value)}><option value="recent">Recently added</option><option value="title">Title</option><option value="year">Publication year</option></select></label>
+    </div>
+    {loading ? <p role="status">Loading library…</p> : visible.length ? <PaperRows documents={visible} openPaper={openPaper} />
+      : <p className="empty">{query || scoped !== null ? "No papers match the current scope and filter." : "Your library is empty. Import a PDF to begin."}</p>}
     {importError && <p role="alert">{importError}</p>}
     {!!imports.length && <section className="import-queue" aria-label="PDF import queue">
       <h2>Import queue</h2>
@@ -350,8 +373,6 @@ function Library({documents, workspaces, active, loading, uploading, imports, im
         {job.documentId && <button className="secondary" disabled={uploading} onClick={() => openPaper(job.documentId!)}>Open paper</button>}
       </li>)}</ul>
     </section>}
-    {loading ? <p role="status">Loading library…</p> : visible.length ? <PaperRows documents={visible} openPaper={openPaper} />
-      : <p className="empty">{query || scoped !== null ? "No papers match the current scope and filter." : "Your library is empty. Import a PDF to begin."}</p>}
   </section>;
 }
 

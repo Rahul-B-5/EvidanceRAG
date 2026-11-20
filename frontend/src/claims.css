@@ -1,15 +1,20 @@
 .claim-filters {display:flex;flex-wrap:wrap;align-items:end;gap:.7rem}
-.claim-filters label {flex:1;min-width:min(8rem,100%)}
+.claim-filters label {flex:1;min-width:min(8rem,100%);font-size:.875rem}
 .claim-filters :is(input,select) {width:100%}
-.claim-layout {display:grid;grid-template-columns:minmax(14rem,2fr) minmax(0,3fr);gap:1rem}
+.claim-layout {display:grid;grid-template-columns:minmax(14rem,2fr) minmax(0,3fr);gap:1rem;align-items:start}
 .claim-list {padding:0;margin:.5rem 0;list-style:none;display:grid;gap:.5rem}
 .claim-list button {display:grid;gap:.35rem;text-align:left;width:100%;font-weight:normal;overflow-wrap:anywhere}
 .claim-list button[aria-pressed=true] {background:var(--active);border-color:var(--accent)}
 .claim-list button span {display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
 .claim-list small,.claim-labels dt {color:var(--muted)}
 .claim-detail {min-width:0;overflow-wrap:anywhere}
-.claim-detail blockquote {margin:1rem 0;padding-left:.8rem;border-left:2px solid var(--line)}
+.claim-detail blockquote {margin:1rem 0;padding:.65rem .85rem;background:var(--hover);border-left:2px solid var(--accent);border-radius:0 var(--control-radius) var(--control-radius) 0}
 .claim-detail h3 {margin-top:1rem}
 .claim-labels {display:flex;flex-wrap:wrap;gap:.6rem 1rem}
 .claim-labels dd {margin:0}
+.claim-assessment {display:grid;gap:.65rem;padding-top:.75rem;border-top:1px solid var(--line)}
+.claim-assessment h3 {margin:0}
+.claim-assessment label {display:grid;gap:.3rem;font-size:.9rem}
+.claim-assessment select,.claim-assessment button {justify-self:start}
+.claim-assessment textarea {width:100%;resize:vertical}
 @media(max-width:900px){.claim-layout{grid-template-columns:1fr}}

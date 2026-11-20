@@ -16,7 +16,7 @@ delivery status live in [PROGRESS.md](PROGRESS.md).
 | Research directions | Topic-focused workspace sampling separates stated limitations and reported evaluations, with editable plans and dual-source Markdown export | Cross-theme corpus analysis and wider literature verification |
 | Deliverables | Searchable saved notes and tags, comparison briefings, durable evidence packets, seven reusable outlines, cited drafts and Markdown/HTML/JSON/BibTeX exports | Notebook collection and annotation filters, citation managers and optional PDF export |
 | Reader | Selectable PDF text, local phrase search, zoom, persistent bookmarks, revisioned highlights and single-page anchors on new imports | Exact PDF-coordinate annotations and OCR |
-| Everyday UX | Themes, keyboard palette, table views and narrow-screen keyboard regression | More responsive and accessibility coverage across research screens |
+| Everyday UX | Shared light and dark styles, keyboard palette, accessible mobile menu and six flagship screen screenshots with responsive checks | Wider assistive-technology testing and visual QA on secondary screens |
 | Operations | Additive migrations, PostgreSQL tests, evaluation and browser suites, safe source lifecycle, provider diagnostics and local API host/origin policy | Larger corpora, restart recovery and retention |
 
 ## Dependency order

@@ -77,8 +77,22 @@ export function EvidenceAtlas({compare, ask, initial}: {compare: () => void; ask
   }
 
   const board = showAll ? 920 : 680;
-  const radius = showAll ? 340 : 225;
+  const radius = visible.length === 1 ? 160 : showAll ? 340 : 225;
   const source = center?.provenance;
+  const sourceScope = workspace ? `&workspace=${workspace}` : "";
+  useEffect(() => {
+    const viewport = stage.current;
+    if (!viewport || !selected) return;
+    const recenter = () => {
+      viewport.scrollLeft = (viewport.scrollWidth - viewport.clientWidth) / 2;
+      viewport.scrollTop = (viewport.scrollHeight - viewport.clientHeight) / 2;
+    };
+    recenter();
+    const resize = new ResizeObserver(recenter);
+    resize.observe(viewport);
+    return () => resize.disconnect();
+  }, [selected, zoom, board, visible.length]);
+
   return <div className="research-tools">
     <section className="panel atlas-toolbar">
       <label>Workspace<select value={workspace} onChange={e => {setWorkspace(e.target.value);setTarget(undefined);}}>
@@ -97,15 +111,6 @@ export function EvidenceAtlas({compare, ask, initial}: {compare: () => void; ask
       <button onClick={compare}>Open Comparison Studio</button>
     </section>}
     {!!atlas?.edges.length && <>
-      <OpposingFindings pairs={atlas.contradictions ?? []} ask={ask} workspaceId={workspace ? Number(workspace) : undefined}
-        focus={id => {
-          const node = nodes.get(id);
-          if (!node) return;
-          setRelation("potential_disagreement");
-          setKind("");
-          focus(node);
-          stage.current?.focus();
-        }} />
       <div className="atlas-layout">
       <section className="panel atlas-index" aria-label="Graph node search results">
         <h2>Nodes</h2><p>{matching.length} matches</p>
@@ -133,7 +138,7 @@ export function EvidenceAtlas({compare, ask, initial}: {compare: () => void; ask
             }}
             onPointerUp={() => {drag.current = null;}} onPointerCancel={() => {drag.current = null;}}>
             <div className="atlas-plane" style={{width: board * zoom, height: board * zoom}}>
-              <div className="atlas-centered" style={{top: board * zoom / 2, left: board * zoom / 2}}>
+              <div className="atlas-centered" style={{top: `calc(50% + ${visible.length === 1 ? radius * zoom / 2 : 0}px)`}}>
                 {visible.map(({node, edge}, index) => {
                   const angle = index * Math.PI * 2 / visible.length - Math.PI / 2;
                   const offset = radius * zoom;
@@ -157,7 +162,7 @@ export function EvidenceAtlas({compare, ask, initial}: {compare: () => void; ask
           <h2>{typeNames[center.kind]}</h2><p>{center.label}</p>
           {center.note && <p className="atlas-note">{center.note}</p>}
           {source && <div className="finding-actions">
-            <a href={`#paper=${source.document_id}&page=${source.page_start}`}>Open source · p. {source.page_start}</a><SavePassage id={source.chunk_id} />
+            <a href={`#paper=${source.document_id}&page=${source.page_start}${sourceScope}`}>Open source · p. {source.page_start}</a><SavePassage id={source.chunk_id} />
             {center.kind === "finding" && <a href={`#claim=${center.id}${workspace ? `&workspace=${workspace}` : ""}`}>Open claim</a>}
             {center.kind === "finding" && <button className="secondary" onClick={() => ask({
               documentId: source.document_id, workspaceId: workspace ? Number(workspace) : undefined,
@@ -169,8 +174,8 @@ export function EvidenceAtlas({compare, ask, initial}: {compare: () => void; ask
             <button className="secondary" onClick={() => focus(node)}>{clampLabel(node.label)}</button>
             <span>{relationName(edge.relation)}</span>
             {edge.shared_labels && <small>{Object.values(edge.shared_labels).join(" · ")}</small>}
-            <a href={`#paper=${edge.provenance.document_id}&page=${edge.provenance.page_start}`}>Passage {edge.provenance.chunk_id} · p. {edge.provenance.page_start}</a>
-            {edge.related_provenance && <a href={`#paper=${edge.related_provenance.document_id}&page=${edge.related_provenance.page_start}`}>
+            <a href={`#paper=${edge.provenance.document_id}&page=${edge.provenance.page_start}${sourceScope}`}>Passage {edge.provenance.chunk_id} · p. {edge.provenance.page_start}</a>
+            {edge.related_provenance && <a href={`#paper=${edge.related_provenance.document_id}&page=${edge.related_provenance.page_start}${sourceScope}`}>
               Passage {edge.related_provenance.chunk_id} · p. {edge.related_provenance.page_start}
             </a>}
           </li>)}</ul>
@@ -178,6 +183,16 @@ export function EvidenceAtlas({compare, ask, initial}: {compare: () => void; ask
           {center.kind === "finding" && <CounterevidencePanel key={center.id} finding={center} workspace={workspace} />}
         </section>}
       </div>
-    </div></>}
+    </div>
+    <OpposingFindings pairs={atlas.contradictions ?? []} ask={ask} workspaceId={workspace ? Number(workspace) : undefined}
+      focus={id => {
+        const node = nodes.get(id);
+        if (!node) return;
+        setRelation("potential_disagreement");
+        setKind("");
+        focus(node);
+        stage.current?.focus();
+      }} />
+    </>}
   </div>;
 }

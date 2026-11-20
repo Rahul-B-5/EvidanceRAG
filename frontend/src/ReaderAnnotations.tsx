@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api, type HighlightSelection, type Passage, type ReaderHighlight } from "./api";
 import { SavePassage } from "./SavedEvidence";
+import { pageLabel } from "./pageLabel";
 
 export function AnnotatedPassage({passage, page, highlights, onHighlight}: {
   passage: Passage; page: number; highlights: ReaderHighlight[];
@@ -48,7 +49,7 @@ export function AnnotatedPassage({passage, page, highlights, onHighlight}: {
     }
   }
 
-  return <article><small>Pages {passage.page_start}–{passage.page_end} · Passage {passage.chunk_id}</small>
+  return <article><small>{pageLabel(passage.page_start, passage.page_end)} · Passage {passage.chunk_id}</small>
     <p tabIndex={0} onMouseUp={e => capture(e.currentTarget)} onKeyUp={e => capture(e.currentTarget)}
       onTouchEnd={e => capture(e.currentTarget)}>
       {intervals.map(({start, end}) => {

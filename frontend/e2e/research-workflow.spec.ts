@@ -1,8 +1,38 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 const title = "EvidenceRAG browser fixture";
+
+async function capture(page: Page, name: string) {
+  const folder = process.env.EVIDENCERAG_E2E_SCREENSHOTS;
+  const original = page.viewportSize()!;
+  const scroll = await page.evaluate(() => window.scrollY);
+  if (folder) {
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({path:join(folder, `${name}-desktop.png`), animations:"disabled"});
+    await page.getByRole("button", {name:"Dark theme", exact:true}).click();
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({path:join(folder, `${name}-dark.png`), animations:"disabled"});
+    await page.getByRole("button", {name:"Light theme", exact:true}).click();
+  }
+  await page.setViewportSize({width:390, height:844});
+  await page.evaluate(() => window.scrollTo(0, 0));
+  expect.soft(await page.evaluate(() => document.documentElement.scrollWidth), `${name} stays within the viewport`).toBeLessThanOrEqual(390);
+  if (name === "atlas") {
+    await expect.poll(() => page.locator(".atlas-stage").evaluate(stage => {
+      const viewport = stage.getBoundingClientRect();
+      return [...stage.querySelectorAll(".atlas-node")].every(node => {
+        const card = node.getBoundingClientRect();
+        return card.left >= viewport.left && card.right <= viewport.right &&
+          card.top >= viewport.top && card.bottom <= viewport.bottom;
+      });
+    })).toBe(true);
+  }
+  if (folder) await page.screenshot({path:join(folder, `${name}-narrow.png`), animations:"disabled"});
+  await page.setViewportSize(original);
+  await page.evaluate(top => window.scrollTo(0, top), scroll);
+}
 
 test("import, inspect, save, answer and export a real PDF", async ({page, request}) => {
   const fixture = join(process.env.EVIDENCERAG_E2E_TEMP!, "browser-fixture.pdf");
@@ -25,6 +55,7 @@ test("import, inspect, save, answer and export a real PDF", async ({page, reques
   await expect(queue.getByText("Imported", {exact:true})).toBeVisible();
   await expect(queue.getByText("Already in library", {exact:true})).toBeVisible();
   await expect(queue.getByText(/^Failed · /)).toBeVisible();
+  await capture(page, "library");
 
   await page.getByRole("button", {name:title, exact:true}).click();
   await expect(page.getByRole("img", {name:"PDF page 1"})).toBeVisible();
@@ -34,6 +65,7 @@ test("import, inspect, save, answer and export a real PDF", async ({page, reques
   await expect(page.getByRole("img", {name:"PDF page 2"})).toBeVisible();
   await page.getByRole("button", {name:"Bookmark page", exact:true}).click();
   await expect(page.getByRole("button", {name:"Remove page bookmark"})).toBeVisible();
+  await capture(page, "reader");
   await page.getByRole("button", {name:"Save passage", exact:true}).click();
   await expect(page.getByRole("button", {name:"Saved", exact:true})).toBeVisible();
   const source = await page.getByRole("link", {name:"Open original PDF"}).getAttribute("href");
@@ -71,9 +103,10 @@ test("import, inspect, save, answer and export a real PDF", async ({page, reques
   await page.getByRole("checkbox", {name:title}).check();
   await page.getByRole("textbox", {name:"Question"}).fill("What is the held-out sample size?");
   await page.getByRole("button", {name:"Send question"}).click();
-  const citation = page.getByRole("link", {name:/\[E1\].*page 2/});
+  const citation = page.getByRole("link", {name:/\[E1\].*page 2/i});
   await expect(citation).toBeVisible();
   await expect(page.getByText("The held-out sample contains 37 observations [E1].", {exact:true})).toBeVisible();
+  await capture(page, "assistant");
   await citation.click();
   await expect(page.getByRole("img", {name:"PDF page 2"})).toBeVisible();
   await expect(page.getByRole("button", {name:"Remove page bookmark"})).toBeVisible();
@@ -87,7 +120,7 @@ test("import, inspect, save, answer and export a real PDF", async ({page, reques
   await page.getByRole("button", {name:"Save conversation sources"}).click();
   await expect(page.getByRole("status").filter({hasText:"Sources saved for future replies."})).toBeVisible();
   await page.getByRole("button", {name:"Send question"}).click();
-  await expect(page.getByRole("link", {name:/\[E1\].*page 2/})).toBeVisible();
+  await expect(page.getByRole("link", {name:/\[E1\].*page 2/i})).toBeVisible();
   await expect(page.getByText("Archived calibration summary.", {exact:true})).toBeVisible();
 
   await page.getByRole("button", {name:"Evidence packets", exact:true}).click();
@@ -123,6 +156,12 @@ test("keyboard navigation and responsive layout work on a narrow viewport", asyn
   await expect(page.getByRole("heading", {level:1, name:"Research directions"})).toBeVisible();
   await expect(dialog).not.toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  const menu = page.getByRole("button", {name:"Menu", exact:true});
+  await menu.click();
+  await expect(menu).toHaveAttribute("aria-expanded", "true");
+  await page.getByRole("navigation", {name:"Research navigation"}).getByRole("button", {name:"Library", exact:true}).click();
+  await expect(page.getByRole("heading", {level:1,name:"Library"})).toBeVisible();
+  await expect(menu).toHaveAttribute("aria-expanded", "false");
   const theme = await page.locator("html").getAttribute("data-theme");
   await page.getByRole("button", {name:theme === "dark" ? "Light theme" : "Dark theme", exact:true}).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", theme === "dark" ? "light" : "dark");
@@ -141,6 +180,7 @@ test("comparison claims stay searchable and assessments survive reopening", asyn
   await page.getByRole("checkbox", {name:"EvidenceRAG replication fixture",exact:true}).check();
   await page.getByRole("button", {name:"Run structured comparison"}).click();
   await expect(page.getByText("Comparison completed", {exact:true})).toBeVisible({timeout:15000});
+  await capture(page, "comparison");
   await page.getByRole("link", {name:"Open claim",exact:true}).first().click();
   const detail = page.getByRole("region", {name:"Claim details"});
   await expect(detail.locator("blockquote").first()).toContainText("The held-out sample size was 37 observations.");
@@ -150,10 +190,12 @@ test("comparison claims stay searchable and assessments survive reopening", asyn
   await expect(detail.getByText("Assessment saved.",{exact:true})).toBeVisible();
   await detail.getByRole("button", {name:"Save passage",exact:true}).click();
   await expect(detail.getByRole("button", {name:"Saved",exact:true})).toBeVisible();
+  await capture(page, "claims");
   await detail.getByRole("link", {name:"Explore in Atlas"}).click();
   await expect(page.getByRole("heading", {name:"Evidence Atlas",exact:true})).toBeVisible();
   await page.getByLabel("Relationship").selectOption("shared_dataset_metric");
   await expect(page.locator(".atlas-detail").getByText("Shared dataset and metric",{exact:true})).toBeVisible();
+  await capture(page, "atlas");
   await page.getByRole("link", {name:"Open claim",exact:true}).click();
   await expect(detail.getByLabel("Evidence status")).toHaveValue("qualified");
   await detail.getByRole("link", {name:/Open source/}).click();

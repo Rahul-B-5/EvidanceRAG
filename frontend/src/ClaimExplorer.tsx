@@ -3,6 +3,7 @@ import { api, type ClaimDetail, type Document, type ResearchAssessment, type Res
 import { SavePassage } from "./SavedEvidence";
 import { CounterevidencePanel } from "./CounterevidencePanel";
 import type { FindingQuestion } from "./ComparisonStudio";
+import { pageLabel } from "./pageLabel";
 import "./claims.css";
 
 export type ClaimLocation = {id?: string; workspace?: string; paper?: string};
@@ -31,7 +32,7 @@ function AssessmentEditor({claim, workspace, saved}: {
       setError(err instanceof Error ? err.message : "Unable to save assessment.");
     } finally { setBusy(false); }
   }
-  return <form className="plan-editor" onSubmit={event => {event.preventDefault(); void assess();}}>
+  return <form className="claim-assessment" onSubmit={event => {event.preventDefault(); void assess();}}>
     <h3>Researcher assessment</h3>
     <label>Evidence status<select value={status} onChange={e => setStatus(e.target.value as ResearchAssessment["status"])}>
       {Object.entries(assessments).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
@@ -113,12 +114,13 @@ export function ClaimExplorer({initial, documents, workspaces, ask}: {
     </form>
     <div className="claim-layout">
       <section className="panel" aria-label="Claim search results">
+        <h2>Matching claims</h2>
         {listError && <p role="alert">{listError}</p>}
         {!results && !listError && <p role="status">Loading claims…</p>}
         {results?.claims.length === 0 && <p>No matching claims. Comparison Studio adds claims as it analyzes papers.</p>}
         <ul className="claim-list">{results?.claims.map(item => <li key={item.id}>
           <button className="secondary" aria-pressed={id === item.id} onClick={() => setId(item.id)}>
-            <small>{item.title} · Page {item.finding.source.page_start}</small>
+            <small>{item.title} · {pageLabel(item.finding.source.page_start, item.finding.source.page_end)}</small>
             <span>{item.quote}</span>
             <small>{item.assessment ? assessments[item.assessment.status] : "Unreviewed"}</small>
           </button>
@@ -154,7 +156,7 @@ export function ClaimExplorer({initial, documents, workspaces, ask}: {
           <h3>Related claims</h3>
           {claim.related.length === 0 && <p className="muted">No cross-paper claims with matching study labels.</p>}
           <ul className="claim-list">{claim.related.map(item => <li key={item.id}>
-            <button className="secondary" onClick={() => setId(item.id)}><small>{item.title} · Page {item.finding.source.page_start}</small>
+            <button className="secondary" onClick={() => setId(item.id)}><small>{item.title} · {pageLabel(item.finding.source.page_start, item.finding.source.page_end)}</small>
               <span>{item.quote}</span><small>{Object.entries(item.shared_labels).map(([key,value]) => `${key} · ${value}`).join(", ")}</small></button>
           </li>)}</ul>
           <CounterevidencePanel key={`counterevidence:${claim.id}`} workspace={workspace}

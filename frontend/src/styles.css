@@ -1,22 +1,23 @@
 :root {
   font: 16px/1.55 Inter, system-ui, sans-serif;
   color-scheme: light;
-  --bg: #f5f7fa; --side: #edf1f6; --surface: #fff; --hover: #f2f5fd;
-  --text: #18212e; --muted: #516174; --line: #d4dce7;
-  --accent: #384caa; --active: #e1e8ff; --button: #3c4fae; --on-button: #fff;
+  --bg: #f5f6f2; --side: #edf0ea; --surface: #fff; --hover: #f4f7f3;
+  --text: #202b26; --muted: #55655c; --line: #d7ded6;
+  --accent: #225d4b; --active: #e3eee7; --button: #285c4c; --on-button: #fff;
+  --radius: .8rem; --control-radius: .5rem;
   --error: #9a3027; --error-bg: #ffedea;
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #141820; --side: #191f29; --surface: #1d2430; --hover: #262f40;
-  --text: #e9edf7; --muted: #acb9cd; --line: #364359;
-  --accent: #b2c0ff; --active: #2c3962; --button: #a9b9ff; --on-button: #131b38;
+  --bg: #161d1a; --side: #1c2621; --surface: #222d27; --hover: #2b3a31;
+  --text: #edf4ee; --muted: #b4c6b9; --line: #42534a;
+  --accent: #b4dfc4; --active: #304a3b; --button: #b6dec4; --on-button: #15271d;
   --error: #ffb0a8; --error-bg: #482a2c;
 }
 * {box-sizing: border-box}
 body {margin: 0; background: var(--bg); color: var(--text)}
 h1,h2,h3,p {margin: 0}
-h1 {font-size: clamp(1.8rem, 4vw, 2.4rem); letter-spacing: -.045em}
+h1 {font-size: clamp(1.8rem, 4vw, 2.55rem); line-height: 1.12; letter-spacing: -.045em; font-weight: 680}
 h2 {font-size: 1.12rem; letter-spacing: -.015em}
 h3 {font-size: .95rem}
 small, .muted {color: var(--muted)}
@@ -27,7 +28,7 @@ button:disabled {cursor: not-allowed; opacity: .55}
 a {color: var(--accent)}
 button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible {outline: 2px solid var(--accent); outline-offset: 3px}
 button, input:not([type="checkbox"],[type="range"]), select, textarea {
-  border: 1px solid var(--line); border-radius: .45rem; padding: .55rem .8rem; color: var(--text); background: var(--surface);
+  min-width: 0; border: 1px solid var(--line); border-radius: var(--control-radius); padding: .55rem .8rem; color: var(--text); background: var(--surface);
 }
 button {background: var(--button); color: var(--on-button); border-color: transparent; font-weight: 600}
 button.secondary {background: var(--surface); color: var(--text); border-color: var(--line)}
@@ -35,40 +36,49 @@ button.secondary:hover, .paper-link:hover {background: var(--hover)}
 button.danger {color: var(--error)}
 input[type="range"], input[type="checkbox"] {accent-color: var(--accent)}
 select {max-width: 100%}
-.app {display: grid; grid-template-columns: 225px minmax(0, 1fr); min-height: 100dvh}
-.sidebar {background: var(--side); border-right: 1px solid var(--line); padding: 1.35rem .9rem; display: flex; flex-direction: column; gap: 1rem}
+.app {display: grid; grid-template-columns: 215px minmax(0, 1fr); min-height: 100dvh}
+.app-sidebar {background: var(--side); border-right: 1px solid var(--line); padding: 1.1rem .8rem; display: flex; flex-direction: column; gap: .85rem; min-width: 0; height: 100dvh; position: sticky; top: 0}
+.app-sidebar-top, .app-shortcuts {display: flex; align-items: center; gap: .5rem}
 .brand {font-weight: 750; font-size: 1.05rem; padding: .25rem; display: flex; align-items: center; gap: .65rem}
-.brand span {display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: .45rem; background: var(--button); color: var(--on-button)}
-.sidebar nav {display: grid; gap: .25rem}
-.nav, .command-trigger {width: 100%; text-align: left; display: flex; align-items: center; gap: .65rem; color: var(--text); background: transparent; font-size: .9rem; font-weight: 550}
-.nav [aria-hidden] {width: 1.2rem; font-size: 1.15rem}
+.brand span {display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: .55rem; background: var(--button); color: var(--on-button); font-size: .95rem}
+.app-sidebar nav {display: grid; gap: .3rem; min-height: 0; overflow: auto; scrollbar-width: thin}
+.nav, .command-trigger, .theme-toggle {width: 100%; text-align: left; display: flex; align-items: center; gap: .55rem; color: var(--text); background: transparent; padding: .4rem .55rem; font-size: .855rem; font-weight: 550}
+.nav [aria-hidden] {width: 1.1rem; font-size: 1.02rem; flex: none}
 .nav:hover, .nav[aria-current] {background: var(--active); color: var(--accent)}
+.nav[aria-current] {font-weight: 700}
 .command-trigger {justify-content: space-between; border-color: var(--line); background: var(--surface)}
 kbd {color: var(--muted); font-size: .76rem}
-.sidebar-bottom {margin-top: auto}
-.shell {width: 100%; max-width: 1600px; margin-inline: auto; min-width: 0; padding: clamp(1rem, 3vw, 2.75rem)}
+.app-sidebar-bottom {margin-top: auto}
+.nav-toggle, .theme-mobile {display: none}
+.shell {width: 100%; max-width: 1450px; margin-inline: auto; min-width: 0; padding: clamp(1rem, 3.2vw, 3.1rem)}
 .page-header, .overview-summary, .reader-heading {display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .75rem}
-.page-header {margin-bottom: 1.5rem}
-.panel {min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: .65rem; padding: clamp(.8rem, 2vw, 1.4rem)}
+.page-header {margin-bottom: 1.4rem}
+.panel {min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: clamp(.85rem, 2vw, 1.4rem)}
 .overview {display: grid; gap: 1rem}
 .overview-summary p, .reader-heading p {color: var(--muted); overflow-wrap: anywhere}
 .library-controls, .reader-toolbar, .reader-toolbar form {display: flex; align-items: end; gap: .65rem; flex-wrap: wrap}
-.library-controls {margin-bottom: 1.2rem}
+.library-heading {display: flex; justify-content: space-between; align-items: center; gap: .6rem; flex-wrap: wrap; margin-bottom: 1rem}
+.library-heading p {font-size: .875rem; margin-top: .12rem}
+.library-controls {margin-bottom: .8rem}
 .library-controls label {display: grid; gap: .3rem; font-size: .9rem}
 .library-controls label:first-child {flex: 1 1 230px}
 .table-scroll {overflow: auto}
 .paper-table {width: 100%; border-collapse: collapse; text-align: left}
-.paper-table th {font-size: .86rem; color: var(--muted); font-weight: 650}
+.paper-table th {font-size: .82rem; color: var(--muted); font-weight: 650; background: var(--hover)}
 .paper-table td, .paper-table th {padding: .65rem; border-bottom: 1px solid var(--line)}
 .paper-table tbody tr:last-child td {border-bottom: 0}
 .paper-table small {display: block; overflow-wrap: anywhere}
 .paper-link {background: transparent; color: var(--accent); padding: .2rem; text-align: left}
-.tag {display: inline-block; background: var(--active); color: var(--accent); border-radius: .25rem; padding: .15rem .4rem; font-size: .82rem}
+.tag {display: inline-block; background: var(--active); color: var(--accent); border-radius: .38rem; padding: .15rem .4rem; font-size: .8rem}
 .empty {padding: 2rem 1rem; color: var(--muted)}
 .empty h2 {margin-bottom: .85rem}
 .notice {background: var(--active); color: var(--text); padding: .8rem; border-radius: .45rem; margin-bottom: 1rem}
 .notice.error {background: var(--error-bg); color: var(--error)}
 .reader-workspace {display: grid; gap: 1rem}
+.reader-heading > div:first-child {flex: 1 1 15rem; min-width: 0; overflow-wrap: anywhere}
+.reader-heading h2 {font-size: clamp(1.1rem,2vw,1.42rem)}
+.reader-settings {display: grid; gap: .65rem}
+.reader-settings > button {justify-self: start}
 .reader-embeddings {background: var(--bg); border: 1px solid var(--line); border-radius: .45rem; padding: .65rem}
 .reader-embeddings summary {cursor: pointer}
 .reader-embeddings p {margin-top: .45rem}
@@ -93,7 +103,7 @@ kbd {color: var(--muted); font-size: .76rem}
 .pdf-find ol {list-style: none; margin: .45rem 0; padding: 0; max-height: 13rem; overflow: auto; display: grid; gap: .35rem}
 .pdf-find li button {width: 100%; text-align: left; display: grid; gap: .2rem; font-weight: normal}
 .pdf-find mark, .reader-evidence mark {background: #f6d486; color: #292116; border-radius: .15em}
-.pdf-surface {margin-top: .6rem; height: min(70vh, 760px); overflow: auto; background: var(--active); border: 1px solid var(--line)}
+.pdf-surface {margin-top: .6rem; height: min(70vh, 760px); overflow: auto; background: var(--hover); border: 1px solid var(--line); border-radius: .35rem}
 .pdf-surface > p {padding: .8rem}
 .pdf-sheet {position: relative; margin: 0 auto; background: white}
 .pdf-sheet canvas {display: block; width: 100%; height: 100%}
@@ -120,12 +130,22 @@ kbd {color: var(--muted); font-size: .76rem}
 .skip-link:focus {left: .5rem; top: .5rem; z-index: 10; background: var(--surface); padding: .5rem}
 @media (max-width: 760px) {
   .app {grid-template-columns: minmax(0, 1fr)}
-  .sidebar {border-right: 0; border-bottom: 1px solid var(--line); padding: .6rem; gap: .5rem}
-  .sidebar nav {display: flex; overflow-x: auto}
-  .nav {width: auto; white-space: nowrap}
-  .sidebar-bottom {margin: 0}
+  .app-sidebar {height: auto; z-index: 3; border-right: 0; border-bottom: 1px solid var(--line); padding: .65rem 1rem; gap: .4rem}
+  .app-sidebar-top {justify-content: space-between}
+  .app-sidebar nav {display: none}
+  .app-sidebar nav[data-open="true"] {display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .4rem .65rem; max-height: 64dvh; border-top: 1px solid var(--line); padding-top: .4rem}
+  .app-sidebar-bottom {display: none}
+  .nav-toggle, .theme-mobile {display: inline-flex; align-items: center; width: auto; min-height: 2.6rem}
+  .app-shortcuts .command-trigger {flex: 1; width: auto}
+  .theme-mobile {flex: none; white-space: nowrap}
+  .page-header {margin-bottom: 1rem}
 }
 @media (max-width: 930px) {
   .reader-panes {grid-template-columns: minmax(0, 1fr)}
   .pane-size {display: none}
+}
+@media (max-width: 600px) {
+  .reader-toolbar form {gap: .35rem}
+  .reader-toolbar form button {padding-inline: .5rem; font-size: .85rem}
+  .reader-toolbar input[type="number"] {width: 3.6rem; padding-inline: .4rem}
 }

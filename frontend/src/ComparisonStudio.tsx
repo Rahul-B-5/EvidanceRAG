@@ -143,11 +143,13 @@ export function ComparisonStudio({documents, workspaceId, ask}: {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  const topics = result?.topics.filter(t => !topicFilter || t === topicFilter) ?? [];
+  const coveredTopics = new Set(result?.papers.flatMap(p => p.findings.map(finding => finding.topic)));
+  const topics = result?.topics.filter(t => !topicFilter || t === topicFilter)
+    .sort((a, b) => Number(coveredTopics.has(b)) - Number(coveredTopics.has(a))) ?? [];
   const followUps = result ? followUpExcerpts(result) : [];
   return <div className="research-tools">
     <section className="panel comparison-setup">
-      <div><h2>Select papers</h2><p>Compare two to six papers using the configured generation provider.</p></div>
+      <div><h2>Select papers</h2><p className="muted">Choose two to six papers from this workspace.</p></div>
       {documents.length < 2 && <p className="muted">Add at least two papers to this scope.</p>}
       <fieldset aria-label="Papers to compare" disabled={busy || running}>
         {documents.map(d => <label key={d.id}><input type="checkbox" checked={selection.includes(d.id)}
@@ -155,7 +157,7 @@ export function ComparisonStudio({documents, workspaceId, ask}: {
           onChange={e => setSelected(e.target.checked ? [...selection, d.id] : selection.filter(id => id !== d.id))} /> {d.title}</label>)}
       </fieldset>
       <div className="finding-actions"><button disabled={busy || running || selection.length < 2} onClick={() => void compare()}>Run structured comparison</button><span>{selection.length} selected</span></div>
-      {!!history.length && <label>Run history <select value={run?.id ?? ""} disabled={busy} onChange={e => void openRun(e.target.value)}>
+      {!!history.length && <label className="comparison-history">Run history <select value={run?.id ?? ""} disabled={busy} onChange={e => void openRun(e.target.value)}>
         <option value="">Select a run</option>
         {history.map(item => <option key={item.id} value={item.id}>
           {new Date(item.created_at).toLocaleString()} · {item.titles.join(" / ")} · {item.status}
@@ -188,7 +190,7 @@ export function ComparisonStudio({documents, workspaceId, ask}: {
           <label>Topic <select value={topicFilter} onChange={e => setTopicFilter(e.target.value)}><option value="">All topics</option>{result.topics.map(t => <option value={t} key={t}>{labels[t]}</option>)}</select></label>
           {layout === "claims" && <label>Paper <select value={paperFilter} onChange={e => setPaperFilter(e.target.value)}><option value="">All selected papers</option>{result.papers.map(p => <option value={p.document_id} key={p.document_id}>{p.title}</option>)}</select></label>}
         </div>
-        {layout === "matrix" ? <div className="comparison-scroll"><table className="comparison-matrix">
+        {layout === "matrix" ? <div className="comparison-scroll" tabIndex={0} role="region" aria-label="Comparison matrix"><table className="comparison-matrix">
           <thead><tr><th scope="col">Topic</th>{result.papers.map(p => <th scope="col" key={p.document_id}>{p.title}<small>{p.reviewed_passages} passages reviewed · {p.findings.length} findings</small>{p.rejected_findings > 0 && <small>{p.rejected_findings} extraction items rejected</small>}</th>)}</tr></thead>
           <tbody>{topics.map(topic => <tr key={topic}><th scope="row">{labels[topic]}</th>{result.papers.map(p => {
             const matches = p.findings.filter(f => f.topic === topic);

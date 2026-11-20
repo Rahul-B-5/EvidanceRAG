@@ -340,3 +340,8 @@ run, or set `PLAYWRIGHT_CHANNEL=chrome` to use an installed Google Chrome.
 npm --prefix frontend exec -- playwright install chromium
 .venv/bin/python -m evaluation.browser
 ```
+
+Add `--screenshots /tmp/evidencerag-browser-audit` to capture Library, Reader,
+Assistant, Comparison Studio, Claim Explorer and Evidence Atlas in light
+desktop, dark desktop and narrow layouts. The images use only synthetic
+browser fixtures.

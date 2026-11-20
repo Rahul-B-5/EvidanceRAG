@@ -1,5 +1,6 @@
 """Run automated UI regressions using synthetic browser fixtures and isolated storage."""
 
+import argparse
 import os
 import socket
 import subprocess
@@ -30,7 +31,7 @@ def available_ports() -> tuple[int, int]:
         return api.getsockname()[1], web.getsockname()[1]
 
 
-def run_browser_tests() -> int:
+def run_browser_tests(screenshots: Path | None = None) -> int:
     with TemporaryDirectory(prefix="evidencerag-browser-") as workdir, isolated_database() as (schema, database_url):
         root = Path(workdir)
         fixture_pdf(root / "browser-fixture.pdf")
@@ -57,8 +58,13 @@ def run_browser_tests() -> int:
             "EVIDENCERAG_E2E_API_PORT": str(api_port),
             "EVIDENCERAG_E2E_WEB_PORT": str(web_port),
         }
+        if screenshots is not None:
+            screenshots.mkdir(parents=True, exist_ok=True)
+            env["EVIDENCERAG_E2E_SCREENSHOTS"] = str(screenshots.resolve())
         return subprocess.run(["npm", "run", "test:e2e"], cwd=ROOT / "frontend", env=env, check=False).returncode
 
 
 if __name__ == "__main__":
-    raise SystemExit(run_browser_tests())
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--screenshots", type=Path, help="Save UI screenshots from the isolated synthetic workflows.")
+    raise SystemExit(run_browser_tests(parser.parse_args().screenshots))

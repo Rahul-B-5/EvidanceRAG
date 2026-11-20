@@ -27,9 +27,8 @@ export function Reader({document, initialPage = 1, workspace = "", remove, updat
   const source = api.sourceUrl(document.id);
   return <section className="panel reader-workspace">
     <div className="reader-heading"><div><h2>{document.title}</h2><p>{[document.venue, document.publication_year, document.doi].filter(Boolean).join(" · ") || document.filename}</p></div>
-      <div className="finding-actions"><a href={`#claims-paper=${document.id}${workspace ? `&workspace=${workspace}` : ""}`}>Explore claims</a><MetadataEditor paper={document} update={update} /><button className="secondary danger" onClick={remove}>Delete paper</button></div>
+      <div className="finding-actions"><a href={`#claims-paper=${document.id}${workspace ? `&workspace=${workspace}` : ""}`}>Explore claims</a><MetadataEditor paper={document} update={update} /></div>
     </div>
-    <EmbeddingPanel documentId={document.id} />
     <div className="reader-toolbar">
       <form onSubmit={e => {e.preventDefault(); go(Number(draft));}}>
         <button type="button" className="secondary" disabled={page <= 1} onClick={() => go(page - 1)}>Previous</button>
@@ -56,6 +55,10 @@ export function Reader({document, initialPage = 1, workspace = "", remove, updat
           : <p className="empty">The original PDF is missing. Import the identical PDF from Library to restore it.</p>}
       </div>
       <ReaderEvidence key={page} documentId={document.id} page={page} go={go} />
+    </div>
+    <div className="reader-settings">
+      <EmbeddingPanel documentId={document.id} />
+      <button className="secondary danger" onClick={remove}>Delete paper</button>
     </div>
   </section>;
 }
