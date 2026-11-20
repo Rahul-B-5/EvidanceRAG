@@ -3,8 +3,9 @@ import { api, type HighlightSelection, type Passage, type ReaderHighlight } from
 import { SavePassage } from "./SavedEvidence";
 import { pageLabel } from "./pageLabel";
 
-export function AnnotatedPassage({passage, page, highlights, onHighlight}: {
+export function AnnotatedPassage({passage, page, highlights, onHighlight, focused}: {
   passage: Passage; page: number; highlights: ReaderHighlight[];
+  focused?: boolean;
   onHighlight?: (selection: HighlightSelection) => Promise<boolean>;
 }) {
   const [selection, setSelection] = useState<HighlightSelection | null>(null);
@@ -49,7 +50,9 @@ export function AnnotatedPassage({passage, page, highlights, onHighlight}: {
     }
   }
 
-  return <article><small>{pageLabel(passage.page_start, passage.page_end)} · Passage {passage.chunk_id}</small>
+  return <article className={focused ? "cited-passage" : undefined}>
+    {focused && <strong className="tag">Cited passage</strong>}
+    <small>{pageLabel(passage.page_start, passage.page_end)} · Passage {passage.chunk_id}</small>
     {passage.section_title && <small>{passage.section_title}</small>}
     <p tabIndex={0} onMouseUp={e => capture(e.currentTarget)} onKeyUp={e => capture(e.currentTarget)}
       onTouchEnd={e => capture(e.currentTarget)}>

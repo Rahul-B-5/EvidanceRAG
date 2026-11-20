@@ -6,8 +6,8 @@ delivery status live in [PROGRESS.md](PROGRESS.md).
 
 | Journey | Working path | Remaining verification or implementation |
 | --- | --- | --- |
-| Library | Durable multi-file imports with restart recovery, metadata, workspace collections, reading status, source recovery and atomic embedding rebuilds | Related-paper recommendations and broader library scale testing |
-| Investigation | Hybrid search, fixed multi-paper scopes, explicit legacy scope recovery, page citations and streamed progress | Broader browser coverage and evaluation of contextual follow-ups |
+| Library | Durable multi-file imports with restart recovery, metadata, workspace collections, reading status, related papers, source recovery and atomic embedding rebuilds | Broader library scale testing |
+| Investigation | Hybrid search, fixed multi-paper scopes, explicit legacy scope recovery, citations to pages and passages, and streamed progress | Exact table-row grounding, abstention consistency and broader corpus coverage |
 | Comparison | Matrix, source preview, evidence saving, durable partial results and condition checks | More experimental fields, confidence and support checks, representative corpus evaluation |
 | Claim Explorer | Persistent workspace-scoped excerpts, indexed search, revisioned human assessments, shared-label links, counterevidence, and Reader and Atlas navigation | More precise claim spans and a representative support evaluation |
 | Evidence Atlas | Persisted claim, paper, method, metric, dataset, notebook and Reader annotation nodes, plus two-source shared-label and disagreement edges | Alternate layouts and larger-library testing |
@@ -15,7 +15,7 @@ delivery status live in [PROGRESS.md](PROGRESS.md).
 | Reproduction | Assess 24 components across 11 categories, cite access limitations and export a Markdown dossier | Verify artifact access and test experiments against documented instructions |
 | Research directions | Topic-focused workspace sampling separates stated limitations and reported evaluations, with editable plans and dual-source Markdown export | Cross-theme corpus analysis and wider literature verification |
 | Deliverables | Searchable notes, tags and Reader highlights scoped to workspace and collection, comparison briefings, durable evidence packets, cited drafts and Markdown/HTML/JSON/BibTeX exports | Citation managers and optional PDF export |
-| Reader | Selectable PDF text, local phrase search, zoom, page resume, persistent bookmarks, revisioned highlights and single-page anchors on new imports | Exact PDF-coordinate annotations and OCR |
+| Reader | Selectable PDF text, local phrase search, zoom, page resume, bookmarks, revisioned highlights, PDF outline labels and cited passage focus | Exact PDF-coordinate annotations and OCR |
 | Everyday UX | Shared light and dark styles, keyboard palette, accessible mobile menu and six flagship screen screenshots with responsive checks | Wider assistive-technology testing and visual QA on secondary screens |
 | Operations | Additive migrations, PostgreSQL tests, evaluation and browser suites, safe source lifecycle, provider diagnostics and local API host/origin policy | Larger corpora, restart recovery and retention |
 

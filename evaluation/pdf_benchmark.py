@@ -114,7 +114,7 @@ def evaluate_pdf(path: Path, *, retrieval_only: bool = False) -> dict:
             results.append({"case": name, "passed": all(checks.values()), "checks": checks,
                             "retrieved_pages": sorted({item["page_start"] for item in data["evidence"]}),
                             "citations": data.get("citations", []),
-                            "answer": data.get("answer")})
+                            "answer": data.get("answer"), "reason": data.get("reason")})
         return {"source": REPORT_URL, "source_identical": sha256(original.content).hexdigest() == REPORT_SHA256,
                 "pages": details["page_count"], "passages": details["chunk_count"], "top_k": TOP_K, "cases": results}
 

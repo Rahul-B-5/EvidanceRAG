@@ -4,6 +4,7 @@ import { SavePassage } from "./SavedEvidence";
 import { EvidenceGraph } from "./EvidenceGraph";
 import { comparisonBrief, followUpExcerpts } from "./comparisonBrief";
 import { OpposingFindings } from "./OpposingFindings";
+import { sourceLink } from "./sourceLink";
 
 export type FindingQuestion = { documentId?: number; documentIds?: number[]; workspaceId?: number; question: string };
 const labels: Record<string, string> = {
@@ -23,7 +24,7 @@ function FindingCard({finding, ask, workspaceId}: {finding: Finding; ask: () => 
     {outcome.metric && <dl>{Object.entries(outcome).filter(([key]) => key !== "metric" && key !== "value")
       .map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}</dl>}
     <div className="finding-actions">
-      <a href={`#paper=${source.document_id}&page=${source.page_start}${workspaceId ? `&workspace=${workspaceId}` : ""}`}>Open source · p. {source.page_start}{source.page_end !== source.page_start ? `–${source.page_end}` : ""}</a>
+      <a href={sourceLink(source.document_id, source.page_start, source.chunk_id, workspaceId)}>Open source · p. {source.page_start}{source.page_end !== source.page_start ? `–${source.page_end}` : ""}</a>
       <SavePassage id={source.chunk_id} /><button className="secondary" onClick={ask}>Ask Assistant</button>
       {finding.claim_id && <a href={`#claim=${finding.claim_id}${workspaceId ? `&workspace=${workspaceId}` : ""}`}>Open claim</a>}
     </div>

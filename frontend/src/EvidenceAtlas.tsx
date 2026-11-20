@@ -6,6 +6,7 @@ import { CounterevidencePanel } from "./CounterevidencePanel";
 import { OpposingFindings } from "./OpposingFindings";
 import type { ClaimLocation } from "./ClaimExplorer";
 import "./atlas.css";
+import { sourceLink } from "./sourceLink";
 
 const typeNames: Record<string, string> = {
   paper: "Paper", finding: "Excerpt", passage: "Passage", topic: "Topic",
@@ -79,7 +80,6 @@ export function EvidenceAtlas({compare, ask, initial}: {compare: () => void; ask
   const board = showAll ? 920 : 680;
   const radius = visible.length === 1 ? 160 : showAll ? 340 : 225;
   const source = center?.provenance;
-  const sourceScope = workspace ? `&workspace=${workspace}` : "";
   useEffect(() => {
     const viewport = stage.current;
     if (!viewport || !selected) return;
@@ -162,7 +162,7 @@ export function EvidenceAtlas({compare, ask, initial}: {compare: () => void; ask
           <h2>{typeNames[center.kind]}</h2><p>{center.label}</p>
           {center.note && <p className="atlas-note">{center.note}</p>}
           {source && <div className="finding-actions">
-            <a href={`#paper=${source.document_id}&page=${source.page_start}${sourceScope}`}>Open source · p. {source.page_start}</a><SavePassage id={source.chunk_id} />
+            <a href={sourceLink(source.document_id, source.page_start, source.chunk_id, workspace)}>Open source · p. {source.page_start}</a><SavePassage id={source.chunk_id} />
             {center.kind === "finding" && <a href={`#claim=${center.id}${workspace ? `&workspace=${workspace}` : ""}`}>Open claim</a>}
             {center.kind === "finding" && <button className="secondary" onClick={() => ask({
               documentId: source.document_id, workspaceId: workspace ? Number(workspace) : undefined,
@@ -174,8 +174,8 @@ export function EvidenceAtlas({compare, ask, initial}: {compare: () => void; ask
             <button className="secondary" onClick={() => focus(node)}>{clampLabel(node.label)}</button>
             <span>{relationName(edge.relation)}</span>
             {edge.shared_labels && <small>{Object.values(edge.shared_labels).join(" · ")}</small>}
-            <a href={`#paper=${edge.provenance.document_id}&page=${edge.provenance.page_start}${sourceScope}`}>Passage {edge.provenance.chunk_id} · p. {edge.provenance.page_start}</a>
-            {edge.related_provenance && <a href={`#paper=${edge.related_provenance.document_id}&page=${edge.related_provenance.page_start}${sourceScope}`}>
+            <a href={sourceLink(edge.provenance.document_id, edge.provenance.page_start, edge.provenance.chunk_id, workspace)}>Passage {edge.provenance.chunk_id} · p. {edge.provenance.page_start}</a>
+            {edge.related_provenance && <a href={sourceLink(edge.related_provenance.document_id, edge.related_provenance.page_start, edge.related_provenance.chunk_id, workspace)}>
               Passage {edge.related_provenance.chunk_id} · p. {edge.related_provenance.page_start}
             </a>}
           </li>)}</ul>

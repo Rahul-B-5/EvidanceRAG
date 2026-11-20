@@ -279,13 +279,24 @@
   section comparison, and returned an explanation instead of abstaining
   for the missing installer quote. Full gate: 134 PostgreSQL tests, 10
   frontend tests, three Chrome workflows and build.
-- Migration `017_chunk_outline` adds optional section metadata to new chunks.
+- PDF section citations pushed as `1f185a3`. Migration `017_chunk_outline` adds optional section metadata to new chunks.
   Reader and Assistant use the original PDF's top-level outline and keep the
   physical page link. Chrome confirmed the citation label and link target.
   The second Gemma run still passed two of four whole-report cases. It cited the
   correct summary section but chose the storage row from Table 3 and failed the
   explicit abstention check. Full gate: 135 PostgreSQL tests, 10 frontend tests,
   three Chrome workflows and build.
+- Source links from Assistant, Claim Explorer, Comparison Studio, Atlas,
+  related papers and saved evidence identify the exact indexed passage.
+  PostgreSQL verified that passage 26 can be prioritized within a 25-passage
+  page view and that it cannot be selected on a different page. Chrome
+  verified the cited passage appears on its PDF page. Full gate: 136
+  PostgreSQL tests, 10 frontend tests, three Chrome workflows and build.
+- Tested an extra model-based table verification pass on the full report.
+  It withheld a supported community-solar answer and let the unsupported
+  utility-scale answer through, so the experiment was removed. The public
+  PDF benchmark now records abstention reasons alongside the answers and
+  citations to help diagnose this failure.
 
 ## Outstanding
 

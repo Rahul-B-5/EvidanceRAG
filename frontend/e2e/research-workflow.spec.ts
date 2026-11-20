@@ -123,6 +123,7 @@ test("import, inspect, save, answer and export a real PDF", async ({page, reques
   await capture(page, "assistant");
   await citation.click();
   await expect(page.getByRole("img", {name:"PDF page 2"})).toBeVisible();
+  await expect(page.locator(".cited-passage")).toContainText("37 observations");
   await expect(page.getByRole("button", {name:"Remove page bookmark"})).toBeVisible();
 
   await page.getByRole("button", {name:"Assistant", exact:true}).click();

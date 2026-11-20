@@ -81,6 +81,7 @@ kbd {color: var(--muted); font-size: .76rem}
 .reader-settings > button {justify-self: start}
 .reader-related {border: 1px solid var(--line); border-radius: var(--control-radius); padding: .65rem; overflow-wrap: anywhere}
 .reader-related summary {cursor: pointer}
+.cited-passage .tag {display: table; margin-bottom: .3rem}
 .reader-related ul {padding-left: 1.25rem; margin-bottom: 0}
 .reader-related li + li {margin-top: .7rem}
 .reader-embeddings {background: var(--bg); border: 1px solid var(--line); border-radius: .45rem; padding: .65rem}

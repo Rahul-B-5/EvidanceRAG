@@ -11,8 +11,8 @@ export type Document = DocumentMetadata & ReadingProgress & {id: number; filenam
   chunk_count: number; processing_status: string; has_stored_source: boolean; created_at: string};
 export type Passage = {chunk_id: number; page_start: number; page_end: number; text: string; section_title?: string};
 export type RelatedPaper = {document_id: number; title: string; claim_id: string; origin_claim_id: string;
-  dataset: string; metric: string; source: Pick<Passage, "page_start" | "page_end">;
-  origin_source: Pick<Passage, "page_start" | "page_end">};
+  dataset: string; metric: string; source: Pick<Passage, "chunk_id" | "page_start" | "page_end">;
+  origin_source: Pick<Passage, "chunk_id" | "page_start" | "page_end">};
 export type ReaderHighlight = {
   id: string; chunk_id: number | null; page: number; start_offset: number; end_offset: number;
   quote: string; note: string; revision: number;
@@ -216,7 +216,8 @@ export const api = {
   editDocument: (id: number, metadata: DocumentMetadata) => request<Document>(`/documents/${id}/metadata`, {
     method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify(metadata),
   }),
-  passages: (id: number, page: number, signal?: AbortSignal) => request<{passages: Passage[]}>(`/documents/${id}/passages?page=${page}`, {signal}),
+  passages: (id: number, page: number, signal?: AbortSignal, focusChunk?: number) =>
+    request<{passages: Passage[]}>(`/documents/${id}/passages?page=${page}${focusChunk ? `&focus_chunk=${focusChunk}` : ""}`, {signal}),
   readerAnnotations: (id: number, page: number, signal?: AbortSignal) => request<{bookmarks: number[]; highlights: ReaderHighlight[]}>(
     `/documents/${id}/reader-annotations?page=${page}`, {signal}),
   setBookmark: (id: number, page: number, saved: boolean) => request<void>(`/documents/${id}/reader-bookmarks/${page}`,

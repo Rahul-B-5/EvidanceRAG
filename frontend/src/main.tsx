@@ -59,6 +59,7 @@ function App() {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [readerPage, setReaderPage] = useState(1);
+  const [readerChunk, setReaderChunk] = useState<number>();
   const [readerWorkspace, setReaderWorkspace] = useState("");
   const [findingQuestion, setFindingQuestion] = useState<FindingQuestion>();
   const [claimLocation, setClaimLocation] = useState<ClaimLocation>();
@@ -108,6 +109,7 @@ function App() {
   function openPaper(id: number) {
     setSelectedId(id);
     setReaderPage(documents.find(paper => paper.id === id)?.last_read_page ?? 1);
+    setReaderChunk(undefined);
     setReaderWorkspace("");
     navigate("reader");
   }
@@ -158,13 +160,14 @@ function App() {
   }, [view]);
   useEffect(() => {
     const followCitation = () => {
-      const match = /^#paper=(\d+)&page=(\d+)(?:&workspace=(\d+))?$/.exec(location.hash);
+      const match = /^#paper=(\d+)&page=(\d+)(?:&workspace=(\d+))?(?:&chunk=(\d+))?$/.exec(location.hash);
       const claim = /^#(claim|atlas)=(finding:[a-f0-9]{24})(?:&workspace=(\d+))?$/.exec(location.hash);
       const claimPaper = /^#claims-paper=(\d+)(?:&workspace=(\d+))?$/.exec(location.hash);
       if (match) {
         setSelectedId(Number(match[1]));
         setReaderPage(Number(match[2]));
         setReaderWorkspace(match[3] ?? "");
+        setReaderChunk(match[4] ? Number(match[4]) : undefined);
         setView("reader");
       } else if (claim?.[1] === "atlas") {
         setAtlasLocation({id:claim[2],workspace:claim[3]});
@@ -260,7 +263,8 @@ function App() {
 
   let content: ReactNode;
   if (view === "reader") content = selected
-    ? <Reader key={`${selected.id}-${readerPage}`} document={selected} initialPage={readerPage} workspace={readerWorkspace}
+    ? <Reader key={`${selected.id}-${readerPage}-${readerChunk ?? ""}`} document={selected} initialPage={readerPage}
+      workspace={readerWorkspace} initialChunk={readerChunk}
       update={paper => setDocuments(current => current.map(d => d.id === paper.id ? {...d, ...paper,
         reading_status:d.reading_status, last_read_page:d.last_read_page, last_read_at:d.last_read_at} : d))}
       saveReading={saveReading} remove={() => void remove(selected)} />

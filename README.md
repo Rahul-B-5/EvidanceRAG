@@ -69,6 +69,8 @@ The application is served at `http://127.0.0.1:5173` and uses the local API at
   Retryable uploads keep their staged input.
 - `GET /documents/{document_id}/source` — serves a persisted original PDF.
 - `GET /documents/{document_id}/passages?page=...` — lists indexed chunks intersecting the page.
+  `focus_chunk` brings the cited passage to the top of that page's result, even
+  when the page has more passages than the regular list can show.
 - `GET /documents/{document_id}/related-papers` lists papers with source-backed
   result claims that report the same dataset and metric. Reader links to the
   related page and both claims. The optional `workspace_id` restricts matches

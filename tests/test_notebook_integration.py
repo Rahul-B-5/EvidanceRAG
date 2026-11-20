@@ -12,6 +12,28 @@ from app.db.connection import get_connection
 pytestmark = pytest.mark.skipif(os.environ.get("EVIDENCERAG_INTEGRATION") != "1", reason="Requires local PostgreSQL")
 
 
+def test_focused_passage_bypasses_the_page_limit_without_crossing_sources(monkeypatch):
+    with get_connection() as conn, conn.transaction(force_rollback=True):
+        monkeypatch.setattr("app.api.main.get_connection", lambda: nullcontext(conn))
+        doc = conn.execute("""
+            INSERT INTO documents(title,filename,file_hash)
+            VALUES ('Citation fixture','fixture.pdf',%s) RETURNING id
+        """, (uuid4().hex * 2,)).fetchone()[0]
+        rows = conn.execute("""
+            INSERT INTO chunks(document_id,chunk_index,text,page_start,page_end,embedding_model,embedding_dimensions)
+            SELECT %s,n,'Calibration',2,2,'fixture',3 FROM generate_series(1,26) AS n
+            RETURNING chunk_index,id
+        """, (doc,)).fetchall()
+        target = dict(rows)[26]
+        client = TestClient(app)
+        path = f"/documents/{doc}/passages"
+        plain = client.get(path, params={"page": 2}).json()["passages"]
+        assert len(plain) == 25 and target not in [p["chunk_id"] for p in plain]
+        focused = client.get(path, params={"page": 2, "focus_chunk": target}).json()["passages"]
+        assert len(focused) == 25 and focused[0]["chunk_id"] == target
+        assert client.get(path, params={"page": 1, "focus_chunk": target}).json() == {"passages": []}
+
+
 def test_saved_evidence_keeps_note_and_authoritative_provenance(monkeypatch):
     module = importlib.import_module("app.api.saved_evidence")
     with get_connection() as conn, conn.transaction(force_rollback=True):

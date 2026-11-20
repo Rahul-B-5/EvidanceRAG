@@ -4,6 +4,7 @@ import { SavePassage } from "./SavedEvidence";
 import { CounterevidencePanel } from "./CounterevidencePanel";
 import type { FindingQuestion } from "./ComparisonStudio";
 import { pageLabel } from "./pageLabel";
+import { sourceLink } from "./sourceLink";
 import "./claims.css";
 
 export type ClaimLocation = {id?: string; workspace?: string; paper?: string};
@@ -139,7 +140,7 @@ export function ClaimExplorer({initial, documents, workspaces, ask}: {
           <p>{claim.finding.outcome.metric || claim.finding.relative_statement ? "Reported result" : "Author excerpt"} · Indexed source located</p>
           <blockquote>{claim.quote}</blockquote>
           <div className="finding-actions">
-            <a href={`#paper=${source.document_id}&page=${source.page_start}${workspace ? `&workspace=${workspace}` : ""}`}>Open source · p. {source.page_start}{source.page_end !== source.page_start ? `–${source.page_end}` : ""}</a>
+            <a href={sourceLink(source.document_id, source.page_start, source.chunk_id, workspace)}>Open source · p. {source.page_start}{source.page_end !== source.page_start ? `–${source.page_end}` : ""}</a>
             <SavePassage key={source.chunk_id} id={source.chunk_id} />
             <a href={`#atlas=${id}${workspace ? `&workspace=${workspace}` : ""}`}>Explore in Atlas</a>
             <button className="secondary" onClick={() => ask({documentId:claim.document_id,workspaceId:workspace ? Number(workspace) : undefined,

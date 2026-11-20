@@ -5,11 +5,13 @@ import { MetadataEditor } from "./DocumentMetadata";
 import { EmbeddingPanel } from "./EmbeddingPanel";
 import { readingStatusLabels } from "./readingStatus";
 import { pageLabel } from "./pageLabel";
+import { sourceLink } from "./sourceLink";
 
 const PdfViewer = lazy(() => import("./PdfViewer"));
 
-export function Reader({document, initialPage = 1, workspace = "", remove, update, saveReading}: {
+export function Reader({document, initialPage = 1, initialChunk, workspace = "", remove, update, saveReading}: {
   document: Document; initialPage?: number; workspace?: string; remove: () => void; update: (paper: Document) => void;
+  initialChunk?: number;
   saveReading: (id: number, change: ReadingUpdate) => Promise<void>;
 }) {
   const [page, setPage] = useState(initialPage);
@@ -86,7 +88,8 @@ export function Reader({document, initialPage = 1, workspace = "", remove, updat
             </Suspense></>
           : <p className="empty">The original PDF is missing. Import the identical PDF from Library to restore it.</p>}
       </div>
-      <ReaderEvidence key={page} documentId={document.id} page={page} go={go} />
+      <ReaderEvidence key={page} documentId={document.id} page={page} go={go}
+        focusChunk={page === initialPage ? initialChunk : undefined} />
     </div>
     <div className="reader-settings">
       <RelatedPapers documentId={document.id} workspace={workspace} />
@@ -117,7 +120,7 @@ function RelatedPapers({documentId, workspace}: {documentId: number; workspace: 
     {!papers && !error && <p role="status">Finding shared study labels…</p>}
     {papers?.length === 0 && <p className="muted">No indexed comparison claims share both a dataset and a metric in this scope.</p>}
     {!!papers?.length && <ul>{papers.map(paper => <li key={paper.document_id}>
-      <a href={`#paper=${paper.document_id}&page=${paper.source.page_start}${scope}`}>{paper.title}</a>
+      <a href={sourceLink(paper.document_id, paper.source.page_start, paper.source.chunk_id, workspace)}>{paper.title}</a>
       <p className="muted">{paper.dataset} · {paper.metric} · {pageLabel(paper.source.page_start, paper.source.page_end)}</p>
       <div className="finding-actions">
         <a href={`#claim=${paper.origin_claim_id}${scope}`}>Claim in this paper</a>
@@ -127,7 +130,9 @@ function RelatedPapers({documentId, workspace}: {documentId: number; workspace: 
   </details>;
 }
 
-function ReaderEvidence({documentId, page, go}: {documentId: number; page: number; go: (page: number) => void}) {
+function ReaderEvidence({documentId, page, go, focusChunk}: {
+  documentId: number; page: number; go: (page: number) => void; focusChunk?: number;
+}) {
   const [passages, setPassages] = useState<Passage[] | null>(null);
   const [bookmarks, setBookmarks] = useState<number[] | null>(null);
   const [highlights, setHighlights] = useState<ReaderHighlight[]>([]);
@@ -138,7 +143,7 @@ function ReaderEvidence({documentId, page, go}: {documentId: number; page: numbe
 
   useEffect(() => {
     const controller = new AbortController();
-    api.passages(documentId, page, controller.signal)
+    api.passages(documentId, page, controller.signal, focusChunk)
       .then(result => {if (!controller.signal.aborted) setPassages(result.passages);})
       .catch(err => {if (!controller.signal.aborted) setPassageError(err.message);});
     api.readerAnnotations(documentId, page, controller.signal).then(result => {
@@ -147,7 +152,7 @@ function ReaderEvidence({documentId, page, go}: {documentId: number; page: numbe
       setHighlights(result.highlights);
     }).catch(err => {if (!controller.signal.aborted) setAnnotationError(err.message);});
     return () => controller.abort();
-  }, [documentId, page]);
+  }, [documentId, page, focusChunk]);
 
   async function toggleBookmark() {
     setBookmarkBusy(true);
@@ -185,11 +190,14 @@ function ReaderEvidence({documentId, page, go}: {documentId: number; page: numbe
       </label>}
     </div>
     <h3>Indexed passages · page {page}</h3>
+    {focusChunk && passages && !passages.some(p => p.chunk_id === focusChunk) &&
+      <p className="muted">The cited passage is unavailable on this page.</p>}
     {annotationError && <p role="alert">{annotationError}</p>}
     {!!passages?.length && bookmarks !== null && <p className="reader-hint">Select text in a passage to highlight it.</p>}
     {passageError ? <p role="alert">{passageError}</p> : !passages ? <p role="status">Loading passages…</p>
       : !passages.length ? <p>No indexed text for this page.</p>
       : passages.map(p => <AnnotatedPassage key={p.chunk_id} passage={p} page={page} highlights={highlights}
+        focused={p.chunk_id === focusChunk}
         onHighlight={bookmarks === null ? undefined : highlight} />)}
     {!!highlights.length && <section aria-label="Page highlights">
       <h3>Page highlights</h3>

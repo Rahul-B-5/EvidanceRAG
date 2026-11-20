@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, type Collection, type NotebookHighlight, type SavedPassage, type Workspace } from "./api";
 import { pageLabel } from "./pageLabel";
+import { sourceLink } from "./sourceLink";
 
 export function SavePassage({id}: {id: number}) {
   const [state, setState] = useState<"idle" | "pending" | "saved">("idle");
@@ -229,7 +230,7 @@ export function SavedEvidence({workspaces}: {workspaces: Workspace[]}) {
     {!!items?.length && visible?.length === 0 && <p className="notice">No passages match these filters.</p>}
     {visible?.map(p => <article className="panel saved-item" key={p.chunk_id}>
       <h2>{p.title}</h2>
-      {p.source_exists ? <a href={`#paper=${p.document_id}&page=${p.page_start}${workspace ? `&workspace=${workspace}` : ""}`}>{pageLabel(p.page_start, p.page_end)}</a>
+      {p.source_exists ? <a href={sourceLink(p.document_id, p.page_start, p.chunk_id, workspace)}>{pageLabel(p.page_start, p.page_end)}</a>
         : <p>{pageLabel(p.page_start, p.page_end)} · Source paper unavailable</p>}
       {!!p.tags.length && <ul className="assistant-source-tags" aria-label="Passage tags">
         {p.tags.map(item => <li className="tag" key={item}>{item}</li>)}

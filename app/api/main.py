@@ -348,6 +348,7 @@ def document_source(document_id: int) -> FileResponse:
 def document_passages(
     document_id: Annotated[int, Field(gt=0)],
     page: int = Query(default=1, ge=1, le=100000),
+    focus_chunk: SourceID | None = None,
 ) -> dict:
     with get_connection() as conn:
         if conn.execute("SELECT 1 FROM documents WHERE id = %s", (document_id,)).fetchone() is None:
@@ -355,8 +356,8 @@ def document_passages(
         rows = conn.execute(
             """SELECT id, page_start, page_end, text, section_title FROM chunks
                WHERE document_id = %s AND page_start <= %s AND page_end >= %s
-               ORDER BY chunk_index LIMIT 25""",
-            (document_id, page, page),
+               ORDER BY CASE WHEN id = %s THEN 0 ELSE 1 END, chunk_index LIMIT 25""",
+            (document_id, page, page, focus_chunk),
         ).fetchall()
     return {"passages": [
         {"chunk_id": r[0], "page_start": r[1], "page_end": r[2], "text": r[3],
