@@ -10,6 +10,9 @@ MEASURE = re.compile(
     r"(?:\s*%|\s*/?\s*[°µA-Za-z]{1,6}(?:\s*[/·]\s*[µA-Za-z]{1,6}|\s+[A-Za-z]{1,3}){0,3})?"
 )
 STANDALONE_NUMBER = re.compile(r"(?<![\w.])[-+]?\d+(?:\.\d+)?(?![\w.])")
+PROSE_MEASUREMENT = re.compile(
+    r"(?<![\w.])(?:[$€£]\s*\d+(?:[,.]\d+)*(?:\s*/\s*[A-Za-z]{1,8})?|\d+(?:[,.]\d+)*\s*%)"
+)
 
 
 def words(text: str) -> list[str]:
@@ -63,6 +66,43 @@ def identifies_row(query: list[str], label: str) -> bool:
     return any(mentions(query, tokens[i:i + 2]) for i in range(len(tokens) - 1))
 
 
+def section_excerpt(text: str, labels: list[str], columns: set[str], question: str,
+                    condition: list[str], aliases: set[str]) -> str:
+    """Keep prose statements about the selected row and metric."""
+    phrases = [words(column) for column in columns]
+    for column in columns:
+        for acronym in re.findall(r"\b[A-Z][A-Z0-9]{1,}\b", column):
+            phrases.append([acronym.casefold()])
+            definition = re.search(rf"\b((?:[\w-]+\s+){{{len(acronym)}}})\({acronym}\)", question, re.I)
+            if definition:
+                phrases.append(words(definition[1]))
+    metric = re.compile(r"\b(?:" + "|".join(r"\W+".join(map(re.escape, phrase)) for phrase in phrases) + r")\b", re.I)
+    subjects = [words(label) for label in labels]
+    subjects = [label[:label.index("without")] if "without" in label else label for label in subjects]
+    query = words(question)
+    anchors = [label[i:i + length] for label in subjects for length in (2, 3, 4)
+               for i in range(len(label) - length + 1) if mentions(query, label[i:i + length])]
+    strength = max(map(len, anchors), default=0)
+    anchors = [anchor for anchor in anchors if len(anchor) == strength] or subjects
+    selected = []
+    for sentence in re.split(r"(?<=[.!?])\s+", " ".join(text.split())):
+        tokens = words(sentence)
+        location = metric.search(sentence)
+        if not location or not any(mentions(tokens, anchor) for anchor in anchors) or not STANDALONE_NUMBER.search(sentence):
+            continue
+        if (mentions(tokens, condition) or aliases.intersection(tokens)) and not mentions(tokens, ["without", *condition]):
+            continue
+        first_measurement = PROSE_MEASUREMENT.search(sentence, location.end()) if len(columns) == 1 else None
+        if first_measurement and PROSE_MEASUREMENT.search(sentence, first_measurement.end()):
+            # A following comparison may report the same unit for a different
+            # metric or baseline. Keep the value immediately following the
+            # requested metric, with the original PDF passage as its anchor.
+            selected.append(sentence[:first_measurement.end()])
+        else:
+            selected.append(sentence)
+    return "\n".join(selected)
+
+
 @dataclass
 class TableScope:
     sources: list[dict]
@@ -94,13 +134,18 @@ class TableScope:
                     return False
                 seen.update(anchors.intersection(self.table_values))
             else:
-                numbers = STANDALONE_NUMBER.findall(TABLE.sub("", results))
+                results = TABLE.sub("", results)
+                numbers = STANDALONE_NUMBER.findall(results)
                 if not numbers:
                     continue
+                measurements = {compact(match.group()) for match in PROSE_MEASUREMENT.finditer(results)}
                 supported = {
                     source["evidence_id"] for source in self.sources
-                    if source["evidence_id"] in anchors and all(
-                        re.search(r"(?<![\d.])" + re.escape(value) + r"(?!\d|\.\d)", source["text"])
+                    if source["evidence_id"] in anchors and measurements.issubset(
+                        compact(match.group()) for match in PROSE_MEASUREMENT.finditer(source["text"])
+                    ) and all(
+                        re.search(r"(?<![\d.])" + re.escape(value) + r"(?!\d|\.\d)",
+                                  source.get("context_text", source["text"]) if measurements else source["text"])
                         for value in numbers
                     )
                 }
@@ -171,10 +216,20 @@ def scope_table_answer(question: str, evidence: list[dict]) -> TableScope | None
         cells = [cell for cell in row["cells"] if not measurement(cell["value"]) or cell["column"] in requested]
         values = [cell["value"] for cell in cells if cell["column"] in requested]
         if values:
-            selected.append(({**source, "table_row": {**row, "cells": cells}}, values))
+            aliases = {term.casefold() for _, terms in siblings for term, expansion in terms.items()
+                       if mentions(words(expansion), condition)}
+            selected.append(({**source, "table_row": {**row, "cells": cells}}, values, labels, aliases))
     # Multiple plausible rows are left unresolved. Do not let the model use
     # nearby text or a different metric as a fallback for a missing match.
     if len(selected) != 1:
         return TableScope([], {}, sections)
-    source, values = selected[0]
-    return TableScope([source, *prose], {source["evidence_id"]: values}, sections)
+    source, values, labels, aliases = selected[0]
+    focused = []
+    for item in prose:
+        text = section_excerpt(item["text"], labels, requested, question, condition, aliases)
+        if text:
+            focused.append({**item, "text": text, "context_text": item["text"]})
+    focused_ids = {item["evidence_id"] for item in focused}
+    if any(not ids.intersection(focused_ids) for ids in sections.values()):
+        return TableScope([], {}, sections)
+    return TableScope([source, *focused], {source["evidence_id"]: values}, sections)

@@ -473,6 +473,20 @@ launcher, wider browser review and release validation to the previous scope.
 
 ## Continuation
 
+- Latest prose grounding milestone selects statements matching the requested
+  row and metric, excludes explicitly different conditions and checks currency
+  and percentage units against the focused excerpt. Regressions reject a
+  competing metric in the same sentence and a substituted model variant.
+  Passed 155 PostgreSQL tests, 10 frontend tests, five deterministic Chrome
+  workflows, the build, and all five reading-comprehension cases with eight
+  research checks.
+- Ollama was stopped at continuation. Started the installed service on
+  loopback and reran the full Qwen 8B report gate at 8,192 tokens. Three of
+  four cases passed. The section comparison still abstains. Next inspect
+  the candidate response before validation and determine whether it omits
+  a required source or adds contextual numbers to the table statement.
+  Keep the exact row, unit and two-source requirements.
+
 - Product decisions are in [PRODUCT_STRATEGY.md](PRODUCT_STRATEGY.md). The journey
   and verification matrix is in [ROADMAP.md](ROADMAP.md).
 - Run `EVIDENCERAG_INTEGRATION=1 .venv/bin/pytest -q` against the local database

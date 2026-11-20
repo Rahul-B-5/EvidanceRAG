@@ -76,11 +76,42 @@ def test_matching_condition_does_not_substitute_a_different_model_variant(eviden
     evidence[2]["table_row"]["cells"][0]["value"] = "Reference model variant without augmentation"
     assert not scope_table_answer(QUESTION, evidence).sources
     qualified = QUESTION.replace("reference model ", "reference model variant ")
+    assert not scope_table_answer(qualified, evidence).sources
+    evidence[0]["text"] = evidence[0]["text"].replace("reference model ", "reference model variant ")
     assert scope_table_answer(qualified, evidence).table_values == {"E3": ["22%"]}
 
 
 def test_questions_about_both_conditions_do_not_enter_the_exclusion_path(evidence):
     assert scope_table_answer(QUESTION.replace("without", "with and without"), evidence) is None
+
+
+def test_prose_sources_exclude_other_metrics_and_explicit_alternate_conditions(evidence):
+    evidence[2]["table_row"]["cells"][0]["value"] = "Reference model without augmentation"
+    evidence[3]["table_row"]["term_definitions"] = {"DA": "data augmentation"}
+    evidence[0]["text"] += " The reference model had an error rate of 29% with DA. Its precision was 91%."
+    alternative = {**evidence[0], "evidence_id": "E5",
+                   "text": "The reference model had an error rate of 31% with augmentation."}
+    scope = scope_table_answer(QUESTION, [*evidence, alternative])
+    assert [source["evidence_id"] for source in scope.sources] == ["E3", "E1"]
+    assert scope.sources[1]["text"] == "The reference model has an error rate of 17%."
+    assert not scope.supports("Overview: 29% [E1].\nTable 2: 22% [E3].")
+
+
+def test_prose_scope_checks_measured_units_while_allowing_cited_context(evidence):
+    evidence[2]["table_row"]["cells"][0]["value"] = "Reference model without augmentation"
+    evidence[0]["text"] = "The study dates from 2023. The reference model has an error rate of 17%."
+    scope = scope_table_answer(QUESTION, evidence)
+    assert scope.supports("The 2023 Overview reports 17% [E1].\nTable 2: 22% [E3].")
+    assert not scope.supports("The 2024 Overview reports 17% [E1].\nTable 2: 22% [E3].")
+    assert not scope.supports("The 2023 Overview reports $17 [E1].\nTable 2: 22% [E3].")
+
+
+def test_following_metric_in_same_sentence_cannot_support_the_requested_measurement(evidence):
+    evidence[2]["table_row"]["cells"][0]["value"] = "Reference model without augmentation"
+    evidence[0]["text"] = "The reference model had an error rate of 17% and precision of 91%."
+    scope = scope_table_answer(QUESTION, evidence)
+    assert scope.supports("Overview: 17% [E1].\nTable 2: 22% [E3].")
+    assert not scope.supports("Overview: 91% [E1].\nTable 2: 22% [E3].")
 
 
 def test_ambiguous_abbreviation_does_not_establish_condition(evidence):
