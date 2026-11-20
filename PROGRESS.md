@@ -300,11 +300,29 @@
 
 ## Outstanding
 
+The final-completion brief adds web-based provider setup, a supported local
+launcher, wider browser review and release validation to the previous scope.
+
 1. Improve condition-level grounding on the NREL whole-PDF suite. Validate
    requested row conditions and reported values together before presenting a
    numeric finding. Preserve both source anchors for a section comparison.
    Re-run the comparison and missing-quote cases with live models.
 2. Test larger corpora and review legacy passages with several pages.
+3. Add encrypted provider profiles, live answer/extraction model switching,
+   Ollama model discovery, native Anthropic support and the Settings interface.
+
+## Local launch verification
+
+- Vite previously listened on IPv6 loopback only. The npm development command
+  now binds to IPv4 loopback explicitly. The launcher checks dependencies,
+  ports, PostgreSQL and migrations before reporting readiness. Chrome loaded
+  the application and its library through both `localhost` and `127.0.0.1`.
+  A second launcher reported the occupied API port. Terminating the launcher
+  released both listeners. The live library already contained three papers
+  and 75 passages at startup. The launcher used the existing database and the
+  browser smoke test only read those records.
+- Launcher gate passed 136 PostgreSQL tests, 10 frontend tests, three Chrome
+  workflows and the production build.
 
 ## Continuation
 

@@ -6,28 +6,35 @@ hybrid keyword/vector evidence, and returns source-linked answers.
 
 ## Run locally
 
-1. Create `.env` from `.env.example` and set your local PostgreSQL credentials.
-   The default local PostgreSQL port is `5433`.
-2. Apply the idempotent schema upgrade (it preserves existing documents and
-   embeddings):
+### Existing installation
 
-   ```bash
-   .venv/bin/python scripts/init_db.py
-   ```
+From the project directory, run the launcher with your existing `.env`.
 
-3. Start the API:
+```bash
+.venv/bin/python -m scripts.run_local
+```
 
-   ```bash
-   .venv/bin/uvicorn app.api.main:app --reload --no-access-log
-   ```
+The launcher checks ports 8000 and 5173, connects to PostgreSQL, applies
+pending migrations, and waits for both services to respond. Open
+[EvidenceRAG](http://127.0.0.1:5173) and press Ctrl+C in the launcher terminal
+to stop both services.
 
-4. In another terminal, start the React frontend (Node 22.13+):
+### Clean installation
 
-   ```bash
-   cd frontend
-   npm ci
-   npm run dev
-   ```
+Install Python 3.11+, Node 22.13+, and PostgreSQL with pgvector available.
+Create an empty database and configure its connection in `.env` from
+`.env.example`. The example uses PostgreSQL port 5433. Then run:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+npm --prefix frontend ci
+.venv/bin/python scripts/init_db.py
+.venv/bin/python -m scripts.run_local
+```
+
+For separate development terminals, use `.venv/bin/uvicorn app.api.main:app
+--host 127.0.0.1 --reload --no-access-log` and `npm --prefix frontend run dev`.
 
 Interactive API documentation is available at `http://127.0.0.1:8000/docs`.
 The API defaults to loopback hostnames. Set `API_ALLOWED_HOSTS` for an
