@@ -38,11 +38,12 @@ export type RuntimeSettings = {
 export type SavedPassage = {chunk_id: number; document_id: number; title: string; page_start: number; page_end: number; passage: string; note: string; tags: string[]; source_exists: boolean};
 export type NotebookHighlight = {id: string; document_id: number; title: string; page: number; quote: string; note: string; anchor_current: boolean};
 export type Evidence = { evidence_id: string; chunk_id: number; document_id: number; title: string; page_start: number; page_end: number; text: string; section_title?: string };
+export type Citation = Omit<Evidence, "text"> & {table_measurements?: Array<{column: string; value: string}>};
 export type Workspace = { id: number; name: string; description: string | null; document_count: number };
 export type Collection = {id: number; name: string; workspace_id: number | null; document_count: number};
 export type Conversation = {id: number; title: string; document_id: number | null; document_ids: number[] | null;
   workspace_id: number | null; scope_state: "configured" | "legacy";
-  messages: Array<{id: number; role: string; content: string; citations: Evidence[]}>};
+  messages: Array<{id: number; role: string; content: string; citations: Citation[]}>};
 export type Comparison = {
   fields: string[];
   papers: Array<{document_id: number; title: string; fields: Record<string, {status: string; evidence: Evidence[]}>}>;
@@ -277,7 +278,7 @@ export const api = {
   retryImport: (id: string) => request<ImportJobRecord>(`/import-jobs/${id}/retry`, {method:"POST"}),
   remove: (id: number) => request<void>(`/documents/${id}`, { method: "DELETE" }),
   search: (query: string, documentId?: number, workspaceId?: number) => request<{ evidence: Evidence[]; evidence_count: number }>(`/search?${new URLSearchParams({ query, ...(documentId ? { document_id: String(documentId) } : {}), ...(workspaceId ? {workspace_id: String(workspaceId)} : {}) })}`),
-  answer: (query: string, documentId?: number) => request<{ answer: string; abstained: boolean; reason: string | null; citations: Evidence[]; evidence: Evidence[] }>("/answers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query, document_id: documentId }) }),
+  answer: (query: string, documentId?: number) => request<{ answer: string; abstained: boolean; reason: string | null; citations: Citation[]; evidence: Evidence[] }>("/answers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query, document_id: documentId }) }),
   workspaces: () => request<{ workspaces: Workspace[] }>("/workspaces"),
   collections: (workspaceId: string) => request<{collections: Collection[]}>(
     workspaceId ? `/collections?workspace_id=${workspaceId}` : "/collections"),

@@ -365,6 +365,22 @@ test("Reader preserves table cells and separates neighboring measurements", asyn
   await precision.getByText("Indexed text", {exact:true}).click();
   await expect(precision.getByText(/Reconstructed table row/)).toBeVisible();
   await capture(page, "reader-table");
+  const question = "What was the Score for Precision without tuning in Table 2?";
+  await page.getByRole("button", {name:"Assistant",exact:true}).click();
+  await page.getByRole("combobox", {name:"Sources"}).selectOption("selected");
+  await page.getByRole("checkbox", {name:"Calibration table fixture"}).check();
+  await page.getByRole("textbox", {name:"Question"}).fill(question);
+  await page.getByRole("button", {name:"Send question"}).click();
+  const cells = page.locator(".citation-measurements");
+  await expect(cells).toHaveText("Matched table cellsScore0.84");
+  await capture(page, "assistant-table");
+  await page.reload();
+  await page.getByRole("button", {name:"Assistant",exact:true}).click();
+  await page.getByRole("combobox", {name:"Conversation"}).selectOption({label:question});
+  await expect(cells).toHaveText("Matched table cellsScore0.84");
+  await page.locator(".citation-row a").click();
+  await expect(page.getByRole("img", {name:"PDF page 2"})).toBeVisible();
+  await expect(page.locator(".cited-passage")).toContainText("Precision without tuning");
 });
 
 test("configured local Ollama models answer with PDF citations", async ({page}) => {

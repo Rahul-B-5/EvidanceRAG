@@ -38,7 +38,7 @@ def table_fixture_pdf(path: Path) -> None:
         for y in (76, 101, 126, 151):
             page.draw_line((54, y), (305, y))
         for y, metric, score in (
-            (92, "Metric", "Score"), (117, "Precision", "0.84"), (142, "Recall", "0.72"),
+            (92, "Metric", "Score"), (117, "Precision without tuning", "0.84"), (142, "Recall", "0.72"),
         ):
             page.insert_text((60, y), metric)
             page.insert_text((186, y), score)

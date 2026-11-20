@@ -406,6 +406,25 @@ launcher, wider browser review and release validation to the previous scope.
 - Release gate passed 148 PostgreSQL tests, 10 frontend tests, six Chrome
   workflows including live Ollama, and the production build.
 
+## Visible measurement provenance
+
+- Assistant citations now show the table columns and exact cell values
+  accepted by the named-table check. Chrome verified the values survived
+  conversation reload and that the citation focused the exact row on the
+  original PDF page. Desktop and narrow screenshots were inspected.
+- Both deterministic corpora passed all 11 answer cases and eight
+  scientific checks across comparability, contradiction, coverage and
+  reproducibility. The separate live Qwen 8B run on the full NREL PDF
+  passed the installer-quote abstention. It omitted citations in two
+  numerical answers and abstained on the cross-section comparison.
+- Passed 149 PostgreSQL tests, 10 frontend tests, six Chrome workflows
+  including live Ollama, an exact-source browser rerun and the build.
+- Next release gate is repeatable cross-section grounding across models.
+  Replace general numeric occurrence checks on cited prose with a
+  measurement tied to the requested metric, condition and original unit.
+  Preserve a separate citation for each source. Authenticated cloud
+  providers and concurrent whole-library import still need live checks.
+
 ## Continuation
 
 - Product decisions are in [PRODUCT_STRATEGY.md](PRODUCT_STRATEGY.md). The journey

@@ -15,6 +15,19 @@ from app.generation.providers import get_generation_provider
 from evaluation.database import BROWSER_TABLES, assert_isolated
 
 
+def fixture_answer(prompt: str, model: str | None = None) -> dict:
+    data = json.loads(prompt)
+    if "without tuning in Table 2" in data["question"]:
+        table = next(item for item in data["evidence"] if "table_row" in item)
+        score = next(cell["value"] for cell in table["table_row"]["cells"] if cell["column"] == "Score")
+        answer = f"Table 2 reports a score of {score} [{table['evidence_id']}]."
+    elif model:
+        answer = f"Model {model} reports 37 observations [E1]."
+    else:
+        answer = "The held-out sample contains 37 observations [E1]."
+    return {"answer": answer, "abstained": False, "reason": None}
+
+
 def main() -> None:
     schema = os.environ["EVIDENCERAG_E2E_SCHEMA"]
     with get_connection() as conn:
@@ -26,9 +39,7 @@ def main() -> None:
             "INSERT INTO messages (conversation_id, role, content) VALUES (%s, 'assistant', 'Archived calibration summary.')",
             (legacy,),
         )
-    provider = SimpleNamespace(
-        generate_json=lambda **_: '{"answer":"The held-out sample contains 37 observations [E1].","abstained":false,"reason":null}',
-    )
+    provider = SimpleNamespace(generate_json=lambda *, prompt, **_: json.dumps(fixture_answer(prompt)))
     installed = ["fixture:one", "fixture:two"]
 
     @app.get("/api/tags")
@@ -42,7 +53,7 @@ def main() -> None:
         if model not in installed:
             raise HTTPException(404, "Model not installed.")
         output = ({"ready": True} if "synthetic connectivity check" in payload["messages"][0]["content"] else
-                  {"answer": f"Model {model} reports 37 observations [E1].", "abstained": False, "reason": None})
+                  fixture_answer(payload["messages"][-1]["content"], model))
         return {"choices":[{"message":{"content":json.dumps(output)}}]}
 
     def answer_provider(settings):

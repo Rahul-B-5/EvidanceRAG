@@ -187,6 +187,10 @@ export function Conversations({documents, initial}: {documents: Document[]; init
           {documents.some(d => d.id === c.document_id)
             ? <><a href={sourceLink(c.document_id, c.page_start, c.chunk_id, conversation.workspace_id ?? undefined)}>[{c.evidence_id}] {c.title} · {pageLabel(c.page_start, c.page_end)}{c.section_title && ` · ${c.section_title}`}</a><SavePassage id={c.chunk_id} /></>
             : <span>[{c.evidence_id}] {c.title} · {pageLabel(c.page_start, c.page_end)} (source unavailable)</span>}
+          {!!c.table_measurements?.length && <div className="citation-measurements">
+            <span>Matched table cells</span>
+            <dl>{c.table_measurements.map(cell => <div key={cell.column}><dt>{cell.column}</dt><dd>{cell.value}</dd></div>)}</dl>
+          </div>}
         </div>)}
       </article>)}</div>
     </section>}

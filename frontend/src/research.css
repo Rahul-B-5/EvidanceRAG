@@ -20,6 +20,10 @@
 .assistant-turn h3 {color:var(--muted);font-size:.82rem}
 .assistant-turn p {white-space:pre-wrap}
 .assistant-turn .citation-row {margin-top:.35rem}
+.citation-measurements {flex-basis:100%;font-size:.85rem;color:var(--muted)}
+.citation-measurements dl {display:flex;flex-wrap:wrap;gap:.35rem .9rem;margin:.25rem 0}
+.citation-measurements dl > div {display:flex;gap:.4rem}
+.citation-measurements dd {margin:0;font-weight:650;color:var(--text)}
 .assistant-papers {display:grid;justify-items:start;gap:.65rem;border:1px solid var(--line);border-radius:.5rem;padding:.8rem;min-width:0}
 .assistant-papers legend {padding-inline:.35rem;font-weight:650}
 .assistant-papers small,.assistant-scope-label {color:var(--muted)}

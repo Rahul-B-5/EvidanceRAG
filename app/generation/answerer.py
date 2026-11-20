@@ -180,6 +180,10 @@ def generate_answer(
             "title": evidence_by_id[evidence_id]["title"],
             **({"section_title": evidence_by_id[evidence_id]["section_title"]}
                if "section_title" in evidence_by_id[evidence_id] else {}),
+            **({"table_measurements": [
+                cell for cell in evidence_by_id[evidence_id]["table_row"]["cells"]
+                if cell["value"] in table_scope.table_values[evidence_id]
+            ]} if table_scope is not None and evidence_id in table_scope.table_values else {}),
             "page_start": evidence_by_id[evidence_id]["page_start"],
             "page_end": evidence_by_id[evidence_id]["page_end"],
         }

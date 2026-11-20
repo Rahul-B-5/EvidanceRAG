@@ -387,8 +387,10 @@ original format.
 For an explicit named-table question that identifies a metric and excludes
 a condition, Assistant can validate the cited row and copy the cell's
 measurement with its original units. It abstains when this check finds
-ambiguous rows or an unsupported answer. General answers and named prose
-sections still require researcher review of the linked passages.
+ambiguous rows or an unsupported answer. The Assistant transcript displays
+the matched columns and cell values next to their PDF source link.
+General answers and named prose sections still require researcher review of
+the linked passages.
 
 The whole-PDF benchmark uses the [public NREL solar cost report](https://www.osti.gov/servlets/purl/2005540).
 It imports the pinned PDF through the durable queue in a disposable schema,

@@ -1,5 +1,9 @@
+import json
+from types import SimpleNamespace
+
 import pytest
 
+from app.generation.answerer import generate_answer
 from app.generation.table_grounding import scope_table_answer
 from app.ingestion.pdf_extractor import attach_term_definitions
 
@@ -82,3 +86,16 @@ def test_prefixed_units_and_qualifiers_are_kept_verbatim(evidence):
     scope = scope_table_answer(QUESTION, evidence)
     assert scope.supports("Overview: 17% [E1].\nTable 2: $1.17/W dc [E3].")
     assert not scope.supports("Overview: 17% [E1].\nTable 2: $1.17/W ac [E3].")
+
+
+def test_citation_returns_only_the_verified_cells(monkeypatch, evidence):
+    evidence[2]["table_row"]["cells"][0]["value"] = "Reference model without augmentation"
+    for index, source in enumerate(evidence, start=1):
+        source.update(chunk_id=index, title="Study", page_end=source["page_start"])
+    provider = SimpleNamespace(generate_json=lambda **_: json.dumps({
+        "answer": "Overview: 17% [E1].\nTable 2: 22% [E3].", "abstained": False, "reason": None,
+    }))
+    monkeypatch.setattr("app.generation.answerer.get_generation_provider", lambda _: provider)
+    answer = generate_answer(QUESTION, "retrieved context", evidence)
+    assert "table_measurements" not in answer["citations"][0]
+    assert answer["citations"][1]["table_measurements"] == [{"column": "ER Score", "value": "22%"}]
