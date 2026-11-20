@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "workspaces": {
+    "reading-comprehension": ["squad", "squad2", "bert"],
+    "dataset-design": ["squad", "squad2"]
+  },
+  "documents": [
+    {
+      "key": "squad",
+      "title": "SQuAD: 100,000+ Questions for Machine Comprehension of Text",
+      "source": "https://aclanthology.org/D16-1264/",
+      "chunks": [
+        {"page": 2, "section": "Introduction", "text": "The original SQuAD benchmark contains 107,785 question-answer pairs drawn from 536 Wikipedia articles. The evaluation is limited to answers that can be selected as spans in the supplied passage, which makes scoring simpler than for free-form answers.", "vector": [1, 0, 0, 0]},
+        {"page": 7, "section": "6.2 Human Performance", "text": "In the original SQuAD v1.0 human evaluation, the second answer served as a prediction and the other answers as references. On the test split, human exact match was 77.0% and the human F1 score was 86.8%.", "vector": [0.4, 0.8, 0, 0]}
+      ]
+    },
+    {
+      "key": "squad2",
+      "title": "Know What You Don’t Know: Unanswerable Questions for SQuAD",
+      "source": "https://aclanthology.org/P18-2124/",
+      "chunks": [
+        {"page": 1, "section": "Abstract and Introduction", "text": "SQuAD 2.0 extends the previous SQuAD dataset with more than 50,000 difficult unanswerable questions. Crowdworkers wrote questions that look answerable in context. Systems must abstain if a paragraph does not support an answer.", "vector": [0.9, 0, 0, 0]},
+        {"page": 5, "section": "Table 3", "text": "For SQuAD 2.0, the DocQA + ELMo F1 score was 67.6% on the development split. The F1 score was 66.3% on the test split. The same architecture trained on the original SQuAD obtained a test F1 score of 85.8%. Human test F1 on SQuAD 2.0 was 89.5%.", "vector": [0, 1, 0, 0]},
+        {"page": 4, "section": "4.2 Human accuracy", "text": "SQuAD 2.0 human evaluation pooled crowdworker responses by majority vote, with an average of 4.8 responses per question. The authors point out that the original SQuAD evaluation used a single person's prediction, which may have underestimated human accuracy.", "vector": [0.3, 0.6, 0, 0]}
+      ]
+    },
+    {
+      "key": "bert",
+      "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+      "source": "https://aclanthology.org/N19-1423/",
+      "chunks": [
+        {"page": 7, "section": "Table 3", "text": "On SQuAD 2.0, BERT Large (single model) obtained a test F1 score of 83.1% and test exact match of 80.0%. On the development split it obtained an F1 score of 81.9%.", "vector": [0, 0, 1, 0]},
+        {"page": 7, "section": "4.3 SQuAD v2.0", "text": "For SQuAD 2.0 the authors tuned the abstention threshold on the development split to maximize F1. BERT was fine-tuned for 2 epochs with a learning rate of 5e-5 and a batch size of 48. The SQuAD 2.0 model did not use TriviaQA.", "vector": [0, 0, 0.3, 1]},
+        {"page": 7, "section": "Table 2", "text": "On SQuAD 1.1, the BERT Large ensemble with TriviaQA obtained a test F1 score of 93.2%. A single BERT Large model with TriviaQA scored 91.8% F1 on the test split. The ensemble combined seven systems that used different checkpoints and fine-tuning seeds.", "vector": [0, 0.4, 0.7, 0]}
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "id": "dataset-size",
+      "query": "How many question-answer pairs are in the original SQuAD benchmark?",
+      "workspace": "dataset-design",
+      "vector": [1, 0, 0, 0],
+      "expected": ["squad:0"],
+      "answer_contains": ["107785"],
+      "support": {"107785": "squad:0"},
+      "fixture_answer": "The original SQuAD has 107,785 question-answer pairs [E1]."
+    },
+    {
+      "id": "human-metrics-do-not-swap",
+      "query": "What were the human exact match and F1 scores in the original SQuAD v1.0 test evaluation?",
+      "workspace": "dataset-design",
+      "vector": [0.4, 0.8, 0, 0],
+      "expected": ["squad:1"],
+      "answer_contains": ["77.0%", "86.8%"],
+      "answer_relations": ["exact match(?:(?![.!?]\\s|%).){0,100}(?<![\\d.])77(?:\\.0)?\\s*(?:%|percent)", "F1(?:(?![.!?]\\s|%).){0,38}(?<![\\d.])86\\.8\\s*(?:%|percent)"],
+      "support": {"77.0%": "squad:1", "86.8%": "squad:1"},
+      "fixture_answer": "The human exact match score was 77.0%, and the human F1 score was 86.8% [E1]."
+    },
+    {
+      "id": "same-metric-different-source",
+      "query": "Give the SQuAD 2.0 test F1 scores for DocQA + ELMo from Rajpurkar et al. and the single BERT Large from Devlin et al. Cite each score individually.",
+      "workspace": "reading-comprehension",
+      "vector": [0, 1, 1, 0],
+      "expected": ["squad2:1", "bert:0"],
+      "answer_contains": ["66.3%", "83.1%"],
+      "answer_excludes": ["67.6%", "81.9%", "80.0%", "93.2%"],
+      "support": {"66.3%": "squad2:1", "83.1%": "bert:0"},
+      "fixture_answer": "DocQA + ELMo reached 66.3% test F1 [E1]. Single BERT Large reached 83.1% test F1 [E2]."
+    },
+    {
+      "id": "fine-tuning-specifics",
+      "query": "What batch size and number of epochs were used for BERT fine-tuning on SQuAD 2.0?",
+      "workspace": "reading-comprehension",
+      "vector": [0, 0, 0.3, 1],
+      "expected": ["bert:1"],
+      "answer_contains": ["48", "2"],
+      "answer_relations": ["batch size[^\n.;]{0,24}\\b48\\b", "(?:\\b2\\s+epochs|epochs[^\n.;]{0,24}\\b2\\b(?!\\.\\d))"],
+      "support": {"48": "bert:1", "2": "bert:1"},
+      "fixture_answer": "BERT was fine-tuned for 2 epochs with a batch size of 48 [E1]."
+    },
+    {
+      "id": "unreported-seed-does-not-borrow",
+      "query": "What exact numerical random seed did BERT Large use for the SQuAD 2.0 test result? Only answer if a seed number is stated.",
+      "workspace": "reading-comprehension",
+      "vector": [0, 0, 0.7, 0.4],
+      "expected": [],
+      "answer_contains": [],
+      "fixture_answer": ""
+    }
+  ]
+}

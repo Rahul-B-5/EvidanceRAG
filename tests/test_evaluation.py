@@ -1,10 +1,11 @@
 import os
+from types import SimpleNamespace
 
 import pytest
 
 from app.db.connection import get_connection
 from evaluation.database import fresh_schema
-from evaluation.run import contains_answer_value, evaluate, retrieval_metrics
+from evaluation.run import answer_checks, contains_answer_value, evaluate, retrieval_metrics
 
 
 def test_retrieval_metrics_check_rank_and_empty_reference_set():
@@ -20,6 +21,8 @@ def test_value_matching_rejects_substrings_and_preserves_percentage_scale():
     assert not contains_answer_value("There were 137 observations.", "37")
     assert not contains_answer_value("The sample was 37.5 observations.", "37")
     assert not contains_answer_value("Balanced accuracy was 71 units.", "71%")
+    assert contains_answer_value("There were 107,785 examples.", "107785")
+    assert contains_answer_value("Exact match was 77%.", "77.0%")
 
 
 @pytest.mark.skipif(os.getenv("EVIDENCERAG_INTEGRATION") != "1", reason="Requires PostgreSQL")
@@ -36,3 +39,27 @@ def test_synthetic_evaluation_checks_real_retrieval_and_leaves_no_fixture_schema
     assert report["passed"] == report["case_count"], [case for case in report["cases"] if not case["passed"]]
     assert report["retrieval"]["hybrid"]["recall"] == 1
     assert not schema_exists()
+
+
+def test_statement_support_flags_swapped_but_existing_citations():
+    citations = [
+        {"evidence_id": "E1", "chunk_id": 1, "document_id": 1, "page_start": 3, "page_end": 3},
+        {"evidence_id": "E2", "chunk_id": 2, "document_id": 2, "page_start": 7, "page_end": 7},
+    ]
+    case = {"expected": ["docqa", "bert"], "fixture_answer": "sample",
+            "answer_contains": ["66.3%", "83.1%"], "support": {"66.3%": "docqa", "83.1%": "bert"}}
+    response = SimpleNamespace(status_code=200, json=lambda: {
+        "answer": "DocQA reports 66.3% [E2]. BERT reports 83.1% [E1].",
+        "abstained": False, "citations": citations, "evidence": citations,
+    })
+    checks = answer_checks(response, case, {1: "docqa", 2: "bert"}, {1: (1, 3, 3), 2: (2, 7, 7)}, {1, 2})
+    assert checks["citations"] and checks["required_values"]
+    assert not checks["statement_citation_support"]
+
+
+@pytest.mark.skipif(os.getenv("EVIDENCERAG_INTEGRATION") != "1", reason="Requires PostgreSQL")
+def test_public_paper_evaluation_exercises_research_workflows():
+    report = evaluate(corpus="reading-comprehension")
+    assert report["passed"] == report["case_count"] == 5, [case for case in report["cases"] if not case["passed"]]
+    assert len(report["research_checks"]) == 8
+    assert all(report["research_checks"].values()), report["research_checks"]

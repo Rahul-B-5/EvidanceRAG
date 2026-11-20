@@ -213,17 +213,28 @@
   their saved identifiers. Chrome verified scope selection and a fresh citation
   alongside the archived transcript. Full gate: 122 PostgreSQL tests, 10
   frontend tests, three browser tests and the production build.
-- Migration `014_saved_evidence_tags` adds searchable notebook tags to
+- Notebook tags pushed as `a2c86a6`. Migration `014_saved_evidence_tags` adds searchable notebook tags to
   saved passages. Tags and notes are edited independently and retained with
   their source snapshot. Chrome verified reload, filtering across tags and
   notes, and Markdown export. Full gate: 122 PostgreSQL tests, 10 frontend
   tests, three browser tests and the production build.
+- The public reading-comprehension benchmark adds five answer cases and eight
+  research workflow checks from three published papers. It exercises
+  statement-level citation support, metric association, comparability,
+  contradiction false positives, source-backed directions and reproducibility.
+  The comparison validator rejects a number explicitly associated with a
+  different metric. Explicit model abstention discards stray generated claims.
+  All five cases passed in the final local Ollama and live-embedding run.
+  Hybrid recall@4 was 1.0, strict keyword recall@4 was 0.25, and answer p95 was
+  3.7 seconds. The corpus covers a single domain with annotated excerpts.
+  Full gate: 126 PostgreSQL tests, 10 frontend tests and the production build.
 
 ## Outstanding
 
-1. Evaluate citation support, disagreement, comparability, gap and disclosure
-   detection on representative research material.
-2. Refine major screens and inspect desktop and narrow layouts in the browser.
+1. Refine major screens and inspect desktop and narrow layouts in the browser.
+2. Add independent disciplines and whole-paper tests. Measure standalone
+   keyword recall on natural-language questions and track citation support
+   under repeated live runs.
 3. Integrate annotation browsing and paper collections into the notebook.
 4. Improve graph navigation and test larger corpora. Retain exact stored ranges
    for legacy passages with several pages.

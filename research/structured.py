@@ -22,7 +22,7 @@ TOPICS = {
 UNIT_SUFFIX = r"(?:%|percent\b|percentage points?\b|ms\b|s\b|seconds?\b|minutes?\b|hours?\b|Hz\b|kHz\b|MHz\b|GHz\b|bytes?\b|[KMG]i?B\b|J\b|W\b|flops\b|[kMGT]FLOPS\b)"
 METRIC_VALUE = re.compile(
     r"\b(?P<metric>ROC[- ]AUC|AUROC|AUC|F1(?:[- ]score)?|accuracy|precision|recall|latency|"
-    r"mean average precision|RMSE|MAE)\s+(?:score\s+)?"
+    r"mean average precision|exact match|RMSE|MAE)\s+(?:score\s+)?"
     r"(?:of\s+|was\s+|reached\s+|improved\s+to\s+|[:=]\s*)"
     r"(?P<value>[+−-]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:[eE][+-]?\d+)?"
     r"(?:\s*" + UNIT_SUFFIX + r")?)(?![\d.,]\d|\w)", re.IGNORECASE
@@ -86,6 +86,10 @@ def reported_value_in(value: str, quote: str) -> bool:
     ))
 
 
+def metric_label(metric: str) -> str:
+    return re.sub(r"[- ]score$", "", metric.casefold())
+
+
 def evidence_windows(passages: list[dict]) -> dict[str, dict]:
     """Build contiguous source windows; stable IDs let the model select exact text."""
     windows = {}
@@ -146,6 +150,12 @@ def extract_findings(provider: GenerationProvider, passages: list[dict]) -> tupl
                     outcome[field] = value
             comparable = {**outcome, "subject": normalize(claim.subject or "")}
             comparative = recover_relative_statement(quote) or relative_statement(quote, comparable)
+            matches = [match.groupdict() for match in METRIC_VALUE.finditer(quote)]
+            bound_values = {match["value"].casefold() for match in matches
+                            if metric_label(match["metric"]) == metric_label(outcome.get("metric", ""))}
+            if bound_values and outcome.get("value") and outcome["value"].casefold() not in bound_values:
+                rejected += 1
+                continue
             if not outcome.get("metric") or not reported_value_in(outcome.get("value", ""), quote):
                 if (claim.metric or claim.value) and comparative is None:
                     rejected += 1
@@ -153,8 +163,7 @@ def extract_findings(provider: GenerationProvider, passages: list[dict]) -> tupl
                 # Some local models select a relevant source but omit numerical
                 # attributes. An explicit metric/value expression can be copied
                 # from the index. Otherwise retain only the source excerpt.
-                matches = list(METRIC_VALUE.finditer(quote))
-                outcome = matches[0].groupdict() if len(matches) == 1 else {}
+                outcome = matches[0] if len(matches) == 1 else {}
         key = (claim.topic, quote, claim.metric, claim.value, method,
                tuple(comparative["conditions"].items()) if comparative else None)
         if key in seen:
@@ -172,13 +181,15 @@ def pairwise_checks(papers: list[dict]) -> list[dict]:
         left_results = [f for f in left["findings"] if f["outcome"]]
         right_results = [f for f in right["findings"] if f["outcome"]]
         pairs = [(a, b) for a in left_results for b in right_results]
-        matching = [(a, b) for a, b in pairs if a["outcome"]["metric"].casefold() == b["outcome"]["metric"].casefold()]
+        matching = [(a, b) for a, b in pairs if metric_label(a["outcome"]["metric"]) == metric_label(b["outcome"]["metric"])]
         selected = (matching or pairs)[:4]
         outcomes = []
         for a, b in selected:
             x, y = a["outcome"], b["outcome"]
             missing = [k for k in CONDITIONS if not x.get(k) or not y.get(k)]
             differences = [k for k in CONDITIONS if x.get(k) and y.get(k) and x[k].casefold() != y[k].casefold()]
+            if "metric" in differences and metric_label(x["metric"]) == metric_label(y["metric"]):
+                differences.remove("metric")
             def scale(outcome: dict) -> str:
                 value = outcome["value"]
                 match = re.search(r"\d\s*(" + UNIT_SUFFIX + r")", value, re.IGNORECASE)

@@ -28,3 +28,15 @@ def test_generation_receives_untrusted_source_and_history_as_json_values(monkeyp
     provider.return_value = '{"answer":"Use the historical citation [E22].","abstained":false,"reason":null}'
     with pytest.raises(RuntimeError, match="unknown evidence IDs"):
         generate_answer("Check it again.", "formatted retrieval context", [citation], history=history)
+
+
+@pytest.mark.parametrize("answer", [None, "The random seed was 42 [E1]."])
+def test_provider_abstention_never_exposes_generated_claims(monkeypatch, answer):
+    provider = SimpleNamespace(generate_json=lambda **_: json.dumps({
+        "answer": answer, "abstained": True, "reason": "The paper gives no exact seed.",
+    }))
+    monkeypatch.setattr("app.generation.answerer.get_generation_provider", lambda _: provider)
+    citation = {"evidence_id": "E1", "title": "Paper", "page_start": 1, "page_end": 1, "text": "Seeds varied."}
+    result = generate_answer("What exact seed was used?", "Seeds varied.", [citation])
+    assert result["abstained"] and result["answer"] == "" and result["citations"] == []
+    assert "42" not in result["reason"]

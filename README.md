@@ -317,14 +317,18 @@ schema in a transaction and rolls it back.
 
 ```bash
 .venv/bin/python -m evaluation.run
-.venv/bin/python -m evaluation.run --json
+.venv/bin/python -m evaluation.run --corpus reading-comprehension --json
 ```
 
-The default uses fixed embeddings and model replies. Use
-`--live-embeddings` and `--live-provider` to exercise the configured models
-on synthetic text. Passing this corpus verifies the specified facts and
-references on these cases. Broader scientific grounding needs separate
-review and evaluation.
+The [reading comprehension benchmark](evaluation/reading_comprehension.json)
+uses paraphrased findings from three published papers with original PDF page
+anchors and section references. It checks whether individual numerical claims
+cite the right passage, whether experimental comparisons disclose missing or
+different conditions, and whether limitations and reproducibility details
+are attributed to their sources. The default uses fixed embeddings and model
+replies. Add `--live-embeddings` and `--live-provider` to evaluate the configured
+models on the selected fixture. The JSON report includes the evaluated model
+answers for review.
 
 The browser suite runs the actual frontend and API in headless Chromium.
 It provisions an isolated PostgreSQL schema and temporary upload directory,

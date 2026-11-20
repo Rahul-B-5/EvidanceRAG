@@ -1,4 +1,4 @@
-"""Evaluate the actual PostgreSQL retrievers and HTTP answer contract on synthetic data."""
+"""Evaluate PostgreSQL retrieval and grounded research workflows in an isolated schema."""
 
 import argparse
 import json
@@ -19,8 +19,12 @@ from app.db.connection import get_connection
 from app.generation import answerer
 from app.retrieval import embeddings, fusion, keyword, vector
 from evaluation.database import fresh_schema, prepare_schema
+from evaluation.research_checks import research_checks
 
-CORPUS = Path(__file__).with_name("corpus.json")
+CORPORA = {
+    "synthetic": Path(__file__).with_name("corpus.json"),
+    "reading-comprehension": Path(__file__).with_name("reading_comprehension.json"),
+}
 TOP_K = 4
 
 
@@ -41,8 +45,12 @@ def latencies(values: list[float]) -> dict:
 
 
 def contains_answer_value(answer: str, expected: str) -> bool:
+    answer = re.sub(r"(?<=\d),(?=\d{3}\b)", "", answer)
     if re.fullmatch(r"\d+(?:\.\d+)?%?", expected):
-        number = re.escape(expected.removesuffix("%"))
+        raw_number = expected.removesuffix("%")
+        number = re.escape(raw_number)
+        if "." in raw_number and not raw_number.split(".")[1].strip("0"):
+            number = re.escape(raw_number.split(".")[0]) + r"(?:\.0+)?"
         unit = r"\s*(?:%|percent\b)" if expected.endswith("%") else ""
         return bool(re.search(r"(?<![\w.,])" + number + unit + r"(?!\w|[.,]\d)", answer, re.IGNORECASE))
     return expected.casefold() in answer.casefold()
@@ -95,7 +103,7 @@ def answer_checks(response, case: dict, identifiers: dict, anchors: dict, allowe
         anchors.get(item["chunk_id"]) == (item["document_id"], item["page_start"], item["page_end"])
         for item in citations
     )
-    return {
+    checks = {
         "success_status": True,
         "abstention": bool(data["abstained"]) == (not case["fixture_answer"]),
         "required_values": all(contains_answer_value(answer, fragment) for fragment in case["answer_contains"])
@@ -103,10 +111,23 @@ def answer_checks(response, case: dict, identifiers: dict, anchors: dict, allowe
         "citations": (expected <= cited if expected else not cited) and anchors_valid,
         "scope": all(item["document_id"] in allowed for item in [*data["evidence"], *citations]),
     }
+    if "support" in case:
+        cited_ids = {item["evidence_id"]: identifiers.get(item["chunk_id"]) for item in citations}
+        statements = re.split(r"(?<=[.!?])\s+(?!\[E\d+\])|\n+", answer)
+        checks["statement_citation_support"] = all(
+            any(contains_answer_value(statement, value) and
+                anchor in {cited_ids.get(label) for label in re.findall(r"\[(E\d+)\]", statement)}
+                for statement in statements)
+            for value, anchor in case["support"].items()
+        ) and cited == expected
+    if "answer_relations" in case:
+        checks["value_associations"] = all(re.search(pattern, answer, re.IGNORECASE) is not None
+                                            for pattern in case["answer_relations"])
+    return checks
 
 
-def evaluate(live_provider: bool = False, live_embeddings: bool = False) -> dict:
-    fixture = json.loads(CORPUS.read_text(encoding="utf-8"))
+def evaluate(live_provider: bool = False, live_embeddings: bool = False, corpus: str = "synthetic") -> dict:
+    fixture = json.loads(CORPORA[corpus].read_text(encoding="utf-8"))
     schema = fresh_schema()
     results = []
     # The fresh namespace and all rows disappear with this rollback. The
@@ -126,6 +147,7 @@ def evaluate(live_provider: bool = False, live_embeddings: bool = False) -> dict
             for retriever in (keyword, vector):
                 bound.enter_context(patch.object(retriever, "get_connection", lambda: nullcontext(conn)))
                 bound.enter_context(patch.object(retriever, "get_settings", lambda: settings))
+            audit = research_checks(client, conn, docs, workspaces) if corpus == "reading-comprehension" else {}
             for case in fixture["cases"]:
                 ws = workspaces[case["workspace"]]
                 allowed = {docs[key] for key in fixture["workspaces"][case["workspace"]]}
@@ -134,12 +156,6 @@ def evaluate(live_provider: bool = False, live_embeddings: bool = False) -> dict
                 with ExitStack() as mode:
                     if not live_embeddings:
                         mode.enter_context(patch.object(vector, "embed_query", lambda _: case["vector"]))
-                    if not live_provider:
-                        reply = case["fixture_answer"]
-                        provider = SimpleNamespace(generate_json=lambda **_: json.dumps({
-                            "answer": reply, "abstained": not reply, "reason": None if reply else "Insufficient evidence.",
-                        }))
-                        mode.enter_context(patch.object(answerer, "get_generation_provider", return_value=provider))
                     for name, search in (("keyword", keyword.search_keyword), ("vector", vector.search_vector),
                                          ("hybrid", fusion.search_hybrid)):
                         started = perf_counter()
@@ -148,6 +164,17 @@ def evaluate(live_provider: bool = False, live_embeddings: bool = False) -> dict
                         stages[name] = {**retrieval_metrics(ranking, expected), "ranked": ranking,
                                         "scope_ok": all(item["document_id"] in allowed for item in rows),
                                         "elapsed_ms": (perf_counter() - started) * 1000}
+                    if not live_provider:
+                        reply = case["fixture_answer"]
+                        if "support" in case:
+                            ranked = stages["hybrid"]["ranked"]
+                            labels = {f"E{i}": f"E{ranked.index(key) + 1}" if key in ranked else "E999"
+                                      for i, key in enumerate(case["expected"], start=1)}
+                            reply = re.sub(r"\[(E\d+)\]", lambda match: f"[{labels[match[1]]}]", reply)
+                        provider = SimpleNamespace(generate_json=lambda **_: json.dumps({
+                            "answer": reply, "abstained": not reply, "reason": None if reply else "Insufficient evidence.",
+                        }))
+                        mode.enter_context(patch.object(answerer, "get_generation_provider", return_value=provider))
                     started = perf_counter()
                     response = client.post("/answers", json={"query":case["query"], "workspace_id":ws, "top_k":TOP_K})
                     answer_latency = (perf_counter() - started) * 1000
@@ -156,7 +183,9 @@ def evaluate(live_provider: bool = False, live_embeddings: bool = False) -> dict
                           and (not expected or stages["hybrid"]["recall"] == 1)
                           and all(checks.values()))
                 results.append({"id":case["id"], "passed":passed, "retrieval":stages,
-                                "answer_checks":checks, "answer_elapsed_ms":answer_latency})
+                                "answer_checks":checks, "answer_elapsed_ms":answer_latency,
+                                "model_answer": response.json().get("answer") if response.status_code == 200 else None,
+                                "http_error": response.json().get("detail") if response.status_code != 200 else None})
 
     averages = {}
     for stage in ("keyword", "vector", "hybrid"):
@@ -168,6 +197,7 @@ def evaluate(live_provider: bool = False, live_embeddings: bool = False) -> dict
         averages[stage].update(latencies([row["elapsed_ms"] for row in stats]))
     return {
         "corpus_version":fixture["version"], "top_k":TOP_K,
+        "corpus":corpus, "research_checks":audit,
         "model_mode":"live" if live_provider else "fixture",
         "embedding_mode":"live" if live_embeddings else "fixture",
         "passed":sum(case["passed"] for case in results), "case_count":len(results),
@@ -179,21 +209,24 @@ def evaluate(live_provider: bool = False, live_embeddings: bool = False) -> dict
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", action="store_true", help="Print the full evaluation report as JSON.")
-    parser.add_argument("--live-provider", action="store_true", help="Send only synthetic excerpts to the configured provider.")
+    parser.add_argument("--corpus", choices=CORPORA, default="synthetic")
+    parser.add_argument("--live-provider", action="store_true", help="Use the configured provider on evaluation passages.")
     parser.add_argument("--live-embeddings", action="store_true", help="Use the configured embedding model instead of fixture vectors.")
     args = parser.parse_args()
-    report = evaluate(args.live_provider, args.live_embeddings)
+    report = evaluate(args.live_provider, args.live_embeddings, args.corpus)
     if args.json:
         print(json.dumps(report, indent=2))
     else:
-        print(f"{report['passed']}/{report['case_count']} cases passed. Corpus v{report['corpus_version']}.")
+        print(f"{report['passed']}/{report['case_count']} answer cases passed. {report['corpus']} v{report['corpus_version']}.")
         for stage, stats in report["retrieval"].items():
             print(f"{stage:7} recall@{TOP_K} {stats['recall']:.3f} · MRR {stats['reciprocal_rank']:.3f} · p95 {stats['p95_ms']:.2f} ms")
         print(f"answer  p95 {report['answer_latency']['p95_ms']:.2f} ms")
         for case in report["cases"]:
             if not case["passed"]:
                 print(f"FAIL {case['id']}: {case['answer_checks']}")
-    return int(report["passed"] != report["case_count"])
+        for name, passed in report["research_checks"].items():
+            print(f"{'PASS' if passed else 'FAIL'} {name}")
+    return int(report["passed"] != report["case_count"] or not all(report["research_checks"].values()))
 
 
 if __name__ == "__main__":
