@@ -1,9 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, type Conversation, type Document, type Workspace } from "./api";
 import { SavePassage } from "./SavedEvidence";
 import type { FindingQuestion } from "./ComparisonStudio";
+import type { AssistantPhase } from "./answerStream";
 
 const MAX_PAPERS = 12;
+const PHASE_LABELS: Record<AssistantPhase, string> = {
+  retrieving:"Searching the selected scope…",
+  generating:"Reading evidence and checking citations…",
+  saving:"Saving the cited exchange…",
+};
 
 export function Conversations({documents, initial}: {documents: Document[]; initial?: FindingQuestion}) {
   const [list, setList] = useState<Array<{id: number; title: string}>>([]);
@@ -18,6 +24,10 @@ export function Conversations({documents, initial}: {documents: Document[]; init
   const [query, setQuery] = useState(initial?.question ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [status, setStatus] = useState("");
+  const [canCancel, setCanCancel] = useState(false);
+  const pending = useRef<AbortController | null>(null);
+  useEffect(() => () => pending.current?.abort(), []);
   useEffect(() => {let cancelled = false;
     Promise.all([api.conversations(), api.workspaces()]).then(([c,w]) => {if (!cancelled) {setList(c.conversations);setWorkspaces(w.workspaces);}})
       .catch(e => {if (!cancelled) setError(String(e));});
@@ -47,6 +57,7 @@ export function Conversations({documents, initial}: {documents: Document[]; init
   }
 
   async function open(id: string) {
+    setStatus("");
     if (!id) {setConversation(null);setError("");return;}
     setBusy(true);setError("");
     try {setConversation(await api.conversation(Number(id)));}
@@ -54,22 +65,60 @@ export function Conversations({documents, initial}: {documents: Document[]; init
     finally {setBusy(false);}
   }
   async function send() {
-    if (!canSend) return;
+    if (!canSend || pending.current) return;
+    const controller = new AbortController();
+    pending.current = controller;
+    const question = query.trim();
+    let current = conversation;
+    let finished = false;
     setBusy(true);setError("");
+    setStatus("Opening the answer request…");
     try {
-      const current = conversation ?? await api.createConversation(
-        query.trim().slice(0,150), choosePapers ? selected : undefined, workspace ? Number(workspace) : undefined);
+      current ??= await api.createConversation(
+        question.slice(0,150), choosePapers ? selected : undefined, workspace ? Number(workspace) : undefined);
       setConversation(current);
-      if (!conversation) setList(previous => [{id:current.id,title:current.title}, ...previous]);
-      await api.reply(current.id, query.trim());
-      setConversation(await api.conversation(current.id));setQuery("");
-    } catch(e) {setError(e instanceof Error ? e.message : "Answer failed.");}
-    finally {setBusy(false);}
+      const {id, title} = current;
+      if (!conversation) setList(previous => [{id,title}, ...previous]);
+      controller.signal.throwIfAborted();
+      setCanCancel(true);
+      await api.reply(id, question, controller.signal, phase => {
+        setStatus(PHASE_LABELS[phase]);
+        if (phase === "saving") setCanCancel(false);
+      });
+      finished = true;
+      setQuery("");
+      setConversation(await api.conversation(id));
+      setStatus("");
+    } catch(e) {
+      if (controller.signal.aborted) {
+        setStatus("Answer request cancelled.");
+        if (current) {
+          try {
+            const latest = await api.conversation(current.id);
+            setConversation(latest);
+            if (latest.messages.slice(current.messages.length).some(m => m.role === "user" && m.content === question)) {
+              setQuery("");
+              setStatus("The answer had already been saved.");
+            }
+          } catch {
+            setError("Unable to refresh the conversation. Reopen it to check for a completed answer.");
+          }
+        }
+      } else {
+        setStatus("");
+        setError(finished ? "Answer saved. Reopen the conversation to view it."
+          : e instanceof Error ? e.message : "Answer failed.");
+      }
+    } finally {
+      pending.current = null;
+      setCanCancel(false);
+      setBusy(false);
+    }
   }
   return <div className="research-tools">
     <section className="panel research-controls"><label>Conversation<select disabled={busy} value={conversation?.id ?? ""} onChange={e => void open(e.target.value)}>
       <option value="">New conversation</option>{list.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
-    </select></label><button disabled={busy} onClick={() => {setConversation(null);setQuery("");setError("");}}>New conversation</button></section>
+    </select></label><button disabled={busy} onClick={() => {setConversation(null);setQuery("");setError("");setStatus("");}}>New conversation</button></section>
     {!conversation && <section className="panel assistant-scope" aria-label="Conversation source scope">
       <div className="research-controls">
         <label>Workspace<select disabled={busy} value={workspace} onChange={e => {
@@ -110,10 +159,18 @@ export function Conversations({documents, initial}: {documents: Document[]; init
         </div>)}
       </article>)}
     </section>}
-    {error && <p role="alert" className="notice error">{error} Your question remains below for retry.</p>}
+    {error && <p role="alert" className="notice error">{error}</p>}
     <form className="panel assistant-question" onSubmit={e => {e.preventDefault();void send();}}>
       <label>Question<textarea disabled={busy} maxLength={10000} value={query} onChange={e => setQuery(e.target.value)} /></label>
-      <button disabled={!canSend}>{busy ? "Preparing answer…" : "Send question"}</button>
+      <div className="finding-actions">
+        <button disabled={!canSend}>Send question</button>
+        {canCancel && <button type="button" className="secondary" onClick={() => {
+          setCanCancel(false);
+          setStatus("Cancelling answer…");
+          pending.current?.abort();
+        }}>Cancel answer</button>}
+      </div>
+      {status && <p role="status" className="assistant-status">{status}</p>}
     </form>
   </div>;
 }

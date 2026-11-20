@@ -2,18 +2,20 @@
 
 import uuid
 import re
+from collections.abc import Callable
 from contextlib import suppress
 from pathlib import Path
 
 from fastapi import BackgroundTasks, FastAPI, File, HTTPException, Query, UploadFile, status
 from fastapi import Path as ApiPath
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from psycopg import Connection
 from psycopg.errors import ForeignKeyViolation, UniqueViolation
 from app.api.saved_evidence import router as saved_evidence_router
 from app.api.reader_annotations import router as reader_annotations_router
+from app.api.answer_stream import stream_answer
 
 from app.core.config import get_settings
 from app.db.connection import get_connection
@@ -375,6 +377,15 @@ def search(
 
 @app.post("/answers")
 def answer(request: AnswerRequest) -> dict:
+    return answer_exchange(request)
+
+
+@app.post("/answers/stream", response_class=StreamingResponse)
+async def answer_stream(request: AnswerRequest) -> StreamingResponse:
+    return stream_answer(lambda progress: answer_exchange(request, progress))
+
+
+def answer_exchange(request: AnswerRequest, progress: Callable[[str], None] = lambda _: None) -> dict:
     if not request.query.strip():
         raise HTTPException(status_code=422, detail="Query must not be empty.")
     document_id, workspace_id = request.document_id, request.workspace_id
@@ -409,6 +420,7 @@ def answer(request: AnswerRequest) -> dict:
                 require_selected_papers(conn, document_ids)
         # Prior user questions resolve follow-ups; old assistant claims are not
         # evidence and old E-labels are never reused as current citations.
+        progress("retrieving")
         prior_questions = [m["content"][:1000] for m in history if m["role"] == "user"][-3:]
         retrieval_query = "\n".join(prior_questions + [request.query])[-13000:]
         retrieval = retrieve_evidence(
@@ -424,6 +436,7 @@ def answer(request: AnswerRequest) -> dict:
         # User turns can resolve follow-ups, while historic workspace answers
         # may reference papers that have since been detached.
         provider_history = [m for m in history if m["role"] == "user"] if workspace_id else history
+        progress("generating")
         generated = generate_answer(
             request.query, retrieval["context"], retrieval["evidence"],
             **({"history": provider_history[-6:]} if provider_history else {}),
@@ -434,7 +447,9 @@ def answer(request: AnswerRequest) -> dict:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     response = {**generated, "evidence": retrieval["evidence"]}
+    progress("")
     if request.conversation_id is not None:
+        progress("saving")
         assistant_content = generated["answer"] or generated["reason"] or "No answer generated."
         with get_connection() as conn:
             if workspace_id is not None and (retrieved or selected):
@@ -447,6 +462,7 @@ def answer(request: AnswerRequest) -> dict:
             current_count = conn.execute("SELECT count(*) FROM messages WHERE conversation_id = %s", (request.conversation_id,)).fetchone()[0]
             if current_count != len(history):
                 raise HTTPException(status_code=409, detail="Conversation changed; reload and retry.")
+            progress("")
             add_message(conn, conversation_id=request.conversation_id, role="user", content=request.query)
             add_message(
                 conn,
@@ -455,6 +471,7 @@ def answer(request: AnswerRequest) -> dict:
                 content=assistant_content,
                 citations=generated["citations"],
             )
+            progress("")
     return response
 
 

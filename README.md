@@ -67,6 +67,11 @@ The application is served at `http://127.0.0.1:5173` and uses the local API at
   managed source file after the database transaction commits.
 - `GET /search?query=...` — returns hybrid-retrieved evidence passages.
 - `POST /answers` — creates an answer with evidence citations using the configured provider.
+- `POST /answers/stream` — accepts the same request and returns NDJSON phase
+  updates followed by one validated answer or error. The Assistant uses this
+  endpoint for progress and cancellation. Cancelling before commit keeps
+  the question available for retry. A provider call already in progress can
+  continue until the provider responds or times out.
 - `GET /saved-evidence` and `PUT/PATCH /saved-evidence/{chunk_id}` — list and save
   provenance snapshots, and edit passage notes. Saved evidence exports to Markdown.
 - `POST /conversations` and `GET /conversations/{conversation_id}` — persist

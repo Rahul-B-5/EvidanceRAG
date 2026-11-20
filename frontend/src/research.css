@@ -17,6 +17,7 @@
 .assistant-paper-list input {flex:none}
 .assistant-source-tags {list-style:none;padding:0;margin:.6rem 0;display:flex;flex-wrap:wrap;gap:.4rem}
 .assistant-question textarea {display:block;width:100%;margin:.65rem 0;min-height:5rem;resize:vertical}
+.assistant-status {color:var(--muted);margin-top:.7rem}
 .comparison-scroll {overflow:auto}
 .comparison-scroll table {border-collapse:collapse;width:100%;text-align:left}
 .comparison-scroll th,.comparison-scroll td {border:1px solid var(--line);padding:1rem;vertical-align:top;min-width:230px}

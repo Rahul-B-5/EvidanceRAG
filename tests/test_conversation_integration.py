@@ -8,6 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 from app.db.connection import get_connection
 from app.db.repository import create_conversation
+from app.api.answer_stream import AnswerStreamCancelled
 from app.generation import answerer
 from app.retrieval import keyword, vector
 
@@ -42,6 +43,15 @@ def test_exchange_is_atomic_and_failure_is_retryable(monkeypatch):
             assert conn.execute("SELECT count(*) FROM messages WHERE conversation_id=%s", (cid,)).fetchone()[0] == 2
             monkeypatch.setattr(api, "add_message", original_add)
             assert client.post("/answers", json={"conversation_id": cid, "query": "Retry follow up"}).status_code == 200
+            assert conn.execute("SELECT count(*) FROM messages WHERE conversation_id=%s", (cid,)).fetchone()[0] == 4
+
+            def cancel_after_insert(phase):
+                count = conn.execute("SELECT count(*) FROM messages WHERE conversation_id=%s", (cid,)).fetchone()[0]
+                if count == 6:
+                    raise AnswerStreamCancelled
+
+            with pytest.raises(AnswerStreamCancelled):
+                api.answer_exchange(api.AnswerRequest(conversation_id=cid, query="Cancelled"), cancel_after_insert)
             assert conn.execute("SELECT count(*) FROM messages WHERE conversation_id=%s", (cid,)).fetchone()[0] == 4
 
 

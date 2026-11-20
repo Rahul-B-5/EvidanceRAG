@@ -1,3 +1,5 @@
+import { readAnswerStream, type AssistantPhase } from "./answerStream";
+
 const API_BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 export type DocumentMetadata = {title: string; authors: string[]; publication_year: number | null;
@@ -79,13 +81,16 @@ export type EvidencePacket = {
     saved_at: string; doi?: string | null; venue?: string | null}>;
 };
 
+async function checkResponse(response: Response) {
+  if (response.ok) return;
+  const body = await response.json().catch(() => ({}));
+  const detail = typeof body.detail === "string" ? body.detail : Array.isArray(body.detail) ? body.detail.map((e: {msg: string}) => e.msg).join("; ") : `Request failed (${response.status})`;
+  throw new Error(detail);
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, init);
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    const detail = typeof body.detail === "string" ? body.detail : Array.isArray(body.detail) ? body.detail.map((e: {msg: string}) => e.msg).join("; ") : `Request failed (${response.status})`;
-    throw new Error(detail);
-  }
+  await checkResponse(response);
   return response.status === 204 ? (undefined as T) : response.json() as Promise<T>;
 }
 
@@ -102,7 +107,14 @@ export const api = {
     method:"POST", headers:{"Content-Type":"application/json"},
     body:JSON.stringify({title, document_ids:documentIds, workspace_id:workspaceId}),
   }),
-  reply: (id: number, query: string) => request<unknown>("/answers", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({conversation_id:id, query})}),
+  reply: async (id: number, query: string, signal: AbortSignal, onProgress: (phase: AssistantPhase) => void) => {
+    const response = await fetch(`${API_BASE}/answers/stream`, {
+      method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({conversation_id:id, query}), signal,
+    });
+    await checkResponse(response);
+    if (!response.body) throw new Error("Unable to open an answer stream.");
+    await readAnswerStream(response.body, onProgress);
+  },
   compare: (documentIds: number[], workspaceId?: number) => request<Comparison>("/comparisons", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({document_ids: documentIds, workspace_id: workspaceId})}),
   compareStructured: (documentIds: number[], workspaceId?: number) => request<StructuredComparison>("/comparisons/structured", {
     method: "POST", headers: {"Content-Type": "application/json"},

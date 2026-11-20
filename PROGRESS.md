@@ -116,26 +116,31 @@
   fit-width and 125% zoom, a no-match result and a 390px layout without
   horizontal page overflow. Source range tests verify the bytes and headers.
   Full gate: 87 PostgreSQL-enabled tests, 5 frontend tests and production build.
-- Additive migration `009_conversation_papers` persists up to 12 explicit
+- Multi-paper scope pushed as `ab55cfe`. Migration `009_conversation_papers` persists up to 12 explicit
   source IDs per conversation. Both PostgreSQL retrieval paths constrain
   candidates before ranking and the API rechecks workspace scope before
   saving a reply. Browser verified two synthetic workspace papers, a live
   Ollama response that cited both, a citation link to Reader, and reopening
   the saved conversation. Disposable fixtures were removed. Full gate:
   88 PostgreSQL-enabled tests, 5 frontend tests and production build.
+- Assistant streams retrieval, generation and persistence progress through
+  NDJSON. A disconnect during generation cancels the exchange before commit.
+  Browser verified local Ollama cancellation retained the question without
+  messages, then retry saved exactly one cited exchange. Automated tests cover
+  ASGI disconnects, transaction rollback and incomplete-stream handling.
+  Full gate: 91 PostgreSQL-enabled tests, 7 frontend tests and production build.
 
 ## Outstanding
 
-1. Add streamed Assistant progress and cancellation while keeping generated
-   content behind citation validation.
-2. Add contradiction candidates only for aligned study conditions and opposing
+1. Add contradiction candidates only for aligned study conditions and opposing
    claims with two citable sources. Improve reproducibility disclosure
    validation, gap coverage and evidence-grounded briefing templates.
-3. Expand graph exploration across workspaces and notebook sources.
-4. Extend the notebook with tags, collections and integrated annotations.
+2. Expand graph exploration across workspaces and notebook sources.
+3. Extend the notebook with tags, collections and integrated annotations.
    Refine page attribution for chunks that span several pages.
-5. Add retrieval and answer evaluation fixtures, quality/latency reporting and automated browser regressions. Identifier validation does not establish factual entailment.
-6. Harden ingestion lifecycle, source cleanup races, legacy conversation scope
+4. Add retrieval and answer evaluation fixtures, quality/latency reporting
+   and automated browser regressions. A valid citation can still lack factual support.
+5. Harden ingestion lifecycle, source cleanup races, legacy conversation scope
    backfill and re-embedding.
 
 ## Continuation
