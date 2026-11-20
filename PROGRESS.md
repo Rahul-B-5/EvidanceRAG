@@ -303,10 +303,9 @@
 The final-completion brief adds web-based provider setup, a supported local
 launcher, wider browser review and release validation to the previous scope.
 
-1. Improve condition-level grounding on the NREL whole-PDF suite. Validate
-   requested row conditions and reported values together before presenting a
-   numeric finding. Preserve both source anchors for a section comparison.
-   Re-run the comparison and missing-quote cases with live models.
+1. Expand numerical grounding beyond explicit exclusions in named tables.
+   Tighten the association between the requested metric and cited prose values,
+   and verify stability across repeated runs and additional scientific PDFs.
 2. Test larger corpora and review legacy passages with several pages.
 3. Verify authenticated cloud providers against real accounts when credentials
    are available. Expand end-to-end testing for extraction profile selection.
@@ -353,6 +352,26 @@ launcher, wider browser review and release validation to the previous scope.
   accepting a numerical table claim.
 - Passed 139 PostgreSQL tests, 10 frontend tests, five Chrome workflows
   and the production build.
+
+## Condition-aware table grounding
+
+- Assistant can scope an explicit named-table question to a single matching
+  row and the requested metric columns. The check accepts a condition stated
+  in the row, or a baseline and a companion row explicitly adding that
+  condition. The latter can use an unambiguous abbreviation defined by the
+  source document. Ambiguous selections or altered table units trigger
+  abstention. Named prose sections retain separate citations.
+- The public NREL gate now checks the exact Table 3 row, column and unit.
+  One full Gemma run passed all four cases and preserved separate citations
+  for the $1.16/Wdc Executive Summary value and $1.17/Wdc Table 3 value.
+  Another run abstained on the cross-section answer. The cross-section
+  response still needs repeatability checks, and the named prose evidence
+  check verifies the cited numbers without independently interpreting every
+  qualification. The benchmark reimported the report only in a temporary
+  schema and verified the source download byte for byte.
+- Passed 148 PostgreSQL tests. The new regressions cover distractor columns,
+  wrong units, raw table text citations, ambiguous matches and ambiguous
+  abbreviations.
 
 ## Continuation
 

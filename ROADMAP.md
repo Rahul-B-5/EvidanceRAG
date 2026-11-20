@@ -7,7 +7,7 @@ delivery status live in [PROGRESS.md](PROGRESS.md).
 | Journey | Working path | Remaining verification or implementation |
 | --- | --- | --- |
 | Library | Durable multi-file imports with restart recovery, metadata, workspace collections, reading status, related papers, source recovery and atomic embedding rebuilds | Broader library scale testing |
-| Investigation | Hybrid search, fixed multi-paper scopes, explicit legacy scope recovery, citations to pages and passages, and streamed progress | Exact table-row grounding, abstention consistency and broader corpus coverage |
+| Investigation | Hybrid search, fixed multi-paper scopes, explicit legacy scope recovery, citations to pages and passages, streamed progress and a guarded path for explicit metric and condition questions about named tables | Broader numerical and prose grounding, repeatable live abstention and corpus coverage |
 | Comparison | Matrix, source preview, evidence saving, durable partial results and condition checks | More experimental fields, confidence and support checks, representative corpus evaluation |
 | Claim Explorer | Persistent workspace-scoped excerpts, indexed search, revisioned human assessments, shared-label links, counterevidence, and Reader and Atlas navigation | More precise claim spans and a representative support evaluation |
 | Evidence Atlas | Persisted claim, paper, method, metric, dataset, notebook and Reader annotation nodes, plus two-source shared-label and disagreement edges | Alternate layouts and larger-library testing |

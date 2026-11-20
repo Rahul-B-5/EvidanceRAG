@@ -384,6 +384,11 @@ Newly indexed PDFs with extractable tables also preserve the caption, row
 group and column-to-cell mapping on the physical page. Typed rows appear in
 Reader and in Assistant evidence. Earlier passages remain available in their
 original format.
+For an explicit named-table question that identifies a metric and excludes
+a condition, Assistant can validate the cited row and copy the cell's
+measurement with its original units. It abstains when this check finds
+ambiguous rows or an unsupported answer. General answers and named prose
+sections still require researcher review of the linked passages.
 
 The whole-PDF benchmark uses the [public NREL solar cost report](https://www.osti.gov/servlets/purl/2005540).
 It imports the pinned PDF through the durable queue in a disposable schema,

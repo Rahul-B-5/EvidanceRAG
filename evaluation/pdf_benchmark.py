@@ -74,6 +74,22 @@ def check_answer(payload: dict, facts: dict[str, tuple[int, ...]], excludes: tup
     }
 
 
+def check_report_disagreement(payload: dict) -> bool:
+    cited = {item["evidence_id"] for item in payload["citations"]}
+    for source in payload["evidence"]:
+        row = source.get("table_row") or {}
+        if source["evidence_id"] not in cited or source["page_start"] != 45:
+            continue
+        if (row.get("caption", "").startswith("Table 3.")
+                and row.get("group") == "Utility-Scale Systems"
+                and any(cell["column"] == "MMP Benchmarks" and cell["value"].replace(" ", "") == "$1.17/Wdc"
+                        for cell in row["cells"])
+                and any("one-axis-tracking PV system cost" in cell["value"] for cell in row["cells"])):
+            return any(item["page_start"] == 7 and item.get("section_title") == "Executive Summary"
+                       for item in payload["citations"])
+    return False
+
+
 def evaluate_pdf(path: Path, *, retrieval_only: bool = False) -> dict:
     source_bytes = path.read_bytes()
     if sha256(source_bytes).hexdigest() != REPORT_SHA256:
@@ -112,6 +128,8 @@ def evaluate_pdf(path: Path, *, retrieval_only: bool = False) -> dict:
             checks = {"retrieved_facts": all(supported_fact(data["evidence"], value, pages) for value, pages in facts.items())}
             if not retrieval_only:
                 checks.update(check_answer(data, facts, excludes, paper))
+                if name == "disagreement-within-the-report":
+                    checks["distinct_section_and_exact_table_row"] = check_report_disagreement(data)
             results.append({"case": name, "passed": all(checks.values()), "checks": checks,
                             "retrieved_pages": sorted({item["page_start"] for item in data["evidence"]}),
                             "citations": data.get("citations", []),

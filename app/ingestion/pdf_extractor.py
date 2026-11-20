@@ -19,6 +19,7 @@ class TableRow(TypedDict):
     caption: str
     group: str
     cells: list[TableCell]
+    term_definitions: NotRequired[dict[str, str]]
 
 
 class ExtractedPage(TypedDict):
@@ -26,6 +27,32 @@ class ExtractedPage(TypedDict):
     text: str
     table_rows: NotRequired[list[TableRow]]
     section_title: NotRequired[str]
+
+
+def attach_term_definitions(pages: list[ExtractedPage]) -> None:
+    """Preserve document-defined abbreviations used in extracted cell labels."""
+    rows = [row for page in pages for row in page.get("table_rows", [])]
+    used_terms = {term for row in rows for cell in row["cells"]
+                  for term in re.findall(r"\b[A-Z]{2,8}\b", cell["value"])}
+    if not used_terms:
+        return
+    definitions: dict[str, set[str]] = {}
+    for page in pages:
+        text = page["text"]
+        for match in re.finditer(r"\(([A-Z]{2,8})\)", text):
+            term = match[1]
+            if term not in used_terms:
+                continue
+            preceding = re.findall(r"\b[A-Za-z]+\b", text[max(0, match.start() - 120):match.start()])
+            expansion = preceding[-len(term):]
+            if "".join(word[0] for word in expansion).upper() == term:
+                definitions.setdefault(term, set()).add(" ".join(expansion).casefold())
+    unambiguous = {term: next(iter(options)) for term, options in definitions.items() if len(options) == 1}
+    for row in rows:
+        row_terms = {term for cell in row["cells"] for term in re.findall(r"\b[A-Z]{2,8}\b", cell["value"])}
+        applicable = {term: unambiguous[term] for term in sorted(row_terms & unambiguous.keys())}
+        if applicable:
+            row["term_definitions"] = applicable
 
 
 def captioned_rows(page: pymupdf.Page) -> list[TableRow]:
@@ -123,4 +150,5 @@ def extract_pdf(pdf_path: str | Path) -> list[ExtractedPage]:
     except pymupdf.FileDataError:
         raise ValueError("Unable to read this PDF. The file may be damaged or empty.") from None
 
+    attach_term_definitions(pages)
     return pages

@@ -4,6 +4,7 @@ import re
 
 from app.core.config import get_settings
 from app.generation.providers import get_answer_provider as get_generation_provider
+from app.generation.table_grounding import scope_table_answer
 
 ANSWER_SCHEMA = {
     "type": "object",
@@ -76,6 +77,15 @@ def generate_answer(
 
     settings = get_settings()
 
+    table_scope = scope_table_answer(query, evidence)
+    if table_scope is not None:
+        if not table_scope.table_values:
+            return {
+                "answer": "", "abstained": True, "citations": [],
+                "reason": "The retrieved table rows do not establish a single match for the requested metric and condition.",
+            }
+        evidence = table_scope.sources
+
     allowed_ids = {item["evidence_id"] for item in evidence}
     provider = get_generation_provider(settings)
     source_fields = ("evidence_id", "title", "page_start", "page_end", "section_title")
@@ -88,9 +98,18 @@ def generate_answer(
             for item in evidence
         ],
     }
+    instruction = SYSTEM_INSTRUCTION
+    if table_scope is not None:
+        instruction += (
+            "\nThis is a scoped table question. Report only the requested measurements. "
+            "Give each source on its own line with the source name and evidence citation, "
+            "and copy each table measurement exactly as it appears in its cell, including the unit. "
+            "Omit design capacities, years and other contextual numbers from these lines. "
+            "If the values differ, describe the discrepancy separately."
+        )
     response_text = provider.generate_json(
         prompt=json.dumps(payload, ensure_ascii=False),
-        system_instruction=SYSTEM_INSTRUCTION,
+        system_instruction=instruction,
         schema=ANSWER_SCHEMA,
     )
 
@@ -132,6 +151,12 @@ def generate_answer(
     cited_ids = list(dict.fromkeys(CITATION.findall(answer)))
 
     unknown_ids = sorted(set(cited_ids) - allowed_ids)
+
+    if table_scope is not None and (unknown_ids or not table_scope.supports(answer)):
+        return {
+            "answer": "", "abstained": True, "citations": [],
+            "reason": "The answer could not be matched to the requested table measurements and source passages.",
+        }
 
     if unknown_ids:
         raise RuntimeError(
