@@ -50,3 +50,16 @@ def test_incomplete_header_hierarchy_does_not_assign_unlabeled_values(tmp_path):
     rows = extract_pdf(incomplete)[0].get("table_rows", [])
     assert len(rows) == 2
     assert all(row["caption"].startswith("Table 2.") for row in rows)
+
+
+def test_row_search_text_does_not_repeat_explanatory_caption_notes():
+    caption = "Table 2. Dataset v1.1 results. Fine-tuning notes and random seeds follow."
+    row = {"caption": caption, "group": "", "cells": [
+        {"column": "Model", "value": "Large"}, {"column": "Test F1", "value": "83.1"},
+    ]}
+    chunks = chunk_pages([{"page_number": 3, "text": caption, "table_rows": [row]}])
+    indexed = next(chunk for chunk in chunks if chunk.get("table_row"))
+    assert "Dataset v1.1 results." in indexed["text"]
+    assert "Fine-tuning notes" not in indexed["text"]
+    assert indexed["table_row"]["caption"] == caption
+    assert chunks[0]["text"] == caption

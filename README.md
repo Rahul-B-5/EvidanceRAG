@@ -396,6 +396,10 @@ original format.
 New imports can also preserve two-level headers in tables with horizontal
 rules and captions below them. Reader keeps the parent and metric names
 together, such as “Test · F1”, and separates neighboring table regions.
+For new table rows, search text includes the caption's title sentence,
+headers and cell values. The complete caption remains in the typed evidence
+and original page text, so repeated explanatory notes do not dominate every
+row's embedding.
 For an explicit named-table question that identifies a metric and excludes
 a condition, Assistant can validate the cited row and copy the cell's
 measurement with its original units. It abstains when this check finds

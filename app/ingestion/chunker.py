@@ -1,3 +1,5 @@
+import re
+
 from app.core.config import get_settings
 from app.ingestion.pdf_extractor import ExtractedPage, TableRow
 
@@ -54,7 +56,14 @@ def chunk_pages(
 
         for row in page.get("table_rows", []):
             cells = " | ".join(f"{cell['column']} = {cell['value']}" for cell in row["cells"])
-            row_text = "Reconstructed table row: " + " | ".join(part for part in (row["caption"], row["group"], cells) if part)
+            # Caption notes remain in the typed source metadata and page text.
+            # Repeating them in every indexed row can swamp unrelated prose.
+            prefix = re.match(r"^Table\s+(?:[A-Z][.-]?)?\d+[.:]?\s*", row["caption"], re.I)
+            title_start = prefix.end() if prefix else 0
+            caption_title = row["caption"][:title_start] + re.split(
+                r"(?<=[.!?])\s+(?=[A-Z])", row["caption"][title_start:], maxsplit=1,
+            )[0]
+            row_text = "Reconstructed table row: " + " | ".join(part for part in (caption_title, row["group"], cells) if part)
             if len(row_text) <= size:
                 chunks.append({
                     "chunk_index": len(chunks),

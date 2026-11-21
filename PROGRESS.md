@@ -489,6 +489,19 @@ launcher, wider browser review and release validation to the previous scope.
 
 ## Continuation
 
+- Diagnosed the missing BERT fine-tuning passage. Full explanatory caption
+  notes were repeated in every table-row embedding, pushing unrelated
+  SQuAD 1.1 result rows above the needed prose. New row search text uses
+  the caption title sentence, row group, headers and cell values. Complete
+  captions remain in typed metadata and original page text.
+- The full live Qwen BERT benchmark now passes all five cases across
+  16 pages and 61 passages, including test F1, exact fine-tuning settings
+  and seed abstention. The original download matches the pinned source.
+  Passed 174 PostgreSQL tests and both table Reader browser workflows.
+  The existing library still contains 3 papers and 75 passages on port 5433.
+  The full live NREL Qwen regression also passed all four cases, and all
+  eight deterministic Chrome workflows passed.
+
 - Added geometry-based extraction for horizontally ruled tables with
   captions below and two explicit header levels. It separates table regions
   using their rules and captions, attaches parent labels to metric columns,
