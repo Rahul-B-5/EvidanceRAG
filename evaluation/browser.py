@@ -50,6 +50,26 @@ def table_fixture_pdf(path: Path) -> None:
         pdf.save(path)
 
 
+def hierarchical_fixture_pdf(path: Path) -> None:
+    with pymupdf.open() as pdf:
+        pdf.set_metadata({"title": "Hierarchical table fixture"})
+        page = pdf.new_page()
+        for table, top in ((1, 70), (2, 280)):
+            for offset in (0, 40, 70, 100):
+                page.draw_line((50, top + offset), (450, top + offset))
+            for x, text in ((60, "System"), (235, "Development"), (355, "Test")):
+                page.insert_text((x, top + 15), text, fontsize=9)
+            for x, text in ((220, "EM"), (260, "F1"), (340, "EM"), (380, "F1")):
+                page.insert_text((x, top + 30), text, fontsize=9)
+            for offset, model, values in ((55, "Base", ("70", "71", "72", "73")),
+                                          (85, "Large", ("80", "81", "82", str(83 + table)))):
+                page.insert_text((60, top + offset), model, fontsize=9)
+                for x, value in zip((220, 260, 340, 380), values):
+                    page.insert_text((x, top + offset), value, fontsize=9)
+            page.insert_text((50, top + 116), f"Table {table}. Evaluation results", fontsize=9)
+        pdf.save(path)
+
+
 def available_ports() -> tuple[int, int]:
     with socket.socket() as api, socket.socket() as web:
         for listener in (api, web):
@@ -63,6 +83,7 @@ def run_browser_tests(screenshots: Path | None = None, grep: str | None = None) 
         fixture_pdf(root / "browser-fixture.pdf")
         fixture_pdf(root / "browser-second.pdf", "EvidenceRAG replication fixture", 42)
         table_fixture_pdf(root / "browser-table.pdf")
+        hierarchical_fixture_pdf(root / "browser-hierarchy.pdf")
         api_port, web_port = available_ports()
         env = {
             **os.environ,

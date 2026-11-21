@@ -393,6 +393,9 @@ Newly indexed PDFs with extractable tables also preserve the caption, row
 group and column-to-cell mapping on the physical page. Typed rows appear in
 Reader and in Assistant evidence. Earlier passages remain available in their
 original format.
+New imports can also preserve two-level headers in tables with horizontal
+rules and captions below them. Reader keeps the parent and metric names
+together, such as “Test · F1”, and separates neighboring table regions.
 For an explicit named-table question that identifies a metric and excludes
 a condition, Assistant can validate the cited row and copy the cell's
 measurement with its original units. It abstains when this check finds

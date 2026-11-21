@@ -506,6 +506,22 @@ test("provider failure preserves the question and permits a cited retry", async 
   await expect(page.locator("main [role=alert]")).toHaveCount(0);
 });
 
+test("Reader separates adjacent tables and retains parent metric headers", async ({page}) => {
+  await page.goto("/");
+  await page.getByRole("button", {name:"Library",exact:true}).click();
+  await page.locator("input[type=file]").setInputFiles(join(process.env.EVIDENCERAG_E2E_TEMP!, "browser-hierarchy.pdf"));
+  await page.getByRole("button", {name:"Hierarchical table fixture",exact:true}).click();
+  await expect(page.getByRole("img", {name:"PDF page 1"})).toBeVisible();
+  const rows = page.locator(".indexed-table-row");
+  await expect(rows).toHaveCount(4);
+  const second = rows.filter({hasText:"Table 2."}).filter({hasText:"Large"});
+  await expect(second).toContainText("Development · F1");
+  await expect(second).toContainText("Test · F1");
+  await expect(second).toContainText("85");
+  await expect(second).not.toContainText("84");
+  await capture(page, "reader-hierarchy");
+});
+
 test("configured local Ollama models answer with PDF citations", async ({page}) => {
   const models = (process.env.EVIDENCERAG_BROWSER_OLLAMA_MODELS ?? "").split(",").map(model => model.trim()).filter(Boolean);
   test.skip(models.length !== 2, "Provide two installed Ollama models to run the live browser check.");

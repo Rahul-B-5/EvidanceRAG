@@ -489,6 +489,25 @@ launcher, wider browser review and release validation to the previous scope.
 
 ## Continuation
 
+- Added geometry-based extraction for horizontally ruled tables with
+  captions below and two explicit header levels. It separates table regions
+  using their rules and captions, attaches parent labels to metric columns,
+  and retains only complete numeric rows. The BERT page now exposes distinct
+  Table 2 and Table 3 rows with Dev/Test EM/F1 fields.
+- A synthetic adjacent-table fixture verifies different Test F1 cells remain
+  attached to their own captions. Chrome imported it, displayed all four rows
+  and preserved the hierarchical labels in Reader. Passed 172 PostgreSQL
+  tests, 10 frontend tests, the build and the existing NREL retrieval gate.
+- The full BERT live Qwen run now passed four of five cases. The previously
+  wrong SQuAD 2.0 test F1 is correctly answered as 83.1 from the typed table.
+  Fine-tuning settings regressed because retrieval omitted the 2-epoch,
+  batch-size-48 passage, and the model substituted pre-training information.
+  Next diagnose candidate ranking and prose/table diversity for that query.
+  Do not mark the whole-PDF accuracy gate passed.
+  A missing lower-level header regression rejects the ambiguous table
+  while retaining its valid neighbor. The full gate passed 173 PostgreSQL
+  tests and eight deterministic Chrome workflows.
+
 - Added a second pinned whole-PDF benchmark for the ACL Anthology BERT
   paper. It imported 16 pages and 46 passages through the durable queue,
   with a byte-identical original download. Five cases cover capacities,

@@ -91,7 +91,89 @@ def captioned_rows(page: pymupdf.Page) -> list[TableRow]:
                         "caption": caption, "group": group,
                         "cells": [{"column": head, "value": value} for head, value in zip(headers, values, strict=True)],
                     })
+    existing = {row["caption"] for row in lines}
+    lines.extend(row for row in horizontal_header_rows(page) if row["caption"] not in existing)
     return lines
+
+
+def word_lines(words: list[tuple]) -> list[list[tuple]]:
+    """Group words by their source baseline without joining neighboring rows."""
+    rows: list[list[tuple]] = []
+    for word in sorted(words, key=lambda item: (item[1], item[0])):
+        if not rows or abs(word[1] - rows[-1][0][1]) > 2:
+            rows.append([])
+        rows[-1].append(word)
+    return [sorted(row, key=lambda item: item[0]) for row in rows]
+
+
+def horizontal_header_rows(page: pymupdf.Page) -> list[TableRow]:
+    """Read caption-below tables with rules and two explicit header levels."""
+    captions = [block for block in page.get_text("blocks")
+                if block[6] == 0 and TABLE_CAPTION.match(block[4]) and len(block[4]) <= 300]
+    rules = []
+    for drawing in page.get_drawings():
+        for segment in drawing["items"]:
+            if segment[0] == "l" and abs(segment[1].y - segment[2].y) < 1:
+                left, right = sorted((segment[1].x, segment[2].x))
+                if right - left >= 80:
+                    rules.append((left, segment[1].y, right))
+    result = []
+    for caption in captions:
+        candidates = [rule for rule in rules if 0 <= caption[1] - rule[1] <= 30
+                      and abs(rule[0] - caption[0]) <= 15 and rule[2] >= caption[2] - 15]
+        if not candidates:
+            continue
+        left, bottom, right = max(candidates, key=lambda rule: rule[1])
+        lower_bound = max((other[3] for other in captions if other[3] < bottom
+                           and other[0] < right and other[2] > left), default=0)
+        boundaries = sorted({y for start, y, end in rules if lower_bound < y <= bottom
+                             and abs(start - left) <= 2 and abs(end - right) <= 2})
+        if len(boundaries) < 3:
+            continue
+        header = word_lines(page.get_text("words", clip=(left - 1, boundaries[0], right + 1, boundaries[1])))
+        if len(header) != 2 or len(header[0]) < 2 or len(header[1]) < 2:
+            continue
+        parents, leaves = header
+        parent_centers = [(word[0] + word[2]) / 2 for word in parents]
+        # Each lower header must lie under one parent. A separate first
+        # parent identifies row labels and must not also have leaf columns.
+        assigned = [[] for _ in parents]
+        for leaf in leaves:
+            center = (leaf[0] + leaf[2]) / 2
+            index = min(range(len(parents)), key=lambda i: abs(center - parent_centers[i]))
+            assigned[index].append(leaf)
+        if assigned[0] or any(len(children) < 2 for children in assigned[1:]):
+            continue
+        columns = [parents[0][4]]
+        numeric_headers = []
+        for parent, children in zip(parents[1:], assigned[1:], strict=True):
+            for child in children:
+                columns.append(f"{parent[4]} · {child[4]}")
+                numeric_headers.append(child)
+        if len(set(columns)) != len(columns):
+            continue
+        centers = [(word[0] + word[2]) / 2 for word in numeric_headers]
+        splits = [numeric_headers[0][0] - 2] + [(a + b) / 2 for a, b in zip(centers, centers[1:])]
+        group = ""
+        for row in word_lines(page.get_text("words", clip=(left - 1, boundaries[1], right + 1, bottom))):
+            cells = [[] for _ in columns]
+            for word in row:
+                center = (word[0] + word[2]) / 2
+                column = sum(center >= boundary for boundary in splits)
+                cells[column].append(word[4])
+            values = [" ".join(cell) for cell in cells]
+            if values[0] and not any(values[1:]):
+                group = values[0]
+                continue
+            if not values[0] or not all(re.fullmatch(r"(?:[-−–]|[+−-]?\d+(?:\.\d+)?%?)", value)
+                                        for value in values[1:]):
+                continue
+            result.append({
+                "caption": " ".join(caption[4].split()), "group": group,
+                "cells": [{"column": column, "value": value}
+                          for column, value in zip(columns, values, strict=True)],
+            })
+    return result
 
 
 def extract_pdf(pdf_path: str | Path) -> list[ExtractedPage]:
