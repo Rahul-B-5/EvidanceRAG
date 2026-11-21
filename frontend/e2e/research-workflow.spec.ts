@@ -4,19 +4,31 @@ import { expect, test, type Page } from "@playwright/test";
 
 const title = "EvidenceRAG browser fixture";
 
+async function settleReader(page: Page) {
+  if (await page.locator(".pdf-surface").count()) {
+    // Let ResizeObserver deliver the new width before checking the render.
+    await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    await expect(page.locator(".pdf-surface canvas")).toBeVisible();
+    await expect(page.getByText("Rendering PDF page…", {exact:true})).toHaveCount(0);
+  }
+}
+
 async function capture(page: Page, name: string) {
   const folder = process.env.EVIDENCERAG_E2E_SCREENSHOTS;
   const original = page.viewportSize()!;
   const scroll = await page.evaluate(() => window.scrollY);
   if (folder) {
     await page.evaluate(() => window.scrollTo(0, 0));
+    await settleReader(page);
     await page.screenshot({path:join(folder, `${name}-desktop.png`), animations:"disabled"});
     await page.getByRole("button", {name:"Dark theme", exact:true}).click();
     await page.evaluate(() => window.scrollTo(0, 0));
+    await settleReader(page);
     await page.screenshot({path:join(folder, `${name}-dark.png`), animations:"disabled"});
     await page.getByRole("button", {name:"Light theme", exact:true}).click();
   }
   await page.setViewportSize({width:390, height:844});
+  await settleReader(page);
   await page.evaluate(() => window.scrollTo(0, 0));
   expect.soft(await page.evaluate(() => document.documentElement.scrollWidth), `${name} stays within the viewport`).toBeLessThanOrEqual(390);
   if (name === "atlas") {

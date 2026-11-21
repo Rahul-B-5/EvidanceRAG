@@ -4,7 +4,12 @@ The release gate for each journey is a real workflow with a provenance check,
 an error-path check, and a record of what was actually verified. Current test and
 delivery status live in [PROGRESS.md](PROGRESS.md).
 
-| Journey | Working path | Remaining verification or implementation |
+The required local product journeys are implemented and integrated. The final
+[release audit](RELEASE_AUDIT.md) distinguishes verified behavior from scientific
+and operating limits. The final column below tracks future extensions and wider
+verification, rather than promising that each item is part of this local release.
+
+| Journey | Working path | Future extensions and wider verification |
 | --- | --- | --- |
 | Library | Durable multi-file imports with restart recovery, metadata, workspace collections, reading status, related papers, source recovery and atomic embedding rebuilds | Broader library scale testing |
 | Investigation | Hybrid search, fixed multi-paper scopes, explicit legacy scope recovery, citations to pages and passages, streamed progress and a guarded path for explicit metric and condition questions about named tables | Broader numerical and prose grounding, repeatable live abstention and corpus coverage |
@@ -19,13 +24,15 @@ delivery status live in [PROGRESS.md](PROGRESS.md).
 | Everyday UX | Shared light and dark styles, keyboard palette, accessible mobile menu and responsive screenshots across the main research journey | Wider assistive-technology testing and browser coverage for secondary error paths |
 | Operations | Verified local launcher, additive migrations, encrypted web provider profiles, live model switching, PostgreSQL and browser suites, safe source lifecycle and local API host/origin policy | Live cloud-provider checks, concurrent loads, whole-library ingest scale and retention |
 
-## Dependency order
+## Order for future development
 
-1. Finish and verify excerpt selection, numerical provenance and scope isolation.
-2. Store research runs with provenance, bounded jobs and partial results. Reuse
-   that data for durable claim lineage and the Evidence Atlas.
-3. Add support assessment with explicit uncertainty, counterevidence retrieval,
-   experiment alignment and research question coverage.
-4. Add reproducibility dossiers, corpus-scoped research directions, and editable
-   evidence packets. Integrate annotations, bibliography and local backups.
-5. Verify the journeys on a public or synthetic corpus and the real desktop UI.
+1. Expand whole-paper grounding evaluation across disciplines, table formats,
+   legacy passages and repeated model runs. Keep source verification visible.
+2. Verify authenticated cloud accounts when credentials are available and test
+   concurrent long-PDF imports, retrieval and generation under realistic loads.
+3. Complete independent accessibility and wider-browser reviews before widening
+   the supported deployment beyond the current local workflow.
+4. Prioritize optional OCR, coordinate annotations and external citation-manager
+   integrations based on research needs. Preserve existing evidence provenance.
+5. Design shared cancellation and authenticated authorization before supporting
+   multiple API workers or remote multi-user deployments.

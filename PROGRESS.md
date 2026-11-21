@@ -2,17 +2,39 @@
 
 ## Current release audit
 
+The required single-user local product journeys are implemented and integrated.
+See [RELEASE_AUDIT.md](RELEASE_AUDIT.md) for the final requirement inventory,
+scientific acceptance evidence and operating limits. This status does not imply
+that arbitrary generated answers are scientifically correct.
+
+Final verification on 21 November 2026
+
+- 174 PostgreSQL-enabled backend tests passed, 10 frontend tests passed and the
+  TypeScript production build passed.
+- All nine Chrome workflows passed, including live web configuration and cited
+  answers with `gemma4:e4b` and `qwen3:8b`. Three Reader/import workflows passed
+  again after tightening screenshot readiness across viewport changes.
+- Reviewed the corrected rendered Reader mobile screenshot. The wider audit
+  includes light, dark and narrow captures of every major research screen.
+- Latest whole-PDF runs passed NREL 4/4 and BERT 5/5 with Qwen. Earlier Gemma
+  NREL passed 4/4. Published-paper excerpt runs passed 5/5 with both models and
+  all eight comparability, contradiction, gap and reproduction checks passed.
+- A final read-only integrity check confirmed 3 documents, 75 passages,
+  20 applied migrations and matching content hashes for all 3 original PDFs.
+- Private `data/` and `.Rhistory` remain untouched and untracked. No environment
+  files, credentials, source PDFs or generated screenshots are part of delivery.
+
 The entries below describe the current checkout. The implementation history
 that follows records earlier checkpoints and their remaining work at the time.
 
-| Requirement | Current evidence | Remaining release work |
+| Requirement | Current evidence | Operating limits and future verification |
 | --- | --- | --- |
 | Existing research data | PostgreSQL 5433 retains 3 documents and 75 passages. Recovered the legacy original through byte-identical duplicate upload and verified unchanged document metadata and a digest of every chunk row, including embeddings. | Continue read-only integrity checks at release gates. |
 | Local launch | Supported launcher checks ports, PostgreSQL and additive migrations. Latest checkout loaded the existing 3-paper, 75-passage library in Chrome through both loopback hostnames. Shutdown released both service ports. | Repeat smoke testing when startup dependencies change. |
 | AI configuration | Encrypted web profiles cover five providers, answering/extraction routing, local discovery and live model switching. Native Ollama context configuration is browser-tested. | Authenticated cloud calls need configured credentials. |
 | Library and Reader | Durable imports, duplicate handling, restart recovery, indexed pages, bookmarks, annotations and exact passage navigation have integration and browser coverage. | Scanned PDFs require OCR outside the current text ingestion path. |
 | Research workflows | Browser journeys cover comparison, claims, Atlas, opposing findings, reproducibility, directions, coverage, evidence packets and exports. | Wider representative scientific evaluation and assistive-technology testing. |
-| Scientific grounding | Qwen and Gemma each passed all four full NREL report cases. Qwen passed all five published-paper excerpt cases with live embeddings and generation. Gemma initially included extra split values, then passed all five after the scope instruction change. | Repeat across additional papers and formats. Exact source matching does not independently verify all scientific interpretations. |
+| Scientific grounding | Qwen and Gemma each passed all four full NREL report cases. Qwen also passed all five whole-BERT PDF cases and all five published-paper excerpt cases with live embeddings and generation. Gemma initially included extra split values, then passed all five after the scope instruction change. | Repeat across additional papers and formats. Exact source matching does not independently verify all scientific interpretations. |
 | Recovery and cancellation | Browser verifies acknowledged cancellation, no partial exchange after reload and successful retry. Provider-failure recovery has a separate browser regression. | Multiple backend workers need shared cancellation state or affinity. |
 | Performance | Synthetic retrieval measured up to 500 papers and 30,000 passages. A 24-PDF burst used real embeddings. | Concurrent, larger and more varied full-PDF workloads. |
 
@@ -314,10 +336,10 @@ that follows records earlier checkpoints and their remaining work at the time.
   PDF benchmark now records abstention reasons alongside the answers and
   citations to help diagnose this failure.
 
-## Outstanding
+## Historical outstanding work
 
-The final-completion brief adds web-based provider setup, a supported local
-launcher, wider browser review and release validation to the previous scope.
+This checkpoint preceded the final release work. The current audit at the top
+and RELEASE_AUDIT.md supersede these earlier next steps.
 
 1. Expand numerical grounding beyond explicit exclusions in named tables.
    Tighten the association between the requested metric and cited prose values,

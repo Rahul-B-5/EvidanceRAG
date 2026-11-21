@@ -4,6 +4,10 @@ EvidenceRAG is a local-first, evidence-grounded research library for PDF
 papers. It extracts papers, stores content-addressed source copies, indexes
 hybrid keyword/vector evidence, and returns source-linked answers.
 
+The [local release audit](RELEASE_AUDIT.md) inventories the integrated research
+workflows, validation evidence, operating boundaries and experimental features.
+Scientific interpretation still requires checking the linked sources.
+
 ## Run locally
 
 ### Existing installation
