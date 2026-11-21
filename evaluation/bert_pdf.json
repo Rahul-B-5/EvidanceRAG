@@ -1,0 +1,27 @@
+{
+  "url": "https://aclanthology.org/N19-1423.pdf",
+  "sha256": "987545ffb087f1ece898142c403a516baeabeb70ce19089397fac6f7db12c3d4",
+  "answer_relations": {
+    "squad2-training-settings": [
+      "(?:2\\s+(?:fine-tuning\\s+)?epochs?|epochs?[^.\\n]{0,30}\\b2\\b)",
+      "batch size[^.\\n]{0,30}\\b48\\b"
+    ]
+  },
+  "cases": [
+    ["model-capacities",
+      "How many parameters do BERT Base and BERT Large have? Cite each model's parameter count.",
+      {"110M": [3, 8], "340M": [3, 8]}, []],
+    ["masked-token-proportion",
+      "What percentage of WordPiece tokens is selected for masking in BERT pre-training? Give the overall selection percentage, with its source.",
+      {"15%": [4, 13]}, ["80%", "10%"]],
+    ["squad2-test-metric",
+      "What is the single BERT Large model's SQuAD 2.0 test F1 score in Table 3? Report only test F1 and cite the table.",
+      {"83.1": [7]}, ["81.9", "80.0", "78.7", "93.2"]],
+    ["squad2-training-settings",
+      "For SQuAD 2.0, how many fine-tuning epochs and what batch size did BERT use? Cite the settings.",
+      {"2": [7], "48": [7]}, ["256"]],
+    ["unreported-fine-tuning-seed",
+      "What exact integer random seed was used to fine-tune the single BERT Large SQuAD 2.0 result? Answer only if the paper reports the seed value.",
+      {}, []]
+  ]
+}

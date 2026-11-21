@@ -428,6 +428,17 @@ GENERATION_PROVIDER=ollama GENERATION_MODEL=gemma4:e4b \
   .venv/bin/python -m evaluation.pdf_benchmark /path/to/87303.pdf
 ```
 
+The second whole-PDF benchmark uses the pinned
+[BERT paper from ACL Anthology](https://aclanthology.org/N19-1423.pdf).
+It checks physical-page citations, model capacities, masking rate, the
+SQuAD 2.0 test metric, fine-tuning settings and abstention on an unreported
+seed. The imported PDF and its original download are checked byte for byte.
+
+```bash
+GENERATION_PROVIDER=ollama GENERATION_MODEL=qwen3:8b OLLAMA_CONTEXT_TOKENS=8192 \
+  .venv/bin/python -m evaluation.pdf_benchmark /path/to/N19-1423.pdf --report bert
+```
+
 The browser suite runs the actual frontend and API in headless Chromium.
 It provisions an isolated PostgreSQL schema and temporary upload directory,
 then removes both. The suite generates its own two-page PDF and uses

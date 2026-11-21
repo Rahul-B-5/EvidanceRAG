@@ -24,6 +24,10 @@ def test_value_matching_rejects_substrings_and_preserves_percentage_scale():
     assert not contains_answer_value("Balanced accuracy was 71 units.", "71%")
     assert contains_answer_value("There were 107,785 examples.", "107785")
     assert contains_answer_value("Exact match was 77%.", "77.0%")
+    assert contains_answer_value("BERT Base has 110 million parameters.", "110M")
+    assert contains_answer_value("The size is 110M.", "110M")
+    assert not contains_answer_value("The size is 1110M.", "110M")
+    assert not contains_answer_value("The capacity is 110 MW.", "110M")
 
 
 @pytest.mark.skipif(os.getenv("EVIDENCERAG_INTEGRATION") != "1", reason="Requires PostgreSQL")
@@ -76,3 +80,14 @@ def test_whole_report_rubric_requires_the_two_correct_physical_pages():
     assert all(check_pdf_answer({**payload, "answer": "Summary: 1.16 [E1]. Table 3: 1.17 [E2]."}, facts, (), 1).values())
     swapped = check_pdf_answer({**payload, "answer": "Summary: 1.16 [E2]. Table 3: 1.17 [E1]."}, facts, (), 1)
     assert swapped["source_anchors"] and not swapped["cited_facts"]
+def test_bert_whole_pdf_gold_preserves_training_setting_associations():
+    import json
+    import re
+    from pathlib import Path
+
+    spec = json.loads((Path(__file__).parents[1] / "evaluation" / "bert_pdf.json").read_text())
+    patterns = spec["answer_relations"]["squad2-training-settings"]
+    correct = "The model used 2 epochs with a batch size of 48."
+    swapped = "The model used 48 epochs with a batch size of 2."
+    assert all(re.search(pattern, correct, re.I) for pattern in patterns)
+    assert not all(re.search(pattern, swapped, re.I) for pattern in patterns)

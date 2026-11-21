@@ -1,4 +1,4 @@
-"""Exercise the complete import and answer workflow on a pinned public NREL report."""
+"""Exercise import, retrieval and cited answers on pinned public research PDFs."""
 import argparse
 import importlib
 import json
@@ -90,10 +90,19 @@ def check_report_disagreement(payload: dict) -> bool:
     return False
 
 
-def evaluate_pdf(path: Path, *, retrieval_only: bool = False) -> dict:
+def evaluate_pdf(path: Path, *, retrieval_only: bool = False, report: str = "nrel") -> dict:
+    if report == "nrel":
+        url, checksum, cases = REPORT_URL, REPORT_SHA256, CASES
+        relations = {}
+    elif report == "bert":
+        spec = json.loads(Path(__file__).with_name("bert_pdf.json").read_text())
+        url, checksum, cases = spec["url"], spec["sha256"], spec["cases"]
+        relations = spec.get("answer_relations", {})
+    else:
+        raise ValueError("Unknown PDF report benchmark.")
     source_bytes = path.read_bytes()
-    if sha256(source_bytes).hexdigest() != REPORT_SHA256:
-        raise ValueError(f"Select the pinned public report from {REPORT_URL}.")
+    if sha256(source_bytes).hexdigest() != checksum:
+        raise ValueError(f"Select the pinned public report from {url}.")
     with isolated_database() as (_, dsn), TemporaryDirectory(prefix="evidencerag-pdf-eval-") as uploads, ExitStack() as bound:
         settings = get_settings().model_copy(update={"upload_dir": Path(uploads)})
         for module in (api, jobs, pipeline, keyword, vector):
@@ -103,7 +112,7 @@ def evaluate_pdf(path: Path, *, retrieval_only: bool = False) -> dict:
             bound.enter_context(patch.object(module, "get_settings", lambda: settings))
 
         client = TestClient(api.app, base_url="http://127.0.0.1")
-        upload = client.post("/import-jobs", files={"file": ("nrel-87303.pdf", source_bytes, "application/pdf")})
+        upload = client.post("/import-jobs", files={"file": (f"{report}-benchmark.pdf", source_bytes, "application/pdf")})
         upload.raise_for_status()
         if not jobs.process_next_job():
             raise RuntimeError("The public PDF import did not run.")
@@ -116,7 +125,7 @@ def evaluate_pdf(path: Path, *, retrieval_only: bool = False) -> dict:
         details = client.get(f"/documents/{paper}").json()
 
         results = []
-        for name, question, facts, excludes in CASES:
+        for name, question, facts, excludes in cases:
             if retrieval_only and not facts:
                 continue
             params = {"query": question, "document_id": paper, "top_k": TOP_K}
@@ -128,13 +137,18 @@ def evaluate_pdf(path: Path, *, retrieval_only: bool = False) -> dict:
             checks = {"retrieved_facts": all(supported_fact(data["evidence"], value, pages) for value, pages in facts.items())}
             if not retrieval_only:
                 checks.update(check_answer(data, facts, excludes, paper))
-                if name == "disagreement-within-the-report":
+                if name in relations:
+                    checks["metric_value_associations"] = all(
+                        re.search(pattern, data["answer"], re.I) is not None
+                        for pattern in relations[name]
+                    )
+                if report == "nrel" and name == "disagreement-within-the-report":
                     checks["distinct_section_and_exact_table_row"] = check_report_disagreement(data)
             results.append({"case": name, "passed": all(checks.values()), "checks": checks,
                             "retrieved_pages": sorted({item["page_start"] for item in data["evidence"]}),
                             "citations": data.get("citations", []),
                             "answer": data.get("answer"), "reason": data.get("reason")})
-        return {"source": REPORT_URL, "source_identical": sha256(original.content).hexdigest() == REPORT_SHA256,
+        return {"source": url, "report": report, "source_identical": sha256(original.content).hexdigest() == checksum,
                 "pages": details["page_count"], "passages": details["chunk_count"], "top_k": TOP_K, "cases": results}
 
 
@@ -143,8 +157,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("pdf", type=Path)
     parser.add_argument("--retrieval-only", action="store_true", help="Use the configured embedding model without generating answers.")
+    parser.add_argument("--report", choices=("nrel", "bert"), default="nrel", help="Select the pinned full-PDF benchmark.")
     args = parser.parse_args()
-    report = evaluate_pdf(args.pdf, retrieval_only=args.retrieval_only)
+    report = evaluate_pdf(args.pdf, retrieval_only=args.retrieval_only, report=args.report)
     print(json.dumps(report, indent=2))
     return int(not report["source_identical"] or not all(case["passed"] for case in report["cases"]))
 

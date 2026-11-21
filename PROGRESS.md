@@ -489,6 +489,23 @@ launcher, wider browser review and release validation to the previous scope.
 
 ## Continuation
 
+- Added a second pinned whole-PDF benchmark for the ACL Anthology BERT
+  paper. It imported 16 pages and 46 passages through the durable queue,
+  with a byte-identical original download. Five cases cover capacities,
+  masking rate, the SQuAD 2.0 test F1, fine-tuning settings and an unreported
+  seed. Gold checks preserve epochs/batch-size associations.
+- The first live Qwen run passed three of five cases. Its model-size answer
+  correctly expanded M to million, which the scorer initially rejected.
+  The scorer now accepts that notation with numeric and unit boundaries.
+  The genuine error was a 90.9 F1 answer for the requested 83.1 result.
+  Retrieval found the expected evidence. Physical page 7 has two adjacent
+  SQuAD tables with captions below them and hierarchical Dev/Test headers.
+  The current ruled-table extractor produced no typed rows there.
+- Next address caption-below, borderless tables and hierarchical headers
+  without conflating the two table regions or their metric columns.
+  Keep the new full-PDF failure as a release gate. The existing NREL gate
+  remains in the default benchmark mode.
+
 - Final live verification exposed intermittent comparison rejection and an
   incorrect abstention flag from Gemma. Added a conservative extractive
   fallback for scoped table comparisons. It presents verified table cells

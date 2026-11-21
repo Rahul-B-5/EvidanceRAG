@@ -46,6 +46,13 @@ def latencies(values: list[float]) -> dict:
 
 def contains_answer_value(answer: str, expected: str) -> bool:
     answer = re.sub(r"(?<=\d),(?=\d{3}\b)", "", answer)
+    magnitude = re.fullmatch(r"(\d+(?:\.\d+)?)([KMB])", expected)
+    if magnitude:
+        scale = {"K": "thousand", "M": "million", "B": "billion"}[magnitude[2]]
+        return bool(re.search(
+            r"(?<![\w.,])" + re.escape(magnitude[1]) + r"\s*(?:"
+            + magnitude[2] + r"\b|(?i:" + scale + r")\b)", answer,
+        ))
     if re.fullmatch(r"\d+(?:\.\d+)?%?", expected):
         raw_number = expected.removesuffix("%")
         number = re.escape(raw_number)
