@@ -489,6 +489,25 @@ launcher, wider browser review and release validation to the previous scope.
 
 ## Continuation
 
+- Final live verification exposed intermittent comparison rejection and an
+  incorrect abstention flag from Gemma. Added a conservative extractive
+  fallback for scoped table comparisons. It presents verified table cells
+  and one unambiguous source measurement per requested section, with separate
+  citations and an explicit “Extracted source measurements” heading.
+  Ambiguous sections still abstain.
+- Explicit statements that the supplied evidence lacks the requested fact
+  now normalize to abstention. Regression coverage distinguishes that case
+  from a scientific finding of no statistically significant effect.
+  Passed 169 PostgreSQL tests and all four live NREL report cases with Gemma.
+  The tracked-file audit found no private PDFs, environment file, provider
+  key or matching credential patterns.
+  After resume, the interrupted browser failures did not reproduce in a
+  fresh full run. Seven deterministic Chrome workflows passed. Added a
+  deliberately incorrect neighboring-value provider fixture and verified
+  that extractive recovery shows the correct cell, persists after reload
+  and opens its exact Reader row. Multi-column recovery and ambiguous
+  section regressions passed in the full 170-test PostgreSQL gate.
+
 - Comparison scale checks now retain SI prefix case. They flag MW versus
   mW, MB versus Mb, kJ versus J and ms versus s as different reported scales.
   Word aliases such as percent/% and seconds/s still match. An extraction

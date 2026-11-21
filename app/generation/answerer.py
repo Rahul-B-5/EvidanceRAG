@@ -18,6 +18,12 @@ ANSWER_SCHEMA = {
 }
 GROUPED_CITATIONS = re.compile(r"\[\s*(E\d+(?:\s*[,;]\s*E\d+)+)\s*\]")
 CITATION = re.compile(r"\[(E\d+)\]")
+EVIDENCE_INSUFFICIENT = re.compile(
+    r"^\s*(?:the\s+)?(?:provided|supplied|retrieved|available)\s+"
+    r"(?:evidence|sources|passages|documents)\s+"
+    r"(?:do(?:es)?\s+not\s+(?:contain|provide|include|specify|report)\b|"
+    r"(?:is|are)\s+insufficient\b)", re.I,
+)
 
 SYSTEM_INSTRUCTION = """
 You are EvidenceRAG, an evidence-grounded research assistant.
@@ -136,6 +142,12 @@ def generate_answer(
     if reason is not None and not isinstance(reason, str):
         raise RuntimeError("Abstention reason must be a string or null.")
 
+    if isinstance(answer, str) and EVIDENCE_INSUFFICIENT.search(answer):
+        return {
+            "answer": "", "abstained": True,
+            "reason": "The supplied evidence does not establish the requested information.",
+            "citations": [],
+        }
     if abstained:
         return {
             "answer": "",
@@ -156,10 +168,15 @@ def generate_answer(
     unknown_ids = sorted(set(cited_ids) - allowed_ids)
 
     if table_scope is not None and (unknown_ids or not table_scope.supports(answer)):
-        return {
-            "answer": "", "abstained": True, "citations": [],
-            "reason": "The answer could not be matched to the requested table measurements and source passages.",
-        }
+        extracted = table_scope.extracted_measurements()
+        if extracted is None:
+            return {
+                "answer": "", "abstained": True, "citations": [],
+                "reason": "The answer could not be matched to the requested table measurements and source passages.",
+            }
+        answer = extracted
+        cited_ids = list(dict.fromkeys(CITATION.findall(answer)))
+        unknown_ids = sorted(set(cited_ids) - allowed_ids)
 
     if unknown_ids:
         raise RuntimeError(

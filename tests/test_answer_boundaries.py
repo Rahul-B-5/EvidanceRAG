@@ -72,3 +72,21 @@ def test_table_evidence_is_sent_as_separate_cells_without_flattening(monkeypatch
     assert payload["evidence"][0]["table_row"] == row
     assert "text" not in payload["evidence"][0]
     assert answer["citations"][0]["page_start"] == 2
+
+
+@pytest.mark.parametrize(("text", "abstained"), [
+    ("The provided evidence does not contain the requested site-specific result [E1].", True),
+    ("Available sources are insufficient to establish the requested measurement [E1].", True),
+    ("The paper reports no statistically significant effect [E1].", False),
+])
+def test_explicit_evidence_insufficiency_is_an_abstention(monkeypatch, text, abstained):
+    provider = SimpleNamespace(generate_json=lambda **_: json.dumps({
+        "answer": text, "abstained": False, "reason": None,
+    }))
+    monkeypatch.setattr("app.generation.answerer.get_generation_provider", lambda _: provider)
+    evidence = [{"evidence_id": "E1", "chunk_id": 1, "document_id": 1, "title": "Study",
+                 "page_start": 1, "page_end": 1, "text": "The study reported no statistically significant effect."}]
+    result = generate_answer("What information is reported?", "Study context", evidence)
+    assert result["abstained"] is abstained
+    if abstained:
+        assert result["answer"] == "" and result["citations"] == []

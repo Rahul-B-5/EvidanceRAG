@@ -114,6 +114,9 @@ def test_following_metric_in_same_sentence_cannot_support_the_requested_measurem
     scope = scope_table_answer(QUESTION, evidence)
     assert scope.supports("Overview: 17% [E1].\nTable 2: 22% [E3].")
     assert not scope.supports("Overview: 91% [E1].\nTable 2: 22% [E3].")
+    extracted = scope.extracted_measurements()
+    assert "17% [E1]" in extracted and "22% [E3]" in extracted
+    assert "91%" not in extracted
 
 
 def test_prose_latency_units_cannot_be_changed(evidence):
@@ -170,3 +173,34 @@ def test_citation_returns_only_the_verified_cells(monkeypatch, evidence):
     answer = generate_answer(QUESTION, "retrieved context", evidence)
     assert "table_measurements" not in answer["citations"][0]
     assert answer["citations"][1]["table_measurements"] == [{"column": "ER Score", "value": "22%"}]
+
+
+def test_invalid_generation_can_fall_back_to_unambiguous_extracted_measurements(monkeypatch, evidence):
+    evidence[2]["table_row"]["cells"][0]["value"] = "Reference model without augmentation"
+    for index, source in enumerate(evidence, start=1):
+        source.update(chunk_id=index, title="Study", page_end=source["page_start"])
+    provider = SimpleNamespace(generate_json=lambda **_: json.dumps({
+        "answer": "The error rate was 91% [E1], and 29% in Table 2 [E4].",
+        "abstained": False, "reason": None,
+    }))
+    monkeypatch.setattr("app.generation.answerer.get_generation_provider", lambda _: provider)
+    answer = generate_answer(QUESTION, "retrieved context", evidence)
+    assert not answer["abstained"]
+    assert "Extracted source measurements" in answer["answer"]
+    assert "17% [E1]" in answer["answer"] and "22% [E3]" in answer["answer"]
+    assert {item["chunk_id"] for item in answer["citations"]} == {1, 3}
+    evidence[0]["text"] += " The reference model has an error rate of 18%."
+    ambiguous = generate_answer(QUESTION, "retrieved context", evidence)
+    assert ambiguous["abstained"] and ambiguous["citations"] == []
+
+
+def test_extractive_fallback_preserves_multiple_requested_columns(evidence):
+    evidence[2]["table_row"]["cells"][0]["value"] = "Reference model without augmentation"
+    scope = scope_table_answer(
+        "What were the ER Score and Precision of the reference model without augmentation in Table 2?",
+        evidence,
+    )
+    answer = scope.extracted_measurements()
+    assert answer is not None
+    assert "ER Score — 22%" in answer and "Precision — 91%" in answer
+    assert scope.supports(answer)

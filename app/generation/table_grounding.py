@@ -111,6 +111,34 @@ class TableScope:
     table_values: dict[str, list[str]]
     sections: dict[str, set[str]]
 
+    def extracted_measurements(self) -> str | None:
+        """Present unambiguous source values when prose generation fails validation."""
+        lines = ["Extracted source measurements", ""]
+        for source in self.sources:
+            if source["evidence_id"] not in self.table_values:
+                continue
+            table = TABLE.match(source["table_row"]["caption"])
+            if table is None:
+                return None
+            cells = [
+                f"{cell['column']} — {cell['value']}" for cell in source["table_row"]["cells"]
+                if cell["value"] in self.table_values[source["evidence_id"]]
+            ]
+            lines.append(f"- {table.group()} · {' · '.join(cells)} [{source['evidence_id']}].")
+        for section, ids in self.sections.items():
+            values = {}
+            for source in self.sources:
+                if source["evidence_id"] not in ids:
+                    continue
+                for match in PROSE_MEASUREMENT.finditer(source["text"]):
+                    values.setdefault(compact(match.group()), (match.group(), source["evidence_id"]))
+            if len(values) != 1:
+                return None
+            value, anchor = next(iter(values.values()))
+            lines.append(f"- {section} — {value} [{anchor}].")
+        result = "\n".join(lines)
+        return result if self.supports(result) else None
+
     def supports(self, answer: str) -> bool:
         seen = set()
         answer = re.sub(

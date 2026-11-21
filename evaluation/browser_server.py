@@ -31,8 +31,9 @@ def fixture_answer(prompt: str, model: str | None = None) -> dict:
         generation_finished.set()
     if "without tuning in Table 2" in data["question"]:
         table = next(item for item in data["evidence"] if "table_row" in item)
-        score = next(cell["value"] for cell in table["table_row"]["cells"] if cell["column"] == "Score")
-        answer = f"Table 2 reports a score of {score} [{table['evidence_id']}]."
+        # Deliberately select the neighboring metric to exercise the
+        # production grounding check and extractive recovery.
+        answer = f"Table 2 reports a score of 0.72 [{table['evidence_id']}]."
     elif model:
         answer = f"Model {model} reports 37 observations [E1]."
     else:

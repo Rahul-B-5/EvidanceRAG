@@ -404,6 +404,11 @@ For a named section compared with a table, the guarded path selects prose
 about the requested row and metric and checks currency, percentages and
 common scientific units against that excerpt. The PDF link retains the
 original passage and page.
+If generated comparison prose fails this check, Assistant can present
+“Extracted source measurements” from the verified table cells and a single
+unambiguous measurement in each requested section. Ambiguous sections still
+produce abstention. Explicit statements that the supplied evidence lacks the
+requested information are returned as abstentions.
 
 The whole-PDF benchmark uses the [public NREL solar cost report](https://www.osti.gov/servlets/purl/2005540).
 It imports the pinned PDF through the durable queue in a disposable schema,

@@ -440,6 +440,8 @@ test("Reader preserves table cells and separates neighboring measurements", asyn
   await page.getByRole("button", {name:"Send question"}).click();
   const cells = page.locator(".citation-measurements");
   await expect(cells).toHaveText("Matched table cellsScore0.84");
+  await expect(page.locator(".assistant-turn.assistant")).toContainText("Extracted source measurements");
+  await expect(page.locator(".assistant-turn.assistant")).not.toContainText("0.72");
   await capture(page, "assistant-table");
   await page.reload();
   await page.getByRole("button", {name:"Assistant",exact:true}).click();
